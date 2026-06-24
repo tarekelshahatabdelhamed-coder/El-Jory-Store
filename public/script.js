@@ -1285,47 +1285,7 @@ window.checkAndResetLoyaltyExpiry = function(user, phoneKey) {
 // دوال تسجيل الدخول وإنشاء الحساب (Authentication)
 // ============================================================================
 
-    // التأكد من السحابة إن الرقم مش متسجل قبل كده
-    db.ref('/users/' + cleanPhone).once('value').then((snapshot) => {
-        if (snapshot.exists()) {
-            alert(currentLang === 'ar' ? "هذا الرقم مسجل بالفعل! برجاء تسجيل الدخول." : "Phone already registered! Please login.");
-            toggleAuth('login');
-        } else {
-            // تجهيز بيانات العميل الجديد
-            let newUser = {
-                name: name,
-                phone: cleanPhone,
-                email: email,
-                password: password,
-                region: region,
-                address: address + " - " + region,
-                // ضفنا العنوان في قائمة العناوين عشان يظهر في صفحة الحساب
-                addresses: [{ id: Date.now(), text: address + " - " + region, isPrimary: true }],
-                points: 0,
-                joinDate: new Date().toLocaleDateString('en-GB'),
-                isBlocked: false
-            };
-
-            // حفظ البيانات في السحابة
-            db.ref('/users/' + cleanPhone).set(newUser).then(() => {
-                alert(currentLang === 'ar' ? "تم إنشاء الحساب بنجاح! 🚀" : "Account created successfully! 🚀");
-                
-                // تسجيل الدخول أوتوماتيك (بناءً على نظام متجرك)
-                localStorage.setItem("eljory_auth", "true");
-                localStorage.setItem("eljory_active_phone", cleanPhone);
-                localStorage.setItem("eljory_active_user", JSON.stringify(newUser));
-                // توجيه العميل لصفحة حسابه فوراً
-                window.location.href = "account.html";
-            }).catch((error) => {
-                console.error("خطأ في التسجيل: ", error);
-            });
-        }
-    });
-};
-
-
-
-window.doRegister = async function(event) {
+    window.doRegister = async function(event) {
     if (event) event.preventDefault();
 
     let name = document.getElementById("regName").value.trim();
