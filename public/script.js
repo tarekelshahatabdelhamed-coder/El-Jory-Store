@@ -794,6 +794,64 @@ window.toggleAuth = function(type) {
     else document.getElementById('loginFormBox').style.display = 'block';
 }
 
+window.doLogin = async function(event) {
+    if (event) event.preventDefault();
+
+    let phone = document.getElementById("loginPhone").value.trim();
+    let password = document.getElementById("loginPassword").value;
+    let cleanPhone = window.getShortPhone(phone);
+
+    if (!cleanPhone || !password) {
+        alert(currentLang === 'ar' ? "يرجى ملء جميع الحقول!" : "Please fill all fields!");
+        return;
+    }
+
+    db.ref('/users/' + cleanPhone).once('value').then(async (snapshot) => {
+        if (!snapshot.exists()) {
+            alert(currentLang === 'ar' ? "الرقم غير مسجل! يرجى إنشاء حساب جديد." : "Phone not registered!");
+            return;
+        }
+
+        let user = snapshot.val();
+
+        // فحص الحظر
+        if (user.isBlocked) {
+            alert(currentLang === 'ar' ? "هذا الحساب محظور. تواصل مع الإدارة." : "Account blocked. Contact support.");
+            return;
+        }
+
+        let isValid = false;
+
+        // التحقق من كلمة المرور (هاش أو نص عادي للحسابات القديمة)
+        if (user.passwordHash && user.passwordSalt) {
+            let hash = await window.hashPassword(password, user.passwordSalt);
+            isValid = (hash === user.passwordHash);
+        } else if (user.password) {
+            isValid = (password === user.password);
+            if (isValid) {
+                // ترقية تلقائية للتشفير للحسابات القديمة
+                let salt = window.generateSalt();
+                let hash = await window.hashPassword(password, salt);
+                db.ref('/users/' + cleanPhone).update({ passwordHash: hash, passwordSalt: salt, password: null });
+            }
+        }
+
+        if (!isValid) {
+            alert(currentLang === 'ar' ? "كلمة المرور غير صحيحة!" : "Incorrect password!");
+            return;
+        }
+
+        // فحص انتهاء صلاحية النقاط عند الدخول
+        user = window.checkAndResetLoyaltyExpiry(user, cleanPhone);
+
+        localStorage.setItem("eljory_auth", "true");
+        localStorage.setItem("eljory_active_phone", cleanPhone);
+        localStorage.setItem("eljory_active_user", JSON.stringify(user));
+
+        window.location.href = "index.html";
+    });
+};
+
 window.doForgotPassword = function(event) {
     if(event) event.preventDefault();
     let email = document.getElementById("forgotEmail").value.trim();
@@ -1227,26 +1285,6 @@ window.checkAndResetLoyaltyExpiry = function(user, phoneKey) {
 // دوال تسجيل الدخول وإنشاء الحساب (Authentication)
 // ============================================================================
 
-window.doRegister = function(event) {
-    // السطر ده بيمنع الصفحة تعمل Refresh وتضيع البيانات
-    if (event) event.preventDefault();
-
-    let name = document.getElementById("regName").value.trim();
-    let phone = document.getElementById("regPhone").value.trim();
-    let email = document.getElementById("regEmail").value.trim();
-    let region = document.getElementById("regRegion").value;
-    let address = document.getElementById("regAddress").value.trim();
-    let password = document.getElementById("regPassword").value;
-
-    // توحيد رقم التليفون باستخدام الدالة الموجودة في الكود عندك
-    let cleanPhone = window.getShortPhone(phone);
-
-    // التأكد إن كل حاجة مليانة
-    if (!name || !cleanPhone || !password || !region || !address) {
-        alert(currentLang === 'ar' ? "يرجى ملء جميع الحقول المطلوبة!" : "Please fill all required fields!");
-        return;
-    }
-
     // التأكد من السحابة إن الرقم مش متسجل قبل كده
     db.ref('/users/' + cleanPhone).once('value').then((snapshot) => {
         if (snapshot.exists()) {
@@ -1284,6 +1322,8 @@ window.doRegister = function(event) {
         }
     });
 };
+
+
 
 window.doRegister = async function(event) {
     if (event) event.preventDefault();
