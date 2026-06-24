@@ -380,12 +380,22 @@
             </div>
         </div>
 
-        <div id="sections" class="section">
+<div id="sections" class="section">
             <h3>إدارة السكاشن الاحترافية 🖼️</h3>
 
-            <!-- فورم إضافة سيكشن جديد -->
-            <div style="background:#fdf5e6;padding:25px;border-radius:10px;border:1px solid #f38c18;margin-bottom:30px;">
+            <!-- ── فورم إضافة / تعديل سيكشن ── -->
+            <div id="sectionFormBox" style="background:#fdf5e6;padding:25px;border-radius:12px;border:1px solid #f38c18;margin-bottom:30px;">
+                <input type="hidden" id="editingSectionId" value="">
+
+                <!-- اختيار الـ Layout -->
+                <div class="form-group" style="margin-bottom:20px;">
+                    <label style="font-size:16px;font-weight:bold;color:#1d364a;">① اختر شكل السيكشن (Layout)</label>
+                    <div id="layoutPicker" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">
+                    </div>
+                </div>
+
                 <div style="display:flex;gap:20px;flex-wrap:wrap;">
+                    <!-- عمود 1: الإعدادات العامة -->
                     <div style="flex:1;min-width:220px;">
                         <div class="form-group">
                             <label>عنوان السيكشن</label>
@@ -394,118 +404,118 @@
                         <div class="form-group">
                             <label>إظهار العنوان؟</label>
                             <select id="secShowTitle" class="form-control">
-                                <option value="1">نعم - أظهر العنوان</option>
-                                <option value="0">لا - أخفِ العنوان</option>
+                                <option value="1">نعم</option>
+                                <option value="0">لا</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>إظهار المنتجات تحت البانر؟</label>
-                            <select id="secShowProducts" class="form-control">
+                            <label>إظهار منتجات تحت السيكشن؟</label>
+                            <select id="secShowProducts" class="form-control" onchange="toggleSecProductsBox()">
                                 <option value="0">لا</option>
                                 <option value="1">نعم</option>
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label>نوع العرض</label>
-                            <select id="secDisplayType" class="form-control">
-                                <option value="fullBanner">بانر كامل العرض</option>
-                                <option value="halfBanner">بانر نصف العرض</option>
-                                <option value="slim">شريط رفيع</option>
-                                <option value="productsOnly">منتجات فقط (بدون صورة)</option>
-                            </select>
+
+                        <!-- صندوق إعدادات المنتجات -->
+                        <div id="secProductsBox" style="display:none;background:white;padding:15px;border-radius:8px;border:1px solid #ddd;margin-bottom:15px;">
+                            <div class="form-group" style="margin-bottom:10px;">
+                                <label>مصدر المنتجات</label>
+                                <select id="secLinkType" class="form-control" onchange="updateSecLinkUI()">
+                                    <option value="none">-- اختر --</option>
+                                    <option value="category">قسم رئيسي</option>
+                                    <option value="subcategory">قسم فرعي</option>
+                                    <option value="customList">قائمة مخصصة</option>
+                                </select>
+                            </div>
+                            <div id="secLinkValueBox" style="display:none;">
+                                <div class="form-group" id="secLinkCategoryBox" style="display:none;">
+                                    <label>اختر القسم</label>
+                                    <select id="secLinkCategorySelect" class="form-control" onchange="document.getElementById('secLinkValue').value=this.value"></select>
+                                </div>
+                                <div class="form-group" id="secLinkSubcategoryBox" style="display:none;">
+                                    <label>اختر القسم الفرعي</label>
+                                    <select id="secLinkSubcategorySelect" class="form-control" onchange="document.getElementById('secLinkValue').value=this.value"></select>
+                                </div>
+                                <div class="form-group" id="secLinkCustomListBox" style="display:none;">
+                                    <label>اختر القائمة المخصصة</label>
+                                    <select id="secLinkCustomListSelect" class="form-control" onchange="document.getElementById('secLinkValue').value=this.value"></select>
+                                </div>
+                                <input type="hidden" id="secLinkValue">
+                            </div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label>أقصى عدد منتجات تظهر</label>
+                                <input type="number" id="secMaxProducts" class="form-control" value="8" min="1" max="50">
+                            </div>
                         </div>
+
                         <div class="form-group">
                             <label>لون الخلفية (اختياري)</label>
-                            <input type="color" id="secBgColor" class="form-control" value="#ffffff" style="height:45px;">
+                            <input type="color" id="secBgColor" value="#ffffff" style="width:100%;height:45px;border:1px solid #ddd;border-radius:5px;cursor:pointer;">
                         </div>
                         <div class="form-group">
                             <label>أولوية الترتيب</label>
                             <input type="number" id="secPriority" class="form-control" value="1" min="1">
                         </div>
-                        <div class="form-group">
-                            <label>أقصى عدد منتجات تظهر</label>
-                            <input type="number" id="secMaxProducts" class="form-control" value="8" min="1" max="50">
-                        </div>
                     </div>
 
-                    <div style="flex:1;min-width:220px;">
-                        <div class="form-group">
-                            <label>صورة البانر</label>
-                            <input type="text" id="secImg" class="form-control" placeholder="رابط الصورة...">
-                            <div style="display:flex;gap:8px;margin-top:8px;">
-                                <button type="button" onclick="triggerDirectUpload('secImg')" class="btn btn-green" style="flex:1;">📤 رفع</button>
-                                <button type="button" onclick="openGalleryModal('secImg')" class="btn" style="background:#e68a10;flex:1;">🖼️ استوديو</button>
-                            </div>
-                        </div>
+                    <!-- عمود 2: الصور -->
+                    <div style="flex:2;min-width:280px;">
+                        <label style="font-weight:bold;color:#1d364a;font-size:15px;margin-bottom:10px;display:block;">② أضف صور السيكشن</label>
+                        <div id="secImagesContainer" style="display:flex;flex-direction:column;gap:15px;"></div>
+                    </div>
+                </div>
 
-                        <div class="form-group">
-                            <label>عند النقر على الصورة (Image Click)</label>
-                            <select id="secLinkType" class="form-control" onchange="updateSecLinkUI()">
-                                <option value="none">بدون رابط</option>
-                                <option value="product">منتج محدد</option>
-                                <option value="category">قسم رئيسي</option>
-                                <option value="subcategory">قسم فرعي</option>
-                                <option value="customList">قائمة مخصصة</option>
-                                <option value="external">رابط خارجي</option>
-                            </select>
-                        </div>
+                <div style="display:flex;gap:10px;margin-top:20px;">
+                    <button class="btn btn-green" onclick="saveSection()" style="flex:1;padding:15px;font-size:17px;" id="secSaveBtn">➕ حفظ السيكشن</button>
+                    <button class="btn btn-red" onclick="cancelEditSection()" id="secCancelBtn" style="display:none;padding:15px;font-size:17px;">✖ إلغاء التعديل</button>
+                </div>
+            </div>
 
-                        <div id="secLinkValueBox" style="display:none;">
-                            <!-- يتغير حسب نوع الربط -->
-                            <div class="form-group" id="secLinkProductBox" style="display:none;">
-                                <label>ابحث عن منتج</label>
-                                <input type="text" id="secLinkProductSearch" class="form-control" placeholder="اكتب اسم أو كود المنتج..." oninput="secSearchProducts()">
-                                <div id="secProductResults" style="border:1px solid #ddd;border-radius:5px;max-height:180px;overflow-y:auto;display:none;background:white;margin-top:4px;"></div>
-                                <input type="hidden" id="secLinkValue">
-                                <div id="secSelectedProduct" style="margin-top:8px;padding:8px;background:#eef2f5;border-radius:5px;display:none;font-size:13px;"></div>
-                            </div>
+            <!-- جدول السكاشن -->
+            <h3 style="border-bottom:2px solid #f38c18;padding-bottom:10px;">السكاشن النشطة حالياً</h3>
+            <table>
+                <thead><tr><th>الشكل</th><th>العنوان</th><th>الصور</th><th>المنتجات</th><th>الترتيب</th><th>الحالة</th><th>إجراء</th></tr></thead>
+                <tbody id="adminSectionsBody"></tbody>
+            </table>
+        </div>
 
-                            <div class="form-group" id="secLinkCategoryBox" style="display:none;">
-                                <label>اختر القسم الرئيسي</label>
-                                <select id="secLinkCategorySelect" class="form-control" onchange="document.getElementById('secLinkValue').value=this.value">
-                                    <option value="">-- اختر --</option>
-                                </select>
-                                <input type="hidden" id="secLinkValue">
-                            </div>
-
-                            <div class="form-group" id="secLinkSubcategoryBox" style="display:none;">
-                                <label>اختر القسم الفرعي</label>
-                                <select id="secLinkSubcategorySelect" class="form-control" onchange="document.getElementById('secLinkValue').value=this.value">
-                                    <option value="">-- اختر --</option>
-                                </select>
-                                <input type="hidden" id="secLinkValue">
-                            </div>
-
-                            <div class="form-group" id="secLinkCustomListBox" style="display:none;">
-                                <label>اختر القائمة المخصصة</label>
-                                <select id="secLinkCustomListSelect" class="form-control" onchange="document.getElementById('secLinkValue').value=this.value">
-                                    <option value="">-- اختر --</option>
-                                </select>
-                                <input type="hidden" id="secLinkValue">
-                            </div>
-
-                            <div class="form-group" id="secLinkExternalBox" style="display:none;">
-                                <label>الرابط الخارجي</label>
-                                <input type="text" id="secLinkExternalInput" class="form-control" placeholder="https://..." oninput="document.getElementById('secLinkValue').value=this.value">
-                                <input type="hidden" id="secLinkValue">
-                            </div>
+        <div id="storefront" class="section">
+            <h3>إدارة البانرات والسلايدر الإعلاني 🖼️</h3>
+            <div style="display:flex;gap:25px;flex-wrap:wrap;background:#f9f9f9;padding:25px;border-radius:8px;margin-bottom:30px;border:1px solid #eee;">
+                <div style="flex:1;min-width:250px;">
+                    <div class="form-group"><label>عنوان البانر</label><input type="text" id="bannerTitle" class="form-control" placeholder="مثال: عروض الصيف"></div>
+                    <div class="form-group">
+                        <label>رابط صورة البانر</label>
+                        <input type="text" id="bannerImg" class="form-control" value="">
+                        <div style="display:flex;gap:10px;margin-top:10px;">
+                            <button type="button" onclick="triggerDirectUpload('bannerImg')" class="btn btn-green" style="flex:1;">📤 رفع صورة</button>
+                            <button type="button" onclick="openGalleryModal('bannerImg')" class="btn" style="background:#e68a10;flex:1;">🖼️ من الاستوديو</button>
                         </div>
                     </div>
                 </div>
-                <button class="btn btn-green" onclick="saveSection()" style="width:100%;padding:15px;font-size:18px;margin-top:10px;">➕ حفظ وتفعيل السيكشن</button>
+                <div style="flex:1;min-width:250px;">
+                    <div class="form-group">
+                        <label>نوع التوجيه عند النقر</label>
+                        <select id="bannerLinkType" class="form-control" onchange="updateBannerLinkPlaceholder()">
+                            <option value="product">منتج (كود المنتج)</option>
+                            <option value="category">قسم (كود القسم)</option>
+                            <option value="external">رابط خارجي</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>قيمة التوجيه</label><input type="text" id="bannerLinkValue" class="form-control" placeholder="اكتب كود المنتج هنا..."></div>
+                    <div class="form-group"><label>أولوية الترتيب في السلايدر</label><input type="number" id="bannerPriority" class="form-control" value="1" min="1"></div>
+                </div>
+                <button class="btn btn-green" onclick="saveBanner()" style="width:100%;padding:15px;font-size:18px;">➕ حفظ وتفعيل البانر</button>
             </div>
-
-            <h3 style="border-bottom:2px solid #f38c18;padding-bottom:10px;">السكاشن النشطة حالياً</h3>
+            <h3>البانرات النشطة حالياً</h3>
             <table>
-                <thead><tr><th>الصورة</th><th>العنوان</th><th>النوع</th><th>الربط</th><th>الترتيب</th><th>إظهار منتجات</th><th>الحالة</th><th>إجراء</th></tr></thead>
-                <tbody id="adminSectionsBody"></tbody>
+                <thead><tr><th>الصورة</th><th>العنوان</th><th>التوجيه</th><th>الترتيب</th><th>الحالة</th><th>إجراء</th></tr></thead>
+                <tbody id="adminBannersBody"></tbody>
             </table>
         </div>
 
         <div id="custom-lists" class="section">
             <h3>إدارة القوائم المخصصة 📋</h3>
-
-            <!-- إنشاء قائمة جديدة -->
             <div style="background:#eef2f5;padding:25px;border-radius:10px;margin-bottom:30px;border:1px solid #ccc;">
                 <div style="display:flex;gap:15px;flex-wrap:wrap;margin-bottom:15px;">
                     <div class="form-group" style="flex:1;min-width:200px;">
@@ -516,37 +526,27 @@
                         <button class="btn btn-green" onclick="createCustomList()" style="padding:12px 25px;">➕ إنشاء قائمة</button>
                     </div>
                 </div>
-
-                <!-- تعديل قائمة محددة -->
                 <div id="editListBox" style="display:none;background:white;padding:20px;border-radius:8px;border:1px solid #ddd;">
                     <h4 id="editListTitle" style="margin-top:0;color:#1d364a;"></h4>
-
-                    <!-- بحث لايف -->
                     <div style="margin-bottom:15px;">
                         <label style="font-weight:bold;margin-bottom:5px;display:block;">🔍 ابحث وأضف منتجات للقائمة</label>
                         <input type="text" id="listProductSearch" class="form-control" placeholder="اكتب اسم أو كود المنتج..." oninput="listSearchProducts()" style="margin-bottom:8px;">
-                        <div id="listProductResults" style="border:1px solid #eee;border-radius:5px;max-height:200px;overflow-y:auto;display:none;background:white;"></div>
+                        <div id="listProductResults" style="border:1px solid #eee;border-radius:5px;max-height:200px;overflow-y:auto;display:none;background:white;position:relative;z-index:10;"></div>
                     </div>
-
-                    <!-- رفع شيت CSV -->
                     <div style="margin-bottom:15px;padding:12px;background:#fdf5e6;border:1px dashed #f38c18;border-radius:5px;">
-                        <label style="font-weight:bold;margin-bottom:5px;display:block;">📤 أو ارفع شيت CSV (أكواد المنتجات)</label>
+                        <label style="font-weight:bold;margin-bottom:5px;display:block;">📤 أو ارفع شيت CSV</label>
                         <input type="file" id="listCSVInput" accept=".csv,.txt" class="form-control" onchange="importListFromCSV(event)">
                     </div>
-
-                    <!-- المنتجات المضافة للقائمة -->
                     <div>
                         <label style="font-weight:bold;margin-bottom:8px;display:block;">📦 المنتجات في القائمة:</label>
                         <div id="listProductsContainer" style="min-height:60px;border:1px dashed #ccc;border-radius:5px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;"></div>
                     </div>
-
                     <div style="margin-top:15px;display:flex;gap:10px;">
                         <button class="btn btn-green" onclick="saveCurrentList()" style="flex:1;padding:12px;">💾 حفظ القائمة</button>
                         <button class="btn btn-red" onclick="closeEditList()" style="flex:1;padding:12px;">إلغاء</button>
                     </div>
                 </div>
             </div>
-
             <h3 style="border-bottom:2px solid #f38c18;padding-bottom:10px;">القوائم الموجودة</h3>
             <table>
                 <thead><tr><th>الكود</th><th>اسم القائمة</th><th>عدد المنتجات</th><th>الحالة</th><th>إجراء</th></tr></thead>
@@ -554,40 +554,6 @@
             </table>
         </div>
 
-        <div id="storefront" class="section">
-            <h3>إدارة واجهة المتجر (البانرات والسلايدر الإعلاني) 🖼️</h3>
-            <div style="display: flex; gap: 25px; flex-wrap: wrap; background: #f9f9f9; padding: 25px; border-radius: 8px; margin-bottom: 30px; border: 1px solid #eee;">
-                <div style="flex: 1; min-width: 250px;">
-                    <div class="form-group"><label>عنوان البانر / الحملة الإعلانية</label><input type="text" id="bannerTitle" class="form-control" placeholder="مثال: عروض الصيف على الشاشات"></div>
-                    <div class="form-group">
-                        <label>رابط صورة الإعلان</label>
-                        <input type="text" id="bannerImg" class="form-control" value="https://via.placeholder.com/1200x400">
-                        <div style="display: flex; gap: 10px; margin-top: 10px;">
-                            <button type="button" onclick="triggerDirectUpload('bannerImg')" class="btn btn-green" style="flex: 1;">📤 رفع صورة جديدة</button>
-                            <button type="button" onclick="openGalleryModal('bannerImg')" class="btn" style="background: #e68a10; flex: 1;">🖼️ من الاستوديو</button>
-                        </div>
-                    </div>
-                </div>
-                <div style="flex: 1; min-width: 250px;">
-                    <div class="form-group">
-                        <label>نوع التوجيه (عند النقر على البانر)</label>
-                        <select id="bannerLinkType" class="form-control" onchange="updateBannerLinkPlaceholder()">
-                            <option value="product">فتح منتج معين (بواسطة كود المنتج)</option>
-                            <option value="category">فتح قسم معين (بواسطة كود القسم)</option>
-                            <option value="external">رابط خارجي مخصص</option>
-                        </select>
-                    </div>
-                    <div class="form-group"><label>قيمة التوجيه (الكود أو الرابط المطلوب)</label><input type="text" id="bannerLinkValue" class="form-control" placeholder="اكتب كود المنتج هنا..."></div>
-                    <div class="form-group"><label>أولوية الترتيب في السلايدر</label><input type="number" id="bannerPriority" class="form-control" value="1" min="1"></div>
-                </div>
-                <button class="btn btn-green" onclick="saveBanner()" style="width: 100%; padding: 15px; font-size: 18px;">➕ حفظ وتفعيل البانر الإعلاني على الواجهة</button>
-            </div>
-            <h3>البانرات والسلايدرز النشطة حالياً بالموقع</h3>
-            <table>
-                <thead><tr><th>الصورة</th><th>العنوان</th><th>التوجيه المستهدف</th><th>ترتيب العرض</th><th>حالة العرض</th><th>إجراء</th></tr></thead>
-                <tbody id="adminBannersBody"></tbody>
-            </table>
-        </div>
         <div id="team" class="section">
             <h3>إدارة فريق العمل والصلاحيات 👥</h3>
             <div style="background: white; padding: 25px; border-radius: 8px; border: 1px solid #1d364a; margin-bottom: 30px;">
@@ -817,154 +783,347 @@
         }
 
 
-        // ===================================================
-        // ====== إدارة السكاشن الاحترافية ==================
-        // ===================================================
+// ================================================================
+        // ====== دوال السكاشن الاحترافية - النسخة الجديدة ===============
+        // ================================================================
 
-        window.updateSecLinkUI = function() {
-            let type = document.getElementById('secLinkType').value;
-            let boxes = ['secLinkProductBox','secLinkCategoryBox','secLinkSubcategoryBox','secLinkCustomListBox','secLinkExternalBox'];
-            let valueBox = document.getElementById('secLinkValueBox');
-            boxes.forEach(b => { let el = document.getElementById(b); if(el) el.style.display='none'; });
+        const LAYOUTS = [
+            { id:'full',           label:'بانر كامل',          icon:'🟦',      images:1 },
+            { id:'two',            label:'صورتين جنب بعض',     icon:'▐▌',      images:2 },
+            { id:'three',          label:'3 صور في صف',        icon:'▐▌▌',     images:3 },
+            { id:'four',           label:'4 صور في صف',        icon:'▐▌▌▌',    images:4 },
+            { id:'big-left-2right',label:'كبيرة + 2 صغار',    icon:'🔲▌',     images:3 },
+            { id:'big-left-4right',label:'كبيرة + 4 صغار',    icon:'🔲▌▌',    images:5 },
+            { id:'slider',         label:'سلايدر تلقائي',      icon:'▶️',      images:6 },
+        ];
 
-            if(type === 'none') { valueBox.style.display = 'none'; return; }
-            valueBox.style.display = 'block';
+        let currentLayout = 'full';
+        let sectionImages = []; // [{src, linkType, linkValue}]
 
-            let cats = JSON.parse(localStorage.getItem('eljory_categories') || '[]');
-            let lists = JSON.parse(localStorage.getItem('eljory_custom_lists') || '[]');
+        // ── بناء الـ Layout Picker ──
+        window.buildLayoutPicker = function() {
+            let picker = document.getElementById('layoutPicker');
+            if (!picker) return;
+            picker.innerHTML = LAYOUTS.map(l => `
+                <div onclick="selectLayout('${l.id}')" id="lpick_${l.id}"
+                     style="border:2px solid ${l.id===currentLayout?'#f38c18':'#ddd'};border-radius:8px;
+                            padding:12px 16px;cursor:pointer;text-align:center;background:${l.id===currentLayout?'#fdf5e6':'white'};
+                            transition:.2s;min-width:110px;flex:0 0 auto;">
+                    <div style="font-size:22px;margin-bottom:5px;">${l.icon}</div>
+                    <div style="font-size:12px;font-weight:bold;color:#1d364a;">${l.label}</div>
+                    <div style="font-size:11px;color:#999;margin-top:3px;">${l.id==='slider'?'صور متعددة':`${l.images} صورة`}</div>
+                </div>`).join('');
+        };
 
-            if(type === 'product') {
-                document.getElementById('secLinkProductBox').style.display = 'block';
-                document.getElementById('secLinkProductSearch').value = '';
-                document.getElementById('secProductResults').style.display = 'none';
-                document.getElementById('secSelectedProduct').style.display = 'none';
-                document.getElementById('secLinkValue').value = '';
-            } else if(type === 'category') {
-                document.getElementById('secLinkCategoryBox').style.display = 'block';
-                let sel = document.getElementById('secLinkCategorySelect');
-                sel.innerHTML = '<option value="">-- اختر --</option>';
-                cats.filter(c => !c.parentId).forEach(c => sel.innerHTML += `<option value="${c.id}">${c.nameAr}</option>`);
-                document.getElementById('secLinkValue').value = '';
-            } else if(type === 'subcategory') {
-                document.getElementById('secLinkSubcategoryBox').style.display = 'block';
-                let sel = document.getElementById('secLinkSubcategorySelect');
-                sel.innerHTML = '<option value="">-- اختر --</option>';
-                cats.filter(c => c.parentId).forEach(c => sel.innerHTML += `<option value="${c.id}">${c.nameAr}</option>`);
-                document.getElementById('secLinkValue').value = '';
-            } else if(type === 'customList') {
-                document.getElementById('secLinkCustomListBox').style.display = 'block';
-                let sel = document.getElementById('secLinkCustomListSelect');
-                sel.innerHTML = '<option value="">-- اختر --</option>';
-                lists.filter(l => l.isActive !== false).forEach(l => sel.innerHTML += `<option value="${l.id}">${l.name}</option>`);
-                document.getElementById('secLinkValue').value = '';
-            } else if(type === 'external') {
-                document.getElementById('secLinkExternalBox').style.display = 'block';
-                document.getElementById('secLinkValue').value = '';
+        window.selectLayout = function(layoutId) {
+            currentLayout = layoutId;
+            // تحديث الـ picker
+            LAYOUTS.forEach(l => {
+                let el = document.getElementById(`lpick_${l.id}`);
+                if (!el) return;
+                el.style.border = l.id === layoutId ? '2px solid #f38c18' : '2px solid #ddd';
+                el.style.background = l.id === layoutId ? '#fdf5e6' : 'white';
+            });
+            // تحديث صندوق الصور
+            buildImagesInputs();
+        };
+
+        // ── بناء صناديق إدخال الصور حسب الـ layout ──
+        window.buildImagesInputs = function() {
+            let container = document.getElementById('secImagesContainer');
+            if (!container) return;
+
+            let layout = LAYOUTS.find(l => l.id === currentLayout);
+            let count  = currentLayout === 'slider' ? Math.max(sectionImages.length + 1, 2) : layout.images;
+
+            // تأكد إن sectionImages فيها مكان لكل صورة
+            while (sectionImages.length < count) sectionImages.push({ src:'', linkType:'none', linkValue:'' });
+
+            container.innerHTML = '';
+            for (let i = 0; i < count; i++) {
+                let im = sectionImages[i] || { src:'', linkType:'none', linkValue:'' };
+                let isOptional = currentLayout === 'slider' && i >= 2;
+                container.innerHTML += buildImageInputBox(i, im, isOptional);
             }
         };
 
-        window.secSearchProducts = function() {
-            let q = document.getElementById('secLinkProductSearch').value.trim().toLowerCase();
-            let resultsBox = document.getElementById('secProductResults');
-            if(!q) { resultsBox.style.display='none'; return; }
-            let products = JSON.parse(localStorage.getItem('eljory_products') || '[]');
-            let filtered = products.filter(p => p.isActive !== false && (p.titleAr.toLowerCase().includes(q) || (p.titleEn && p.titleEn.toLowerCase().includes(q)) || p.id.toLowerCase().includes(q))).slice(0,10);
-            if(!filtered.length) { resultsBox.innerHTML = '<div style="padding:10px;color:gray;">لا توجد نتائج</div>'; resultsBox.style.display='block'; return; }
-            resultsBox.innerHTML = filtered.map(p => `
-                <div onclick="secSelectProduct('${p.id}','${p.titleAr}')" style="padding:10px;border-bottom:1px solid #eee;cursor:pointer;display:flex;align-items:center;gap:10px;transition:0.2s;" onmouseover="this.style.background='#f0f8ff'" onmouseout="this.style.background='white'">
-                    <img src="${p.img}" style="width:35px;height:35px;object-fit:cover;border-radius:4px;">
-                    <div><strong style="font-size:13px;">${p.titleAr}</strong><br><small style="color:gray;">${p.id} - ${p.price} ج.م</small></div>
+        function buildImageInputBox(i, im, isOptional) {
+            let labels = { full:'الصورة الرئيسية', two:`الصورة ${i+1}`, three:`الصورة ${i+1}`, four:`الصورة ${i+1}`, 'big-left-2right': i===0?'الصورة الكبيرة':`الصورة الصغيرة ${i}`, 'big-left-4right': i===0?'الصورة الكبيرة':`الصورة ${i}`, slider:`شريحة ${i+1}` };
+            let label = labels[currentLayout] || `الصورة ${i+1}`;
+
+            return `<div style="background:white;padding:15px;border-radius:8px;border:1px solid #eee;" id="imgBox_${i}">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <strong style="color:#1d364a;font-size:14px;">📷 ${label}${isOptional?' (اختياري)':''}</strong>
+                    ${im.src ? `<img src="${im.src}" style="width:50px;height:35px;object-fit:cover;border-radius:4px;border:1px solid #ddd;">` : ''}
+                </div>
+                <div style="display:flex;gap:8px;margin-bottom:10px;">
+                    <input type="text" id="secImgSrc_${i}" value="${im.src||''}" placeholder="رابط الصورة..." class="form-control" style="flex:1;" oninput="sectionImages[${i}].src=this.value;buildImagesInputs();">
+                    <button type="button" onclick="triggerSecImgUpload(${i})" class="btn btn-green" style="padding:8px 12px;white-space:nowrap;">📤</button>
+                    <button type="button" onclick="openGalleryModal('secImgSrc_${i}');window._gallerySecIdx=${i};" class="btn" style="background:#e68a10;padding:8px 12px;white-space:nowrap;">🖼️</button>
+                </div>
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                    <label style="font-size:13px;color:#555;white-space:nowrap;">Image Click:</label>
+                    <select onchange="updateImgLinkType(${i},this.value)" class="form-control" style="flex:1;min-width:140px;">
+                        <option value="none" ${im.linkType==='none'?'selected':''}>بدون رابط</option>
+                        <option value="product" ${im.linkType==='product'?'selected':''}>منتج</option>
+                        <option value="category" ${im.linkType==='category'?'selected':''}>قسم رئيسي</option>
+                        <option value="subcategory" ${im.linkType==='subcategory'?'selected':''}>قسم فرعي</option>
+                        <option value="customList" ${im.linkType==='customList'?'selected':''}>قائمة مخصصة</option>
+                        <option value="external" ${im.linkType==='external'?'selected':''}>رابط خارجي</option>
+                    </select>
+                </div>
+                <div id="imgLinkBox_${i}" style="margin-top:8px;">${buildImgLinkInput(i, im)}</div>
+            </div>`;
+        }
+
+        function buildImgLinkInput(i, im) {
+            let cats  = JSON.parse(localStorage.getItem('eljory_categories') || '[]');
+            let lists = JSON.parse(localStorage.getItem('eljory_custom_lists') || '[]');
+            if (!im.linkType || im.linkType === 'none') return '';
+            if (im.linkType === 'product') return `
+                <div style="position:relative;">
+                    <input type="text" id="imgProdSearch_${i}" placeholder="ابحث عن منتج..." class="form-control" style="margin-bottom:4px;" oninput="searchImgProduct(${i})" value="${im.linkValue||''}">
+                    <div id="imgProdResults_${i}" style="display:none;position:absolute;top:100%;right:0;left:0;background:white;border:1px solid #ddd;border-radius:5px;max-height:160px;overflow-y:auto;z-index:100;"></div>
+                    <input type="hidden" id="imgLinkVal_${i}" value="${im.linkValue||''}">
+                </div>`;
+            if (im.linkType === 'category') return `
+                <select class="form-control" id="imgLinkVal_${i}" onchange="sectionImages[${i}].linkValue=this.value">
+                    <option value="">-- اختر قسم --</option>
+                    ${cats.filter(c=>!c.parentId).map(c=>`<option value="${c.id}" ${im.linkValue===c.id?'selected':''}>${c.nameAr}</option>`).join('')}
+                </select>`;
+            if (im.linkType === 'subcategory') return `
+                <select class="form-control" id="imgLinkVal_${i}" onchange="sectionImages[${i}].linkValue=this.value">
+                    <option value="">-- اختر قسم فرعي --</option>
+                    ${cats.filter(c=>c.parentId).map(c=>`<option value="${c.id}" ${im.linkValue===c.id?'selected':''}>${c.nameAr}</option>`).join('')}
+                </select>`;
+            if (im.linkType === 'customList') return `
+                <select class="form-control" id="imgLinkVal_${i}" onchange="sectionImages[${i}].linkValue=this.value">
+                    <option value="">-- اختر قائمة --</option>
+                    ${lists.map(l=>`<option value="${l.id}" ${im.linkValue===l.id?'selected':''}>${l.name}</option>`).join('')}
+                </select>`;
+            if (im.linkType === 'external') return `
+                <input type="text" class="form-control" id="imgLinkVal_${i}" placeholder="https://..." value="${im.linkValue||''}" oninput="sectionImages[${i}].linkValue=this.value">`;
+            return '';
+        }
+
+        window.updateImgLinkType = function(i, type) {
+            sectionImages[i].linkType  = type;
+            sectionImages[i].linkValue = '';
+            document.getElementById(`imgLinkBox_${i}`).innerHTML = buildImgLinkInput(i, sectionImages[i]);
+        };
+
+        window.searchImgProduct = function(i) {
+            let q = document.getElementById(`imgProdSearch_${i}`).value.trim().toLowerCase();
+            let box = document.getElementById(`imgProdResults_${i}`);
+            if (!q) { box.style.display='none'; return; }
+            let products = JSON.parse(localStorage.getItem('eljory_products')||'[]').filter(p=>p.isActive!==false);
+            let res = products.filter(p => p.titleAr.toLowerCase().includes(q)||(p.titleEn||'').toLowerCase().includes(q)||p.id.toLowerCase().includes(q)).slice(0,8);
+            if (!res.length) { box.innerHTML='<div style="padding:10px;color:gray;">لا نتائج</div>'; box.style.display='block'; return; }
+            box.innerHTML = res.map(p=>`
+                <div onclick="selectImgProduct(${i},'${p.id}','${p.titleAr}')"
+                     style="padding:8px 12px;border-bottom:1px solid #eee;cursor:pointer;display:flex;align-items:center;gap:8px;"
+                     onmouseover="this.style.background='#f0f8ff'" onmouseout="this.style.background='white'">
+                    <img src="${p.img}" style="width:32px;height:32px;object-fit:cover;border-radius:3px;">
+                    <span style="font-size:13px;">${p.titleAr} <small style="color:gray;">(${p.id})</small></span>
                 </div>`).join('');
-            resultsBox.style.display='block';
+            box.style.display='block';
         };
 
-        window.secSelectProduct = function(id, name) {
-            document.getElementById('secLinkValue').value = id;
-            document.getElementById('secLinkProductSearch').value = '';
-            document.getElementById('secProductResults').style.display = 'none';
-            let box = document.getElementById('secSelectedProduct');
-            box.innerHTML = `✅ تم اختيار: <strong>${name}</strong> (${id}) <button onclick="secClearProduct()" style="background:none;border:none;color:red;cursor:pointer;font-weight:bold;">✖</button>`;
-            box.style.display = 'block';
+        window.selectImgProduct = function(i, id, name) {
+            sectionImages[i].linkValue = id;
+            document.getElementById(`imgProdSearch_${i}`).value = name + ' (' + id + ')';
+            document.getElementById(`imgLinkVal_${i}`).value = id;
+            document.getElementById(`imgProdResults_${i}`).style.display = 'none';
         };
 
-        window.secClearProduct = function() {
+        // رفع صورة مباشر للسيكشن
+        window.triggerSecImgUpload = function(idx) {
+            window._secImgIdx = idx;
+            let inp = document.createElement('input');
+            inp.type = 'file'; inp.accept = 'image/*';
+            inp.onchange = function(e) {
+                let file = e.target.files[0]; if(!file) return;
+                window._directUploadTargetCallback = function(url) {
+                    sectionImages[idx].src = url;
+                    document.getElementById(`secImgSrc_${idx}`).value = url;
+                    buildImagesInputs();
+                };
+                compressAndSaveImage(file, false);
+            };
+            inp.click();
+        };
+
+        window.toggleSecProductsBox = function() {
+            let show = document.getElementById('secShowProducts').value === '1';
+            document.getElementById('secProductsBox').style.display = show ? 'block' : 'none';
+        };
+
+        window.updateSecLinkUI = function() {
+            let type = document.getElementById('secLinkType').value;
+            let cats  = JSON.parse(localStorage.getItem('eljory_categories')||'[]');
+            let lists = JSON.parse(localStorage.getItem('eljory_custom_lists')||'[]');
+            let boxes = ['secLinkCategoryBox','secLinkSubcategoryBox','secLinkCustomListBox'];
+            boxes.forEach(b => { let el=document.getElementById(b); if(el) el.style.display='none'; });
+            document.getElementById('secLinkValueBox').style.display = type === 'none' ? 'none' : 'block';
             document.getElementById('secLinkValue').value = '';
-            document.getElementById('secSelectedProduct').style.display = 'none';
+            if (type === 'category') {
+                let sel = document.getElementById('secLinkCategorySelect');
+                sel.innerHTML = '<option value="">-- اختر --</option>' + cats.filter(c=>!c.parentId).map(c=>`<option value="${c.id}">${c.nameAr}</option>`).join('');
+                document.getElementById('secLinkCategoryBox').style.display = 'block';
+            } else if (type === 'subcategory') {
+                let sel = document.getElementById('secLinkSubcategorySelect');
+                sel.innerHTML = '<option value="">-- اختر --</option>' + cats.filter(c=>c.parentId).map(c=>`<option value="${c.id}">${c.nameAr}</option>`).join('');
+                document.getElementById('secLinkSubcategoryBox').style.display = 'block';
+            } else if (type === 'customList') {
+                let sel = document.getElementById('secLinkCustomListSelect');
+                sel.innerHTML = '<option value="">-- اختر --</option>' + lists.map(l=>`<option value="${l.id}">${l.name}</option>`).join('');
+                document.getElementById('secLinkCustomListBox').style.display = 'block';
+            }
         };
 
         window.saveSection = function() {
-            let title = document.getElementById('secTitle').value.trim();
-            let showTitle = document.getElementById('secShowTitle').value === '1';
-            let showProducts = document.getElementById('secShowProducts').value === '1';
-            let displayType = document.getElementById('secDisplayType').value;
-            let bgColor = document.getElementById('secBgColor').value;
-            let priority = parseInt(document.getElementById('secPriority').value) || 1;
-            let maxProducts = parseInt(document.getElementById('secMaxProducts').value) || 8;
-            let img = document.getElementById('secImg').value.trim();
-            let linkType = document.getElementById('secLinkType').value;
-            let linkValue = document.getElementById('secLinkValue') ? document.getElementById('secLinkValue').value.trim() : '';
+            let editingId = document.getElementById('editingSectionId').value;
 
-            if(!img && displayType !== 'productsOnly') return alert('يرجى اختيار صورة للسيكشن!');
-            if(linkType !== 'none' && linkType !== 'external' && !linkValue) return alert('يرجى تحديد قيمة الربط!');
+            // جمع بيانات الصور مع التأكد من القيم
+            let finalImages = sectionImages.map((im, i) => {
+                let srcEl = document.getElementById(`secImgSrc_${i}`);
+                let valEl = document.getElementById(`imgLinkVal_${i}`);
+                return {
+                    src:       srcEl ? srcEl.value.trim() : (im.src || ''),
+                    linkType:  im.linkType  || 'none',
+                    linkValue: valEl ? valEl.value.trim() : (im.linkValue || '')
+                };
+            }).filter(im => im.src);
 
-            safeUpdateList('/sections', sections => {
-                sections.push({
-                    id: 'SEC_' + Date.now(),
-                    title, showTitle, showProducts,
-                    displayType, bgColor: bgColor === '#ffffff' ? '' : bgColor,
-                    priority, maxProducts, img, linkType, linkValue,
-                    isActive: true
-                });
-                return sections;
-            }).then(() => {
-                alert('تم حفظ السيكشن بنجاح!');
-                document.getElementById('secTitle').value = '';
-                document.getElementById('secImg').value = '';
-                document.getElementById('secLinkType').value = 'none';
-                document.getElementById('secLinkValueBox').style.display = 'none';
-                document.getElementById('secLinkValue').value = '';
-                document.getElementById('secPriority').value = '1';
-                document.getElementById('secShowTitle').value = '1';
-                document.getElementById('secShowProducts').value = '0';
-            });
+            if (!finalImages.length) return alert('يرجى إضافة صورة واحدة على الأقل!');
+
+            let newSec = {
+                id:          editingId || ('SEC_' + Date.now()),
+                layout:      currentLayout,
+                images:      finalImages,
+                title:       document.getElementById('secTitle').value.trim(),
+                showTitle:   document.getElementById('secShowTitle').value === '1',
+                showProducts:document.getElementById('secShowProducts').value === '1',
+                linkType:    document.getElementById('secLinkType').value || 'none',
+                linkValue:   document.getElementById('secLinkValue').value.trim(),
+                maxProducts: parseInt(document.getElementById('secMaxProducts').value) || 8,
+                bgColor:     document.getElementById('secBgColor').value === '#ffffff' ? '' : document.getElementById('secBgColor').value,
+                priority:    parseInt(document.getElementById('secPriority').value) || 1,
+                isActive:    true
+            };
+
+            if (editingId) {
+                safeUpdateList('/sections', secs => {
+                    let i = secs.findIndex(s => s.id === editingId);
+                    if (i > -1) secs[i] = newSec; else secs.push(newSec);
+                    return secs;
+                }).then(() => { alert('تم تحديث السيكشن! ✅'); cancelEditSection(); });
+            } else {
+                safeUpdateList('/sections', secs => { secs.push(newSec); return secs; })
+                    .then(() => { alert('تم حفظ السيكشن! ✅'); resetSectionForm(); });
+            }
+        };
+
+        window.resetSectionForm = function() {
+            currentLayout  = 'full';
+            sectionImages  = [{ src:'', linkType:'none', linkValue:'' }];
+            document.getElementById('editingSectionId').value = '';
+            document.getElementById('secTitle').value         = '';
+            document.getElementById('secShowTitle').value     = '1';
+            document.getElementById('secShowProducts').value  = '0';
+            document.getElementById('secProductsBox').style.display = 'none';
+            document.getElementById('secLinkType').value      = 'none';
+            document.getElementById('secLinkValue').value     = '';
+            document.getElementById('secLinkValueBox').style.display = 'none';
+            document.getElementById('secPriority').value      = '1';
+            document.getElementById('secBgColor').value       = '#ffffff';
+            document.getElementById('secSaveBtn').innerHTML   = '➕ حفظ السيكشن';
+            document.getElementById('secCancelBtn').style.display = 'none';
+            buildLayoutPicker();
+            buildImagesInputs();
+        };
+
+        window.cancelEditSection = function() { resetSectionForm(); };
+
+        window.editSection = function(id) {
+            let secs = JSON.parse(localStorage.getItem('eljory_sections')||'[]');
+            let sec  = secs.find(s => s.id === id);
+            if (!sec) return;
+
+            document.getElementById('editingSectionId').value  = id;
+            currentLayout = sec.layout || 'full';
+            sectionImages = sec.images ? JSON.parse(JSON.stringify(sec.images)) : [{ src:'', linkType:'none', linkValue:'' }];
+
+            document.getElementById('secTitle').value          = sec.title || '';
+            document.getElementById('secShowTitle').value      = sec.showTitle ? '1' : '0';
+            document.getElementById('secShowProducts').value   = sec.showProducts ? '1' : '0';
+            document.getElementById('secLinkType').value       = sec.linkType || 'none';
+            document.getElementById('secPriority').value       = sec.priority || 1;
+            document.getElementById('secBgColor').value        = sec.bgColor || '#ffffff';
+            document.getElementById('secMaxProducts').value    = sec.maxProducts || 8;
+
+            toggleSecProductsBox();
+            if (sec.linkType && sec.linkType !== 'none') {
+                updateSecLinkUI();
+                setTimeout(() => { document.getElementById('secLinkValue').value = sec.linkValue || ''; }, 100);
+            }
+
+            document.getElementById('secSaveBtn').innerHTML        = '💾 حفظ التعديلات';
+            document.getElementById('secCancelBtn').style.display  = 'inline-block';
+
+            buildLayoutPicker();
+            buildImagesInputs();
+            document.getElementById('sectionFormBox').scrollIntoView({ behavior:'smooth' });
         };
 
         window.renderAdminSections = function() {
             let tbody = document.getElementById('adminSectionsBody');
-            if(!tbody) return;
-            let sections = JSON.parse(localStorage.getItem('eljory_sections') || '[]');
-            sections.sort((a,b) => (a.priority||0)-(b.priority||0));
+            if (!tbody) return;
+            let secs = JSON.parse(localStorage.getItem('eljory_sections')||'[]');
+            secs.sort((a,b)=>(a.priority||0)-(b.priority||0));
             tbody.innerHTML = '';
-            if(!sections.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:gray;padding:20px;">لا توجد سكاشن بعد.</td></tr>'; return; }
-            let linkLabels = { none:'بدون', product:'منتج', category:'قسم', subcategory:'قسم فرعي', customList:'قائمة مخصصة', external:'رابط خارجي' };
-            let displayLabels = { fullBanner:'بانر كامل', halfBanner:'نصف بانر', slim:'رفيع', productsOnly:'منتجات فقط' };
-            sections.forEach(s => {
+            if (!secs.length) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:gray;padding:20px;">لا توجد سكاشن.</td></tr>'; return; }
+            let layoutNames = { full:'بانر كامل', two:'صورتين', three:'3 صور', four:'4 صور', 'big-left-2right':'كبيرة+2', 'big-left-4right':'كبيرة+4', slider:'سلايدر' };
+            secs.forEach(s => {
                 let isActive = s.isActive !== false;
-                tbody.innerHTML += `<tr style="${!isActive?'opacity:0.55;':''}">
-                    <td>${s.img ? `<img src="${s.img}" style="width:80px;height:30px;object-fit:cover;border-radius:4px;">` : '—'}</td>
-                    <td><strong>${s.title||'—'}</strong><br><small style="color:gray;">${s.showTitle?'يظهر العنوان':'العنوان مخفي'}</small></td>
-                    <td><span style="background:#1d364a;color:white;padding:3px 8px;border-radius:4px;font-size:12px;">${displayLabels[s.displayType]||s.displayType}</span></td>
-                    <td><small>${linkLabels[s.linkType]||s.linkType}: ${s.linkValue||'—'}</small></td>
+                let imgs = s.images || [];
+                let previewImgs = imgs.slice(0,3).filter(i=>i.src).map(i=>`<img src="${i.src}" style="width:40px;height:30px;object-fit:cover;border-radius:3px;margin-left:3px;">`).join('');
+                tbody.innerHTML += `<tr style="${!isActive?'opacity:0.5;':''}">
+                    <td><span style="background:#1d364a;color:white;padding:3px 8px;border-radius:4px;font-size:12px;">${layoutNames[s.layout]||s.layout}</span></td>
+                    <td><strong>${s.title||'—'}</strong><br><small style="color:gray;">${s.showTitle?'✅ عنوان':'—'}</small></td>
+                    <td>${previewImgs || '—'}<br><small style="color:gray;">${imgs.length} صورة</small></td>
+                    <td style="text-align:center;">${s.showProducts?`<span style="color:green;font-weight:bold;">✅</span><br><small>${s.linkType}</small>`:'<span style="color:gray;">—</span>'}</td>
                     <td style="text-align:center;">${s.priority}</td>
-                    <td style="text-align:center;">${s.showProducts?'<span style="color:green;font-weight:bold;">✅ نعم</span>':'<span style="color:gray;">لا</span>'}</td>
                     <td><button class="btn ${isActive?'btn-green':'btn-inactive'}" style="padding:4px 10px;" onclick="toggleSectionStatus('${s.id}')">${isActive?'نشط':'مخفي'}</button></td>
-                    <td><button class="btn btn-red" style="padding:4px 10px;" onclick="deleteSection('${s.id}')">حذف</button></td>
+                    <td>
+                        <button class="btn" style="background:#17a2b8;padding:4px 10px;margin-bottom:5px;" onclick="editSection('${s.id}')">⚙️ تعديل</button>
+                        <button class="btn btn-red" style="padding:4px 10px;" onclick="deleteSection('${s.id}')">🗑️ حذف</button>
+                    </td>
                 </tr>`;
             });
         };
 
         window.toggleSectionStatus = function(id) {
             safeUpdateList('/sections', secs => {
-                let i = secs.findIndex(s => s.id === id);
-                if(i > -1) secs[i].isActive = !(secs[i].isActive !== false);
+                let i = secs.findIndex(s=>s.id===id);
+                if(i>-1) secs[i].isActive = !(secs[i].isActive!==false);
                 return secs;
             });
         };
 
         window.deleteSection = function(id) {
             if(!confirm('متأكد من حذف هذا السيكشن؟')) return;
-            safeUpdateList('/sections', secs => secs.filter(s => s.id !== id));
+            safeUpdateList('/sections', secs => secs.filter(s=>s.id!==id));
         };
+
+        // تهيئة الـ layout picker عند فتح الصفحة
+        setTimeout(() => {
+            if (document.getElementById('layoutPicker')) {
+                sectionImages = [{ src:'', linkType:'none', linkValue:'' }];
+                buildLayoutPicker();
+                buildImagesInputs();
+            }
+        }, 200);
 
         // ===================================================
         // ====== إدارة القوائم المخصصة =====================
@@ -1044,24 +1203,42 @@
         };
 
         window.addProductToList = function(productId) {
-            let lists = JSON.parse(localStorage.getItem('eljory_custom_lists') || '[]');
-            let list = lists.find(l => l.id === currentEditingListId);
-            if(!list) return;
-            if(!list.products) list.products = [];
-            if(!list.products.includes(productId)) {
-                list.products.push(productId);
-                renderListProducts(list.products);
-            }
-            document.getElementById('listProductSearch').value = '';
-            document.getElementById('listProductResults').style.display = 'none';
+            // نجيب القائمة من firebase مباشرة عشان نضمن أحدث نسخة
+            db.ref('/customLists').once('value').then(snap => {
+                let allLists = [];
+                if (snap.exists()) {
+                    let data = snap.val();
+                    allLists = Array.isArray(data) ? data.filter(x=>x) : Object.values(data).filter(x=>x);
+                }
+                let list = allLists.find(l => l.id === currentEditingListId);
+                if (!list) return;
+                if (!list.products) list.products = [];
+                if (!list.products.includes(productId)) {
+                    list.products.push(productId);
+                }
+                // حفظ فوري في firebase
+                db.ref('/customLists').set(allLists).then(() => {
+                    renderListProducts(list.products);
+                    document.getElementById('listProductSearch').value = '';
+                    document.getElementById('listProductResults').style.display = 'none';
+                });
+            });
         };
 
         window.removeProductFromList = function(productId) {
-            let lists = JSON.parse(localStorage.getItem('eljory_custom_lists') || '[]');
-            let list = lists.find(l => l.id === currentEditingListId);
-            if(!list) return;
-            list.products = (list.products || []).filter(id => id !== productId);
-            renderListProducts(list.products);
+            db.ref('/customLists').once('value').then(snap => {
+                let allLists = [];
+                if (snap.exists()) {
+                    let data = snap.val();
+                    allLists = Array.isArray(data) ? data.filter(x=>x) : Object.values(data).filter(x=>x);
+                }
+                let list = allLists.find(l => l.id === currentEditingListId);
+                if (!list) return;
+                list.products = (list.products || []).filter(id => id !== productId);
+                db.ref('/customLists').set(allLists).then(() => {
+                    renderListProducts(list.products);
+                });
+            });
         };
 
         window.renderListProducts = function(productIds) {
@@ -1964,8 +2141,16 @@
                                     gallery.push({ id: fileName, name: file.name, data: downloadURL });
                                     return gallery;
                                 }).then(() => {
-                                    if(isDirectUpload && targetId) { let inputField = document.getElementById(targetId); if(inputField) { inputField.value = downloadURL; inputField.dispatchEvent(new Event('change')); } } 
-                                    else { alert("✅ تم رفع الصورة للسحابة بنجاح!"); renderGalleryGrid(); }
+                                    if (window._directUploadTargetCallback) {
+                                        window._directUploadTargetCallback(downloadURL);
+                                        window._directUploadTargetCallback = null;
+                                    } else if(isDirectUpload && targetId) {
+                                        let inputField = document.getElementById(targetId);
+                                        if(inputField) { inputField.value = downloadURL; inputField.dispatchEvent(new Event('change')); }
+                                    } else {
+                                        alert("✅ تم رفع الصورة للسحابة بنجاح!");
+                                        renderGalleryGrid();
+                                    }
                                 });
                             });
                         }).catch(function(error) { alert("❌ فشل الرفع لفايربيس!"); if(uploadMsg) uploadMsg.value = ""; });
@@ -2216,10 +2401,10 @@ setTimeout(() => {
                 if(typeof renderGlobalPoints === "function") renderGlobalPoints();
                 if(typeof renderGalleryGrid === "function") renderGalleryGrid();
                 if(typeof loadAdminLoyalty === "function") loadAdminLoyalty();
-                if(typeof renderAdminSections === "function") renderAdminSections();
-                if(typeof renderAdminCustomLists === "function") renderAdminCustomLists();
                 safeSet("eljory_custom_lists", fbToArray(data.customLists));
                 safeSet("eljory_sections",     fbToArray(data.sections));
+                if(typeof renderAdminSections === "function") renderAdminSections();
+                if(typeof renderAdminCustomLists === "function") renderAdminCustomLists();
             });
         };
         startSync();
