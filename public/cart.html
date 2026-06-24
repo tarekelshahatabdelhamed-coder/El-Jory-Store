@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- ✅ إصلاح 1: تم إضافة meta viewport (كانت ناقصة) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سلة التسوق | الجوري ستور</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .cart-table-wrapper { overflow-x: auto; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        th, td { padding: 15px; border-bottom: 1px solid #ddd; text-align: center; }
+        th { background-color: #1d364a; color: white; }
+        
+        .cart-summary-wrapper {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            margin-top: 30px;
+            gap: 25px;
+        }
+
+        .promo-box {
+            flex: 1;
+            min-width: 300px;
+            max-width: 450px;
+            background: #fdfdfd;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px dashed #ccc;
+        }
+
+        .summary-box {
+            background: #fff;
+            padding: 30px 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            min-width: 300px;
+            text-align: center;
+            border: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <div class="logo"><img src="logo.png" alt="لوجو الجوري ستور"></div>
+    
+    <nav style="display: flex; align-items: center; gap: 20px;">
+        <form onsubmit="performSearch(event)" style="display: flex; gap: 5px; align-items: center; margin: 0;">
+            <input type="text" id="searchInput" placeholder="ابحث عن منتج..." style="padding: 8px 12px; border-radius: 4px; border: 1px solid #ccc; outline: none; min-width: 200px;">
+            <button type="submit" id="searchBtn" style="background: #f38c18; color: #1d364a; border: none; padding: 8px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.3s;">بحث</button>
+        </form>
+
+        <ul>
+            <li><a href="index.html" id="navHome">الرئيسية</a></li>
+            <li class="dropdown">
+                <a href="categories.html" id="navCategories">الأقسام</a>
+                <div class="dropdown-content" id="dynamicNavCategories"></div>
+            </li>
+            
+            <li style="position: relative; display: inline-flex; align-items: center; margin: 0 5px;">
+                <a href="cart.html" id="navCartIcon" title="السلة" style="color: inherit; display: flex; align-items: center; transition: 0.3s;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="9" cy="21" r="1"></circle>
+                        <circle cx="20" cy="21" r="1"></circle>
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                    </svg>
+                </a>
+                <span id="cartBadge" class="cart-badge" style="display:none; position: absolute; top: -10px; right: -10px; background: red; color: white; border-radius: 50%; padding: 2px 6px; font-size: 12px;">0</span>
+            </li>
+            
+            <li><a href="account.html" id="navAccount">حسابي</a></li>
+        </ul>
+    </nav>
+
+    <div class="header-actions">
+        <div class="user-info" id="headerUserInfo"></div>
+        <div class="lang-switch"><button id="langBtn">English</button></div>
+    </div>
+</header>
+
+<section class="cart-section" style="padding: 50px 5%;">
+    <h2 id="cartTitle" style="color: #1d364a; border-bottom: 2px solid #f38c18; display: inline-block; padding-bottom: 10px;">سلة التسوق</h2>
+    
+    <div class="cart-table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th id="thCartProd">المنتج</th>
+                    <th id="thCartPrice">السعر</th>
+                    <th id="thCartQty">الكمية</th>
+                    <th id="thCartSub">الإجمالي الفرعي</th>
+                    <th id="thCartAction">إجراء</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div class="cart-summary-wrapper">
+        <div class="promo-box">
+            <p id="promoLabel" style="font-weight: bold; color: #1d364a; margin-top: 0; margin-bottom: 15px;">لديك كود خصم؟ (أو كود هدية من نقاطك)</p>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="promoInput" class="form-control" placeholder="أدخل الكود هنا..." style="flex: 1;">
+                <button class="btn-browse" onclick="applyPromo()" id="btnApplyPromo" style="padding: 10px 20px; margin: 0;">تطبيق</button>
+            </div>
+            <p id="promoMessage" style="font-weight: bold; margin-top: 15px; display: none; padding: 10px; border-radius: 5px; text-align: center;"></p>
+            <div id="autoCouponsDiv"></div>
+        </div>
+
+        <div class="summary-box">
+            <div id="cartTotal" style="font-size: 24px; font-weight: bold; color: #1d364a; margin-top: 0; margin-bottom: 25px;">الإجمالي: 0 ج.م</div>
+            <button class="btn-auth" id="btnCheckout" style="width: 100%; font-size: 18px; padding: 15px; background-color: #28a745; border: none; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s;">إتمام الطلب</button>
+        </div>
+    </div>
+</section>
+
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+
+<!-- ✅ إصلاح 2: تم إضافة store-core.js (كانت ناقصة وبتكسر الـ checkout) -->
+<script src="js/firebase-init.js"></script>
+<script src="js/store-core.js"></script>
+
+<script src="script.js"></script>
+
+<script>
+    window.currentUserCoupons = [];
+
+document.addEventListener("DOMContentLoaded", () => {
+    // عرض الكوبونات المتاحة للعميل تلقائياً (من فايربيس مباشرة، نفس مكان حفظها الحقيقي)
+    let currentUser = getCurrentUser();
+
+    if (currentUser && currentUser.phone) {
+        let phoneKey = getShortPhone(currentUser.phone);
+        db.ref('/users/' + phoneKey + '/coupons').once('value').then(snap => {
+            let userCoupons = snap.val() || [];
+            window.currentUserCoupons = userCoupons;
+            let activeCoupons = userCoupons.filter(c => !c.isUsed);
+
+            let autoDiv = document.getElementById("autoCouponsDiv");
+            if (activeCoupons.length > 0 && autoDiv) {
+                let giftTitle = currentLang === 'ar'
+                    ? '🎁 هدايا متاحة في حسابك (اضغط للتطبيق):'
+                    : '🎁 Gifts available in your account (Click to apply):';
+                let html = `
+                    <div style="margin-top: 20px; padding: 15px; background: #e8f5e9; border: 1px dashed #28a745; border-radius: 8px;">
+                        <span style="color:#1d364a; font-weight:bold; font-size:14px;">${giftTitle}</span>
+                        <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">`;
+                activeCoupons.forEach(c => {
+                    html += `<button onclick="document.getElementById('promoInput').value='${c.code}'; applyPromo();"
+                                style="background:#28a745; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold; transition:0.3s;"
+                                onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                                ${c.rewardName} (${c.code})
+                             </button>`;
+                });
+                html += `</div></div>`;
+                autoDiv.innerHTML = html;
+            }
+        });
+    }
+});
+
+    // ✅ إصلاح 4: دالة applyPromo المُصلحة
+    // - بتحسب الإجمالي الصح مع مصاريف الشحن
+    // - بتحدّث window.cartFinalTotal عشان الـ checkout يشتغل صح
+    // - بتعرض تفاصيل (مجموع + شحن + إجمالي كلي) بدل رقم واحد بس
+    window.applyPromo = function() {
+        const msgEl = document.getElementById("promoMessage");
+        const codeInput = document.getElementById("promoInput").value.trim().toUpperCase();
+        const currency = currentLang === 'ar' ? 'ج.م' : 'EGP';
+        const cartTotalEl = document.getElementById("cartTotal");
+
+        msgEl.style.display = "block";
+
+        if (!codeInput) {
+            msgEl.style.backgroundColor = "#ffeaea"; msgEl.style.color = "#d9534f";
+            msgEl.innerText = currentLang === 'ar' ? "من فضلك أدخل كود الخصم أولاً!" : "Please enter a promo code first!";
+            return;
+        }
+
+        const cartItems = JSON.parse(localStorage.getItem("eljory_cart")) || [];
+        if (cartItems.length === 0) {
+            msgEl.style.backgroundColor = "#ffeaea"; msgEl.style.color = "#d9534f";
+            msgEl.innerText = currentLang === 'ar' ? "السلة فارغة!" : "Cart is empty!";
+            return;
+        }
+
+        // حساب مجموع المنتجات
+        const productsTotal = cartItems.reduce((sum, item) => sum + (item.price * item.qty), 0);
+        // سحب مصاريف الشحن المحسوبة من renderCart
+        const shippingFee = window.cartShippingFee || 0;
+
+        // دالة مساعدة لتحديث العرض والـ window.cartFinalTotal
+        function updateTotalsDisplay(discountedProducts, freeShipping, promoMsg, isError) {
+            const finalShipping = freeShipping ? 0 : shippingFee;
+            const finalTotal    = discountedProducts + finalShipping;
+
+            // تحديث القيمة اللي الـ checkout بيقرأها
+            window.cartFinalTotal = finalTotal;
+
+            const beforeText = currentLang === 'ar' ? 'المجموع:'        : 'Subtotal:';
+            const shipLabel  = currentLang === 'ar' ? 'مصاريف الشحن:'   : 'Shipping:';
+            const afterText  = currentLang === 'ar' ? 'الإجمالي الكلي:' : 'Grand Total:';
+            const freeWord   = currentLang === 'ar' ? 'مجاني 🎉'        : 'Free 🎉';
+            const shipDisplay = finalShipping === 0
+                ? `<span style="color:green; font-weight:bold;">${freeWord}</span>`
+                : `${finalShipping} ${currency}`;
+
+            cartTotalEl.innerHTML = `
+                <div style="font-size:17px; color:#555; margin-bottom:5px;">${beforeText} <strong>${discountedProducts}</strong> ${currency}</div>
+                <div style="font-size:17px; color:#555; margin-bottom:12px; border-bottom:1px solid #ccc; padding-bottom:10px;">${shipLabel} <strong>${shipDisplay}</strong></div>
+                <div style="color:green; font-size:24px;">${afterText} <strong>${finalTotal}</strong> ${currency}</div>
+            `;
+
+            if (promoMsg) {
+                msgEl.style.backgroundColor = isError ? "#ffeaea" : "#e8f5e9";
+                msgEl.style.color           = isError ? "#d9534f" : "#28a745";
+                msgEl.innerText = promoMsg;
+            }
+        }
+
+        // 1. البحث في كوبونات الولاء (من البيانات اللي جبناها لايف من فايربيس)
+        const userCoupons  = window.currentUserCoupons || [];
+        const loyaltyCoupon = userCoupons.find(c => c.code === codeInput && !c.isUsed);
+
+        if (loyaltyCoupon) {
+            const discount = parseFloat(loyaltyCoupon.discountVal) || 0;
+            if (productsTotal <= discount) {
+                msgEl.style.backgroundColor = "#ffeaea"; msgEl.style.color = "#d9534f";
+                msgEl.innerText = currentLang === 'ar'
+                    ? "عفواً! قيمة الكوبون أكبر من أو تساوي إجمالي السلة."
+                    : "Sorry! Coupon value >= cart total.";
+                return;
+            }
+            window.appliedPromoObj = { code: codeInput, value: discount, type: "fixed", label: loyaltyCoupon.rewardName };
+            localStorage.setItem("eljory_applied_loyalty_coupon", JSON.stringify(loyaltyCoupon));
+            const msg = currentLang === 'ar'
+                ? `🎉 تم تطبيق كوبون الهدية! خصم ${discount} ${currency}`
+                : `🎉 Gift coupon applied! ${discount} ${currency} off`;
+            updateTotalsDisplay(productsTotal - discount, false, msg, false);
+            return;
+        }
+
+        // 2. البحث في البروموكودات العامة
+        const regularPromos = JSON.parse(localStorage.getItem("eljory_promos")) || [];
+        const standardPromo = regularPromos.find(p => p.code === codeInput);
+
+        if (standardPromo) {
+            const now = new Date();
+            if (now < new Date(standardPromo.start) || now > new Date(standardPromo.end)) {
+                msgEl.style.backgroundColor = "#ffeaea"; msgEl.style.color = "#d9534f";
+                msgEl.innerText = currentLang === 'ar'
+                    ? "الكود منتهي الصلاحية أو لم يبدأ بعد!"
+                    : "Code expired or not active yet!";
+                return;
+            }
+
+            window.appliedPromoObj = standardPromo;
+            localStorage.removeItem("eljory_applied_loyalty_coupon");
+
+            // شحن مجاني
+            if (standardPromo.type === "shipping") {
+                const msg = currentLang === 'ar'
+                    ? "🎉 تم تطبيق كود الشحن المجاني!"
+                    : "🎉 Free shipping applied!";
+                updateTotalsDisplay(productsTotal, true, msg, false);
+                return;
+            }
+
+            // خصم ثابت
+            if (standardPromo.type === "fixed") {
+                const val = parseFloat(standardPromo.value);
+                if (productsTotal <= val) {
+                    msgEl.style.backgroundColor = "#ffeaea"; msgEl.style.color = "#d9534f";
+                    msgEl.innerText = currentLang === 'ar'
+                        ? "قيمة الخصم أكبر من إجمالي المنتجات!"
+                        : "Discount value exceeds cart total!";
+                    return;
+                }
+                const msg = currentLang === 'ar'
+                    ? `🎉 تم تطبيق الخصم! وفرت ${val} ${currency}`
+                    : `🎉 Discount applied! You saved ${val} ${currency}`;
+                updateTotalsDisplay(productsTotal - val, false, msg, false);
+                return;
+            }
+
+            // خصم نسبي
+            if (standardPromo.type === "percent") {
+                const pctVal = parseFloat(standardPromo.value);
+                const discount = productsTotal * (pctVal / 100);
+                const msg = currentLang === 'ar'
+                    ? `🎉 تم تطبيق خصم ${pctVal}%!`
+                    : `🎉 ${pctVal}% discount applied!`;
+                updateTotalsDisplay(productsTotal - discount, false, msg, false);
+                return;
+            }
+        }
+
+        // مفيش كود مطابق
+        window.appliedPromoObj = null;
+        localStorage.removeItem("eljory_applied_loyalty_coupon");
+        msgEl.style.backgroundColor = "#ffeaea"; msgEl.style.color = "#d9534f";
+        msgEl.innerText = currentLang === 'ar'
+            ? "❌ الكود غير صحيح أو تم استخدامه مسبقاً!"
+            : "❌ Invalid code or already used!";
+        // إعادة عرض الإجمالي بدون خصم
+        updateTotalsDisplay(productsTotal, false, null, false);
+    };
+</script>
+</body>
+</html>

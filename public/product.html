@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تفاصيل المنتج | الجوري ستور</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* تصميم صفحة المنتج */
+        .product-details-container { max-width: 1200px; margin: 50px auto; padding: 30px; display: flex; gap: 40px; flex-wrap: wrap; background: #fff; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
+        .product-image-box { flex: 1; min-width: 300px; text-align: center; }
+        .product-image-box img { max-width: 100%; max-height: 500px; object-fit: contain; border-radius: 10px; padding: 10px; border: 1px solid #eef2f5; }
+        
+        .product-info-box { flex: 1.5; min-width: 300px; display: flex; flex-direction: column; justify-content: center; }
+        .product-title { color: #1d364a; font-size: 32px; margin-top: 0; margin-bottom: 15px; }
+        .product-price { color: #f38c18; font-size: 28px; font-weight: bold; margin-bottom: 20px; }
+        
+        .btn-add-large:hover { opacity: 0.9; transform: translateY(-2px); }
+        .btn-add-large:disabled { background: #ccc !important; color: #666 !important; cursor: not-allowed !important; transform: none; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo"><img src="logo.png" alt="لوجو الجوري ستور"></div>
+        
+        <nav style="display: flex; align-items: center; gap: 20px;">
+            <form onsubmit="performSearch(event)" style="display: flex; gap: 5px; align-items: center; margin: 0;">
+                <input type="text" id="searchInput" placeholder="ابحث عن منتج..." style="padding: 8px 12px; border-radius: 4px; border: 1px solid #ccc; outline: none; min-width: 200px;">
+                <button type="submit" id="searchBtn" style="background: #f38c18; color: #1d364a; border: none; padding: 8px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.3s;">بحث</button>
+            </form>
+
+            <ul>
+                <li><a href="index.html" id="navHome">الرئيسية</a></li>
+                <li class="dropdown">
+                    <a href="categories.html" id="navCategories">الأقسام</a>
+                    <div class="dropdown-content" id="dynamicNavCategories"></div>
+                </li>
+                
+                <li style="position: relative; display: inline-flex; align-items: center; margin: 0 5px;">
+                    <a href="cart.html" id="navCartIcon" title="السلة" style="color: inherit; display: flex; align-items: center; transition: 0.3s;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="9" cy="21" r="1"></circle>
+                            <circle cx="20" cy="21" r="1"></circle>
+                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                        </svg>
+                    </a>
+                    <span id="cartBadge" class="cart-badge" style="display:none; position: absolute; top: -10px; right: -10px; background: red; color: white; border-radius: 50%; padding: 2px 6px; font-size: 12px;">0</span>
+                </li>
+                
+                <li><a href="account.html" id="navAccount">حسابي</a></li>
+            </ul>
+        </nav>
+
+        <div class="header-actions">
+            <div class="user-info" id="headerUserInfo"></div>
+            <div class="lang-switch"><button id="langBtn">English</button></div>
+        </div>
+    </header>
+
+    <div id="singleProductContainer" class="product-details-container">
+        <h2 style="text-align:center; width:100%; color:#1d364a;">جاري تحميل تفاصيل المنتج...</h2>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+    
+    <script src="js/firebase-init.js"></script>
+    <script src="js/store-core.js"></script>
+    <script src="script.js"></script>
+
+    <script>
+        window.renderSingleProduct = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const productId = urlParams.get('id');
+            const container = document.getElementById("singleProductContainer");
+
+            if(!productId) {
+                container.innerHTML = "<h2 style='text-align:center; width:100%; color:#d9534f;'>المنتج غير موجود! تأكد من الرابط.</h2>";
+                return;
+            }
+
+            let products = JSON.parse(localStorage.getItem("eljory_products")) || [];
+            let p = products.find(item => item.id === productId);
+
+            // لو المنتج لسه محملش من فايربيس، هنجرب تاني بعد ثانية واحدة أوتوماتيك
+            if(!p) {
+                setTimeout(() => {
+                    products = JSON.parse(localStorage.getItem("eljory_products")) || [];
+                    p = products.find(item => item.id === productId);
+                    if(!p) {
+                        container.innerHTML = "<h2 style='text-align:center; width:100%; color:#d9534f;'>عذراً، هذا المنتج غير متوفر حالياً.</h2>";
+                    } else {
+                        drawProductDetails(p, container);
+                    }
+                }, 1000);
+                return;
+            }
+            
+            drawProductDetails(p, container);
+        }
+
+        function drawProductDetails(p, container) {
+            let pName = currentLang === 'ar' ? p.titleAr : (p.titleEn || p.titleAr);
+            let pDesc = currentLang === 'ar' ? (p.descAr || "لا يوجد وصف متاح لهذا المنتج.") : (p.descEn || p.descAr || "No description available.");
+            let curr = currentLang === 'ar' ? 'ج.م' : 'EGP';
+            let btnTxt = currentLang === 'ar' ? 'أضف للسلة' : 'Add to Cart';
+            
+            let pointsTxt = "";
+            if (p.points > 0) {
+                pointsTxt = currentLang === 'ar' ? 
+                `<p style="color:#28a745; font-weight:bold; font-size: 16px;">🎁 ستحصل على ${p.points} نقطة عند الشراء</p>` : 
+                `<p style="color:#28a745; font-weight:bold; font-size: 16px;">🎁 You will get ${p.points} points</p>`;
+            }
+
+            let stockStatus = "";
+            let btnDisabled = "";
+            
+            if(p.stock <= 0) {
+                stockStatus = `<span style="color:#d9534f; font-weight:bold; font-size:18px;">${currentLang === 'ar' ? 'نفدت الكمية ❌' : 'Out of Stock ❌'}</span>`;
+                btnDisabled = "disabled";
+            } else {
+                stockStatus = `<span style="color:#28a745; font-weight:bold; font-size:16px;">${currentLang === 'ar' ? 'متوفر في المخزون ✅' : 'In Stock ✅'}</span>`;
+            }
+
+            if (typeof fbq === 'function') {
+                fbq('track', 'ViewContent', {
+                    content_ids: [p.id],
+                    content_type: 'product',
+                    value: p.price,
+                    currency: 'EGP'
+                });
+            }
+
+            container.innerHTML = `
+                <div class="product-image-box">
+                    <img src="${p.img}" alt="${pName}">
+                </div>
+                <div class="product-info-box">
+                    <h1 class="product-title">${pName}</h1>
+                    <p class="product-price">${p.price} ${curr}</p>
+                    ${pointsTxt}
+                    <p style="margin-bottom: 20px;">${stockStatus}</p>
+                    <p style="line-height: 1.8; color: #555; font-size: 16px; margin-bottom: 30px;">${pDesc}</p>
+                    
+                    <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;">
+                        <div class="qty-container" style="margin: 0; display: flex; align-items: center;">
+                            <button class="qty-btn" onclick="increaseQty('prodQty', '${p.id}')" ${btnDisabled}>+</button>
+                            <input type="text" id="prodQty" class="qty-input" value="1" readonly style="width: 50px; height: 40px; font-size: 18px; text-align: center; border: 1px solid #ccc;">
+                            <button class="qty-btn" onclick="decreaseQty('prodQty')" ${btnDisabled}>-</button>
+                        </div>
+                        <button class="btn-add-large" onclick="addToCart('${p.id}', ${p.price}, 'prodQty')" ${btnDisabled} style="flex: 1; padding: 15px; background: #f38c18; color: #1d364a; font-weight: bold; font-size: 18px; border: none; border-radius: 8px; cursor: pointer; transition: 0.3s;">
+                            🛒 ${btnTxt}
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.title = pName + " | الجوري ستور";
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            renderSingleProduct();
+        });
+    </script>
+</body>
+</html>

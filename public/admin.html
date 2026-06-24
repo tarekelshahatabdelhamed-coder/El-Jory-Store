@@ -1,0 +1,2223 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة الجوري ستور | Admin Panel</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; display: flex; background-color: #f4f6f9; height: 100vh; overflow: hidden; }
+        
+        body > div:not(.sidebar):not(.main-content):not([id*="Modal"]):not(#multiPrintArea) {
+            display: none !important;
+        }
+
+        #promo-banner, .promo-banner, header, .header-actions { display: none !important; }
+
+        .sidebar { width: 260px; min-width: 260px; background-color: #1d364a; color: white; display: flex; flex-direction: column; height: 100vh; overflow-y: auto; flex-shrink: 0; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 10; }
+        .sidebar h2 { text-align: center; color: #f38c18; padding: 25px 0; border-bottom: 1px solid #2a4d69; margin: 0; font-size: 22px; }
+        
+        .menu-btn { background: none; border: none; color: white; padding: 18px 20px; text-align: right; font-size: 16px; cursor: pointer; border-bottom: 1px solid #2a4d69; transition: 0.3s; width: 100%; font-weight: bold; }
+        .menu-btn:hover, .menu-btn.active { background-color: #f38c18; color: #1d364a; border-right: 5px solid #fff; }
+        .has-submenu { display: flex; justify-content: space-between; align-items: center; }
+        .submenu { display: none; background-color: #122230; }
+        .submenu.open { display: block; }
+        .sub-btn { padding-right: 40px; font-size: 14.5px; border-bottom: 1px solid #1a3042; font-weight: normal; }
+        .sub-btn.active { font-weight: bold; }
+
+        .main-content { flex: 1; padding: 40px; height: 100vh; overflow-y: auto; background-color: #f4f6f9; }
+        .section { display: none; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); min-height: 80vh; }
+        .section.active { display: block; animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        h3 { color: #1d364a; margin-top: 0; border-bottom: 2px solid #f38c18; padding-bottom: 10px; font-size: 24px; margin-bottom: 25px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 15px; border: 1px solid #e0e0e0; text-align: right; font-size: 14px; }
+        th { background-color: #1d364a; color: white; }
+        tr:hover { background-color: #f9f9f9; }
+        
+        .btn { background-color: #1d364a; color: white; border: none; padding: 10px 18px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn:hover { opacity: 0.9; }
+        .btn-green { background-color: #28a745; }
+        .btn-red { background-color: #d9534f; margin-right: 5px; }
+        .btn-inactive { background-color: #6c757d; }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: bold; color: #1d364a; }
+        .form-control { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-family: inherit; }
+        .form-control:focus { outline: none; border-color: #f38c18; }
+        .badge { color: white; padding: 6px 12px; border-radius: 20px; font-size: 13px; margin-left: 5px; display: inline-block; margin-bottom: 5px;}
+        .badge-remove { cursor: pointer; color: #ffcccb; margin-right: 8px; font-weight: bold; }
+        
+        .invoice-box { background: white; padding: 40px; border-radius: 10px; width: 700px; max-width: 90%; max-height: 90vh; overflow-y: auto; }
+        @media print { 
+            body * { visibility: hidden; } 
+            #invoiceModal, #invoiceModal * { visibility: visible; } 
+            #multiPrintArea, #multiPrintArea * { visibility: visible; }
+            #invoiceModal { position: absolute; left: 0; top: 0; width: 100%; background: white; } 
+            #multiPrintArea { position: absolute; left: 0; top: 0; width: 100%; background: white; }
+            .btn-print, .close-btn { display: none !important; } 
+            .page-break { page-break-after: always; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="adminLoginModal" style="display:flex; position:fixed; inset:0; background:#1d364a; z-index:9999; justify-content:center; align-items:center;">
+        <div style="background:white; padding:40px; border-radius:12px; width:380px; max-width:90%; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+            <h2 style="text-align:center; color:#1d364a; margin-top:0; margin-bottom:25px;">دخول لوحة التحكم 🔒</h2>
+            <form id="adminLoginForm" onsubmit="return false;">
+                <div class="form-group">
+                    <label>البريد الإلكتروني</label>
+                    <input type="email" id="adminLoginEmail" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>كلمة المرور</label>
+                    <input type="password" id="adminLoginPass" class="form-control" required>
+                </div>
+                <p id="adminLoginError" style="display:none; color:#d9534f; font-size:14px; font-weight:bold; text-align:center; margin-bottom:15px;"></p>
+                <button type="button" id="adminLoginSubmitBtn" class="btn btn-green" style="width:100%; padding:14px; font-size:16px;" onclick="doAdminLogin()">دخول</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="sidebar" id="adminSidebarPanel" style="display:none;">
+        <h2>إدارة الجوري ستور</h2>
+        <button class="menu-btn" onclick="switchTab('orders')">الطلبات والفواتير</button>
+        <button class="menu-btn has-submenu" onclick="toggleSubmenu('menu-products')">المنتجات والأقسام <span>▼</span></button>
+        <div id="menu-products" class="submenu">
+            <button class="menu-btn sub-btn" onclick="switchTab('products')">إدارة المنتجات</button>
+            <button class="menu-btn sub-btn" onclick="switchTab('categories')">إدارة الأقسام</button>
+        </div>
+        <button class="menu-btn" onclick="switchTab('promos')">العروض وكوبونات الخصم</button>
+        <button class="menu-btn has-submenu" onclick="toggleSubmenu('menu-customers')">العملاء والمناطق <span>▼</span></button>
+        <div id="menu-customers" class="submenu">
+            <button class="menu-btn sub-btn" onclick="switchTab('customers')">قائمة العملاء</button>
+            <button class="menu-btn sub-btn" onclick="switchTab('regions')">مناطق التوصيل</button>
+        </div>
+        <button class="menu-btn has-submenu" onclick="toggleSubmenu('menu-loyalty')">نظام الولاء والمكافآت 🎁 <span>▼</span></button>
+        <div id="menu-loyalty" class="submenu">
+            <button class="menu-btn sub-btn" onclick="switchTab('loyalty-settings')">إعدادات النقاط</button>
+            <button class="menu-btn sub-btn" onclick="switchTab('loyalty-rewards')">متجر المكافآت</button>
+            <button class="menu-btn sub-btn" onclick="switchTab('loyalty-history')">سجل النقاط الشامل</button>
+        </div>
+        <button class="menu-btn has-submenu" onclick="toggleSubmenu('menu-storefront')">واجهة المتجر <span>▼</span></button>
+<div id="menu-storefront" class="submenu">
+    <button class="menu-btn sub-btn" onclick="switchTab('storefront')">البانرات والسلايدر</button>
+    <button class="menu-btn sub-btn" onclick="switchTab('sections')">السكاشن الاحترافية</button>
+    <button class="menu-btn sub-btn" onclick="switchTab('custom-lists')">القوائم المخصصة</button>
+</div>
+        <button class="menu-btn" onclick="switchTab('team')">فريق العمل 👥</button>
+        <button class="menu-btn" onclick="openGalleryModal()">🖼️ استوديو الصور</button>
+        <button type="button" id="adminLogoutBtn" class="menu-btn" style="background-color: #d9534f; margin-top: auto; color: white; border-bottom: none; cursor: pointer;">تسجيل خروج 🚪</button>
+    </div>
+
+    <div class="main-content" id="adminMainPanel" style="display:none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; background: #eef2f5; padding: 15px 25px; border-radius: 8px; margin-bottom: 25px; border-right: 5px solid #1d364a; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+            <div>
+                <span style="font-weight: bold; color: #1d364a; font-size: 15px;">حالة النظام الحالية:</span>
+                <span id="syncStatusBadge" style="background: #28a745; color: white; padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: bold; margin-right: 10px;">متصل بالسيرفر السحابي (Firebase) ☁️</span>
+            </div>
+            <div id="dataIntegrityCheck" style="font-size: 13px; color: #555; font-weight: bold;">
+                🔄 جاري فحص سلامة البيانات والمدخلات...
+            </div>
+        </div>
+        
+        <div id="orders" class="section">
+            <h3>إدارة الطلبات والفواتير</h3>
+            <div style="display: flex; gap: 15px; margin-bottom: 20px; background: #eef2f5; padding: 20px; border-radius: 8px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 200px;"><label style="font-weight:bold; margin-bottom:5px;">رقم الطلب</label><input type="text" id="filterOrderId" class="form-control" placeholder="بحث برقم الطلب..." onkeyup="loadAdminOrders()"></div>
+                <div style="flex: 1; min-width: 200px;"><label style="font-weight:bold; margin-bottom:5px;">رقم التليفون</label><input type="text" id="filterPhone" class="form-control" placeholder="بحث برقم التليفون..." onkeyup="loadAdminOrders()"></div>
+                <div style="flex: 1; min-width: 200px;">
+                    <label style="font-weight:bold; margin-bottom:5px;">حالة الطلب</label>
+                    <select id="filterStatus" class="form-control" onchange="loadAdminOrders()">
+                        <option value="all">الكل</option>
+                        <option value="Pending">جديد / قيد التنفيذ ⏳</option>
+                        <option value="Shipped">تم الشحن 🚚</option>
+                        <option value="Delivered">تم التوصيل ✅</option>
+                        <option value="Cancelled">ملغي ❌</option>
+                    </select>
+                </div>
+                <div style="flex: 1; min-width: 200px;"><label style="font-weight:bold; margin-bottom:5px;">التاريخ</label><input type="text" id="filterDate" class="form-control" placeholder="بحث بالتاريخ..." onkeyup="loadAdminOrders()"></div>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <button class="btn btn-green" onclick="printSelectedOrders()" style="font-size: 16px; padding: 10px 20px;">🖨️ طباعة الفواتير المحددة</button>
+            </div>
+            <table id="adminOrdersTable">
+                <thead><tr><th style="width: 40px; text-align: center;"><input type="checkbox" id="selectAllOrders" onclick="toggleAllOrders(this)" style="cursor:pointer; width:18px; height:18px;"></th><th>رقم الطلب</th><th>التاريخ</th><th>بيانات العميل</th><th>الإجمالي</th><th>الحالة</th><th style="min-width: 250px;">إجراءات</th></tr></thead>
+                <tbody id="adminOrdersBody"></tbody>
+            </table>
+        </div>
+
+        <div id="products" class="section">
+            <h3>إضافة وتعديل المنتجات</h3>
+            <div style="display: flex; gap: 25px; flex-wrap: wrap; background: #f9f9f9; padding: 25px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #eee;">
+                <div style="flex: 1; min-width: 250px;">
+                    <div class="form-group"><label>كود المنتج</label><input type="text" id="newProdId" class="form-control"></div>
+                    <div class="form-group"><label>الاسم بالعربي</label><input type="text" id="newProdNameAr" class="form-control"></div>
+                    <div class="form-group"><label>الاسم بالإنجليزي</label><input type="text" id="newProdNameEn" class="form-control"></div>
+                    <div class="form-group"><label>السعر</label><input type="number" id="newProdPrice" class="form-control"></div>
+                </div>
+                <div style="flex: 1; min-width: 250px;">
+                    <div class="form-group"><label>القسم الرئيسي</label><select id="newProdCategory" class="form-control" onchange="updateSubCatsDropdown()"></select></div>
+                    <div class="form-group"><label>القسم الفرعي</label><select id="newProdSubCategory" class="form-control"><option value="">-- بدون --</option></select></div>
+                    <div class="form-group"><label>المخزون</label><input type="number" id="newProdStock" class="form-control"></div>
+                    <div class="form-group">
+                        <label>رابط الصورة</label>
+                        <input type="text" id="newProdImg" class="form-control" value="https://via.placeholder.com/200">
+                        <div style="display: flex; gap: 10px; margin-top: 10px; margin-bottom: 15px;">
+                            <button type="button" onclick="triggerDirectUpload('newProdImg')" class="btn btn-green" style="flex: 1;">📤 رفع صورة من الجهاز</button>
+                            <button type="button" onclick="openGalleryModal('newProdImg')" class="btn" style="background: #e68a10; flex: 1;">🖼️ اختيار من الاستوديو</button>
+                        </div>
+                    </div>
+                </div>
+                <div style="flex: 1; width: 100%; display: flex; gap: 20px;">
+                    <div class="form-group" style="flex: 1;"><label>وصف المنتج (عربي)</label><textarea id="newProdDescAr" class="form-control" rows="3"></textarea></div>
+                    <div class="form-group" style="flex: 1;"><label>وصف المنتج (إنجليزي)</label><textarea id="newProdDescEn" class="form-control" rows="3"></textarea></div>
+                </div>
+                <div style="width: 100%;">
+                    <button class="btn btn-green" id="btnSaveProd" onclick="saveProduct()" style="width: 100%; padding: 15px; font-size: 18px;">➕ حفظ المنتج</button>
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #f38c18; padding-bottom:10px; margin-bottom:20px;">
+                <h3 style="margin:0; border:none; padding:0;">المنتجات الحالية</h3>
+                <div style="display: flex; gap: 10px;">
+                    <input type="file" id="importProductsFile" accept=".csv" style="display:none;" onchange="importProductsCSV(event)">
+                    <button class="btn" style="background:#17a2b8;" onclick="document.getElementById('importProductsFile').click()">📤 رفع شيت (Import)</button>
+                    <button class="btn" style="background:#28a745;" onclick="exportProductsCSV()">📥 تنزيل شيت (Export)</button>
+                </div>
+            </div>
+            <table>
+                <thead><tr><th>كود</th><th>الاسم</th><th>القسم</th><th>السعر</th><th>المخزون</th><th>حالة الظهور</th><th style="min-width: 140px;">إجراء</th></tr></thead>
+                <tbody id="adminProductsBody"></tbody>
+            </table>
+        </div>
+
+        <div id="categories" class="section">
+            <h3>إدارة الأقسام (الرئيسية والفرعية)</h3>
+            <div style="background: #eef2f5; padding: 25px; border-radius: 8px; margin-bottom: 30px; border: 1px solid #dee2e6;">
+                <div style="display:flex; gap:15px; margin-bottom:15px; flex-wrap: wrap;">
+                    <input type="text" id="newCatId" placeholder="كود القسم" class="form-control" style="flex:1;">
+                    <input type="text" id="newCatNameAr" placeholder="اسم القسم" class="form-control" style="flex:2;">
+                    <select id="newCatParent" class="form-control" style="flex:2;"></select>
+                    <button class="btn btn-green" onclick="addCategory()" style="flex:1;">➕ إضافة</button>
+                </div>
+                <div id="adminCategoriesList" style="display:flex; flex-direction:column; gap:10px;"></div>
+            </div>
+        </div>
+
+        <div id="customers" class="section">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #f38c18; padding-bottom:10px; margin-bottom:20px;">
+                <h3 style="margin:0; border:none; padding:0;">قائمة العملاء المسجلين وإحصائياتهم</h3>
+                <button class="btn" style="background:#28a745;" onclick="exportCustomersCSV()">📥 تصدير البيانات إلى Excel</button>
+            </div>
+            <div style="overflow-x:auto;">
+                <table style="font-size:13px; min-width:1100px;">
+                    <thead>
+                        <tr><th>الكود</th><th>بيانات العميل</th><th>المنطقة والعنوان</th><th>تاريخ التسجيل</th><th>إجمالي الطلبات</th><th>التوصيل / الإلغاء</th><th>المدفوعات والرصيد</th><th>حالة الحساب</th><th style="min-width: 320px;">إجراء</th></tr>
+                    </thead>
+                    <tbody id="adminCustomersBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="regions" class="section">
+            <h3>إدارة مناطق التوصيل ومصاريف الشحن 🚚</h3>
+            <div style="display:flex; gap:15px; margin-bottom:20px; background: #eef2f5; padding: 20px; border-radius: 8px; flex-wrap:wrap;">
+                <input type="text" id="newRegionName" class="form-control" placeholder="اسم المنطقة (مثال: القاهرة...)" style="flex:2; min-width:200px;">
+                <input type="number" id="newRegionFee" class="form-control" placeholder="مصاريف الشحن (رقم) - اكتب 0 للمجاني" style="flex:1; min-width:150px;">
+                <button class="btn btn-green" onclick="addAdminRegion()" style="flex:1; min-width:150px;">➕ إضافة منطقة</button>
+            </div>
+            <div id="adminRegionsList" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:40px;"></div>
+        </div>
+
+        <div id="promos" class="section">
+            <h3>إنشاء برومو كود جديد ذكي</h3>
+            <div style="display: flex; gap: 25px; flex-wrap: wrap; background: #fdf5e6; padding: 25px; border-radius: 8px; border: 1px solid #f38c18;">
+                <div style="flex: 1; min-width: 300px;">
+                    <div class="form-group"><label>كود الخصم</label><input type="text" id="promoCode" class="form-control" style="text-transform: uppercase;"></div>
+                    <div class="form-group">
+                        <label>نوع الخصم</label>
+                        <select id="promoType" class="form-control" onchange="togglePromoValue()">
+                            <option value="percent">نسبة مئوية (%)</option>
+                            <option value="fixed">مبلغ ثابت (ج.م)</option>
+                            <option value="shipping">توصيل مجاني</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="promoValueGroup"><label>قيمة الخصم</label><input type="number" id="promoValue" class="form-control"></div>
+                    <div class="form-group"><label>النص على المنتج</label><input type="text" id="promoLabel" class="form-control"></div>
+                </div>
+                <div style="flex: 1; min-width: 300px;">
+                    <div style="display:flex; gap:15px;">
+                        <div class="form-group" style="flex:1;"><label>وقت البدء</label><input type="datetime-local" id="promoStart" class="form-control"></div>
+                        <div class="form-group" style="flex:1;"><label>وقت الانتهاء</label><input type="datetime-local" id="promoEnd" class="form-control"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>يطبق على:</label>
+                        <select id="promoScope" class="form-control" onchange="togglePromoScope()">
+                            <option value="all">جميع المنتجات</option>
+                            <option value="specific">منتجات محددة فقط</option>
+                        </select>
+                    </div>
+                    <div id="specificProductsBox" style="display:none; background:white; padding:20px; border-radius:5px; border:1px solid #ccc; margin-bottom:15px;">
+                        <label style="font-size:14px; font-weight:bold;">إضافة يدوي:</label>
+                        <div style="display:flex; gap:10px; margin-bottom:15px;">
+                            <select id="promoSelectProd" class="form-control" style="flex:2;"></select>
+                            <button class="btn" onclick="addProdToPromo()" style="flex:1;">إضافة للمجموعة</button>
+                        </div>
+                        <label style="font-size:14px; font-weight:bold;">أو رفع شيت (أكواد المنتجات):</label>
+                        <input type="file" id="promoFile" accept=".csv, .txt" class="form-control" onchange="uploadPromoFile(event)">
+                        <div style="margin-top:20px;">
+                            <strong>المنتجات المشمولة في العرض:</strong>
+                            <div id="promoSelectedList" style="margin-top:10px; min-height:50px; border:1px dashed #ccc; padding:15px; border-radius: 5px;"></div>
+                        </div>
+                    </div>
+                    <button class="btn btn-green" onclick="savePromo()" style="width: 100%; padding: 15px; margin-top: 10px; font-size: 18px;">حفظ وتفعيل البروموكود 🚀</button>
+                </div>
+            </div>
+            <h3 style="margin-top: 40px;">الكوبونات النشطة والسابقة</h3>
+            <table>
+                <thead><tr><th>الكود</th><th>النوع</th><th>القيمة</th><th>البداية</th><th>النهاية</th><th>يطبق على</th><th>الحالة</th><th>إجراء</th></tr></thead>
+                <tbody id="adminPromosBody"></tbody>
+            </table>
+        </div>
+
+        <div id="loyalty-settings" class="section">
+            <h3>إعدادات نظام الولاء والنقاط 🎁</h3>
+            <div style="background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 25px; border: 1px solid #1d364a;">
+                <h4 style="margin-top: 0; color: #f38c18;">تاريخ انتهاء صلاحية النقاط لجميع العملاء</h4>
+                <input type="date" id="loyaltyExpiry" class="form-control" style="max-width: 300px; margin-bottom: 10px;">
+                <p style="font-size: 14px; color: gray; margin: 0;">(بمجرد تخطي هذا التاريخ، سيتم تصفير نقاط جميع العملاء)</p>
+            </div>
+            
+            <div style="display: flex; gap: 20px; margin-bottom: 25px;">
+                <label style="background: #eef2f5; padding: 20px; border-radius: 8px; flex: 1; cursor: pointer; border: 2px solid transparent;" id="labelSysGlobal">
+                    <input type="radio" name="loyaltySystem" id="loyaltySysGlobal" value="global" onchange="toggleLoyaltyView()">
+                    <strong>النظام الأول (ديناميك):</strong><br>نقاط بناءً على إجمالي المبلغ المدفوع.
+                </label>
+                <label style="background: #eef2f5; padding: 20px; border-radius: 8px; flex: 1; cursor: pointer; border: 2px solid transparent;" id="labelSysProduct">
+                    <input type="radio" name="loyaltySystem" id="loyaltySysProduct" value="product" onchange="toggleLoyaltyView()">
+                    <strong>النظام الثاني (مخصص):</strong><br>نقاط محددة لكل منتج على حدة.
+                </label>
+            </div> 
+            <div id="loyaltyGlobalSettings" style="display: none; background: #fdf5e6; padding: 25px; border-radius: 8px; margin-bottom: 25px;">
+                <h4>إعدادات النظام الديناميك</h4>
+                <div style="display: flex; gap: 15px; align-items: center; font-size: 16px; flex-wrap: wrap;">
+                    كل <input type="number" id="loyaltyGlobalSpent" class="form-control" style="width: 120px;"> جنيه مدفوع، يحصل العميل على <input type="number" id="loyaltyGlobalEarn" class="form-control" style="width: 120px;"> نقطة.
+                </div>
+            </div>
+            
+            <button class="btn btn-green" onclick="saveLoyaltySettings()" style="width: 100%; padding: 18px; font-size: 18px; margin-bottom: 30px;">💾 حفظ الإعدادات الأساسية للولاء</button>
+            
+            <div id="loyaltyProductSettings" style="display: none;">
+                <h3 style="border-bottom: 2px solid #1d364a; padding-bottom: 10px;">تحديد النقاط لكل منتج</h3>
+                <table>
+                    <thead><tr><th>صورة المنتج</th><th>اسم المنتج</th><th>السعر</th><th style="width: 200px;">النقاط المكتسبة</th><th>إجراء</th></tr></thead>
+                    <tbody id="loyaltyProductsBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="loyalty-rewards" class="section">
+            <h3>إدارة متجر المكافآت والهدايا 🛍️</h3>
+            <p style="color: gray; font-size: 15px; margin-bottom: 20px;">برمج الهدايا التي سيراها العميل ويمكنه استبدال نقاطه بها.</p>
+            <div style="display: flex; gap: 20px; flex-wrap: wrap; background: #eef2f5; padding: 25px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #ccc;">
+                <div style="flex: 1; min-width: 250px;">
+                    <div class="form-group"><label>اسم المكافأة (يظهر للعميل)</label><input type="text" id="rewardName" class="form-control"></div>
+                    <div class="form-group"><label>التكلفة بالنقاط</label><input type="number" id="rewardCost" class="form-control"></div>
+                    <div class="form-group">
+                        <label>نوع المكافأة</label>
+                        <select id="rewardType" class="form-control" onchange="toggleRewardFields()">
+                            <option value="discount">كود خصم (مبلغ ثابت)</option>
+                            <option value="shipping">كود شحن مجاني</option>
+                            <option value="gift">هدية خارجية (عينية)</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="flex: 1; min-width: 250px;">
+                    <div class="form-group" id="rewardDiscountGroup"><label>قيمة الخصم (ج.م)</label><input type="number" id="rewardDiscountVal" class="form-control"></div>
+                    <div class="form-group" id="rewardGiftDescGroup" style="display:none;"><label>وصف الهدية</label><textarea id="rewardGiftDesc" class="form-control" rows="2"></textarea></div>
+                    <div class="form-group" id="rewardGiftImgGroup" style="display:none;">
+                        <label>رابط صورة الهدية</label>
+                        <input type="text" id="rewardGiftImg" class="form-control">
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <button type="button" onclick="triggerDirectUpload('rewardGiftImg')" class="btn btn-green" style="flex: 1;">📤 رفع</button>
+                            <button type="button" onclick="openGalleryModal('rewardGiftImg')" class="btn" style="background: #e68a10; flex: 1;">🖼️ استوديو</button>
+                        </div>
+                    </div>
+                    <button class="btn btn-green" onclick="saveReward()" style="width: 100%; padding: 15px; margin-top: 25px; font-size: 18px; background-color: #f38c18; color:#1d364a;">➕ إضافة المكافأة للمتجر</button>
+                </div>
+            </div>
+            <table>
+                <thead><tr><th>اسم المكافأة</th><th>النوع</th><th>التكلفة</th><th>التفاصيل</th><th>إجراء</th></tr></thead>
+                <tbody id="adminRewardsBody"></tbody>
+            </table>
+        </div>
+
+        <div id="loyalty-history" class="section">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3 style="margin:0; border:none;">سجل حركات النقاط الشامل 📊</h3>
+                <button class="btn" style="background:#28a745;" onclick="exportGlobalPointsCSV()">📥 تصدير السجل (Excel)</button>
+            </div>
+            <div style="display: flex; gap: 15px; margin-bottom: 20px; background: #eef2f5; padding: 20px; border-radius: 8px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 150px;"><label style="font-weight:bold; margin-bottom:5px;">اسم العميل</label><input type="text" id="filterPtsName" class="form-control" onkeyup="renderGlobalPoints()"></div>
+                <div style="flex: 1; min-width: 150px;"><label style="font-weight:bold; margin-bottom:5px;">رقم التليفون</label><input type="text" id="filterPtsPhone" class="form-control" onkeyup="renderGlobalPoints()"></div>
+                <div style="flex: 1; min-width: 150px;"><label style="font-weight:bold; margin-bottom:5px;">رقم الطلب / التفاصيل</label><input type="text" id="filterPtsReason" class="form-control" onkeyup="renderGlobalPoints()"></div>
+                <div style="flex: 1; min-width: 150px;"><label style="font-weight:bold; margin-bottom:5px;">التاريخ</label><input type="text" id="filterPtsDate" class="form-control" onkeyup="renderGlobalPoints()"></div>
+            </div>
+            <div style="max-height: 500px; overflow-y: auto; border: 1px solid #ccc; border-radius: 8px;">
+                <table style="margin-top:0;">
+                    <thead style="position: sticky; top: 0; z-index: 1;"><tr><th>التاريخ</th><th>بيانات العميل</th><th>النوع</th><th>النقاط</th><th>التفاصيل</th></tr></thead>
+                    <tbody id="globalPointsBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="sections" class="section">
+            <h3>إدارة السكاشن الاحترافية 🖼️</h3>
+
+            <!-- فورم إضافة سيكشن جديد -->
+            <div style="background:#fdf5e6;padding:25px;border-radius:10px;border:1px solid #f38c18;margin-bottom:30px;">
+                <div style="display:flex;gap:20px;flex-wrap:wrap;">
+                    <div style="flex:1;min-width:220px;">
+                        <div class="form-group">
+                            <label>عنوان السيكشن</label>
+                            <input type="text" id="secTitle" class="form-control" placeholder="مثال: عروض الصيف">
+                        </div>
+                        <div class="form-group">
+                            <label>إظهار العنوان؟</label>
+                            <select id="secShowTitle" class="form-control">
+                                <option value="1">نعم - أظهر العنوان</option>
+                                <option value="0">لا - أخفِ العنوان</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>إظهار المنتجات تحت البانر؟</label>
+                            <select id="secShowProducts" class="form-control">
+                                <option value="0">لا</option>
+                                <option value="1">نعم</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>نوع العرض</label>
+                            <select id="secDisplayType" class="form-control">
+                                <option value="fullBanner">بانر كامل العرض</option>
+                                <option value="halfBanner">بانر نصف العرض</option>
+                                <option value="slim">شريط رفيع</option>
+                                <option value="productsOnly">منتجات فقط (بدون صورة)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>لون الخلفية (اختياري)</label>
+                            <input type="color" id="secBgColor" class="form-control" value="#ffffff" style="height:45px;">
+                        </div>
+                        <div class="form-group">
+                            <label>أولوية الترتيب</label>
+                            <input type="number" id="secPriority" class="form-control" value="1" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>أقصى عدد منتجات تظهر</label>
+                            <input type="number" id="secMaxProducts" class="form-control" value="8" min="1" max="50">
+                        </div>
+                    </div>
+
+                    <div style="flex:1;min-width:220px;">
+                        <div class="form-group">
+                            <label>صورة البانر</label>
+                            <input type="text" id="secImg" class="form-control" placeholder="رابط الصورة...">
+                            <div style="display:flex;gap:8px;margin-top:8px;">
+                                <button type="button" onclick="triggerDirectUpload('secImg')" class="btn btn-green" style="flex:1;">📤 رفع</button>
+                                <button type="button" onclick="openGalleryModal('secImg')" class="btn" style="background:#e68a10;flex:1;">🖼️ استوديو</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>عند النقر على الصورة (Image Click)</label>
+                            <select id="secLinkType" class="form-control" onchange="updateSecLinkUI()">
+                                <option value="none">بدون رابط</option>
+                                <option value="product">منتج محدد</option>
+                                <option value="category">قسم رئيسي</option>
+                                <option value="subcategory">قسم فرعي</option>
+                                <option value="customList">قائمة مخصصة</option>
+                                <option value="external">رابط خارجي</option>
+                            </select>
+                        </div>
+
+                        <div id="secLinkValueBox" style="display:none;">
+                            <!-- يتغير حسب نوع الربط -->
+                            <div class="form-group" id="secLinkProductBox" style="display:none;">
+                                <label>ابحث عن منتج</label>
+                                <input type="text" id="secLinkProductSearch" class="form-control" placeholder="اكتب اسم أو كود المنتج..." oninput="secSearchProducts()">
+                                <div id="secProductResults" style="border:1px solid #ddd;border-radius:5px;max-height:180px;overflow-y:auto;display:none;background:white;margin-top:4px;"></div>
+                                <input type="hidden" id="secLinkValue">
+                                <div id="secSelectedProduct" style="margin-top:8px;padding:8px;background:#eef2f5;border-radius:5px;display:none;font-size:13px;"></div>
+                            </div>
+
+                            <div class="form-group" id="secLinkCategoryBox" style="display:none;">
+                                <label>اختر القسم الرئيسي</label>
+                                <select id="secLinkCategorySelect" class="form-control" onchange="document.getElementById('secLinkValue').value=this.value">
+                                    <option value="">-- اختر --</option>
+                                </select>
+                                <input type="hidden" id="secLinkValue">
+                            </div>
+
+                            <div class="form-group" id="secLinkSubcategoryBox" style="display:none;">
+                                <label>اختر القسم الفرعي</label>
+                                <select id="secLinkSubcategorySelect" class="form-control" onchange="document.getElementById('secLinkValue').value=this.value">
+                                    <option value="">-- اختر --</option>
+                                </select>
+                                <input type="hidden" id="secLinkValue">
+                            </div>
+
+                            <div class="form-group" id="secLinkCustomListBox" style="display:none;">
+                                <label>اختر القائمة المخصصة</label>
+                                <select id="secLinkCustomListSelect" class="form-control" onchange="document.getElementById('secLinkValue').value=this.value">
+                                    <option value="">-- اختر --</option>
+                                </select>
+                                <input type="hidden" id="secLinkValue">
+                            </div>
+
+                            <div class="form-group" id="secLinkExternalBox" style="display:none;">
+                                <label>الرابط الخارجي</label>
+                                <input type="text" id="secLinkExternalInput" class="form-control" placeholder="https://..." oninput="document.getElementById('secLinkValue').value=this.value">
+                                <input type="hidden" id="secLinkValue">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-green" onclick="saveSection()" style="width:100%;padding:15px;font-size:18px;margin-top:10px;">➕ حفظ وتفعيل السيكشن</button>
+            </div>
+
+            <h3 style="border-bottom:2px solid #f38c18;padding-bottom:10px;">السكاشن النشطة حالياً</h3>
+            <table>
+                <thead><tr><th>الصورة</th><th>العنوان</th><th>النوع</th><th>الربط</th><th>الترتيب</th><th>إظهار منتجات</th><th>الحالة</th><th>إجراء</th></tr></thead>
+                <tbody id="adminSectionsBody"></tbody>
+            </table>
+        </div>
+
+        <div id="custom-lists" class="section">
+            <h3>إدارة القوائم المخصصة 📋</h3>
+
+            <!-- إنشاء قائمة جديدة -->
+            <div style="background:#eef2f5;padding:25px;border-radius:10px;margin-bottom:30px;border:1px solid #ccc;">
+                <div style="display:flex;gap:15px;flex-wrap:wrap;margin-bottom:15px;">
+                    <div class="form-group" style="flex:1;min-width:200px;">
+                        <label>اسم القائمة</label>
+                        <input type="text" id="newListName" class="form-control" placeholder="مثال: عروض الإكسسوارات">
+                    </div>
+                    <div style="display:flex;align-items:flex-end;">
+                        <button class="btn btn-green" onclick="createCustomList()" style="padding:12px 25px;">➕ إنشاء قائمة</button>
+                    </div>
+                </div>
+
+                <!-- تعديل قائمة محددة -->
+                <div id="editListBox" style="display:none;background:white;padding:20px;border-radius:8px;border:1px solid #ddd;">
+                    <h4 id="editListTitle" style="margin-top:0;color:#1d364a;"></h4>
+
+                    <!-- بحث لايف -->
+                    <div style="margin-bottom:15px;">
+                        <label style="font-weight:bold;margin-bottom:5px;display:block;">🔍 ابحث وأضف منتجات للقائمة</label>
+                        <input type="text" id="listProductSearch" class="form-control" placeholder="اكتب اسم أو كود المنتج..." oninput="listSearchProducts()" style="margin-bottom:8px;">
+                        <div id="listProductResults" style="border:1px solid #eee;border-radius:5px;max-height:200px;overflow-y:auto;display:none;background:white;"></div>
+                    </div>
+
+                    <!-- رفع شيت CSV -->
+                    <div style="margin-bottom:15px;padding:12px;background:#fdf5e6;border:1px dashed #f38c18;border-radius:5px;">
+                        <label style="font-weight:bold;margin-bottom:5px;display:block;">📤 أو ارفع شيت CSV (أكواد المنتجات)</label>
+                        <input type="file" id="listCSVInput" accept=".csv,.txt" class="form-control" onchange="importListFromCSV(event)">
+                    </div>
+
+                    <!-- المنتجات المضافة للقائمة -->
+                    <div>
+                        <label style="font-weight:bold;margin-bottom:8px;display:block;">📦 المنتجات في القائمة:</label>
+                        <div id="listProductsContainer" style="min-height:60px;border:1px dashed #ccc;border-radius:5px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;"></div>
+                    </div>
+
+                    <div style="margin-top:15px;display:flex;gap:10px;">
+                        <button class="btn btn-green" onclick="saveCurrentList()" style="flex:1;padding:12px;">💾 حفظ القائمة</button>
+                        <button class="btn btn-red" onclick="closeEditList()" style="flex:1;padding:12px;">إلغاء</button>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="border-bottom:2px solid #f38c18;padding-bottom:10px;">القوائم الموجودة</h3>
+            <table>
+                <thead><tr><th>الكود</th><th>اسم القائمة</th><th>عدد المنتجات</th><th>الحالة</th><th>إجراء</th></tr></thead>
+                <tbody id="adminCustomListsBody"></tbody>
+            </table>
+        </div>
+
+        <div id="storefront" class="section">
+            <h3>إدارة واجهة المتجر (البانرات والسلايدر الإعلاني) 🖼️</h3>
+            <div style="display: flex; gap: 25px; flex-wrap: wrap; background: #f9f9f9; padding: 25px; border-radius: 8px; margin-bottom: 30px; border: 1px solid #eee;">
+                <div style="flex: 1; min-width: 250px;">
+                    <div class="form-group"><label>عنوان البانر / الحملة الإعلانية</label><input type="text" id="bannerTitle" class="form-control" placeholder="مثال: عروض الصيف على الشاشات"></div>
+                    <div class="form-group">
+                        <label>رابط صورة الإعلان</label>
+                        <input type="text" id="bannerImg" class="form-control" value="https://via.placeholder.com/1200x400">
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <button type="button" onclick="triggerDirectUpload('bannerImg')" class="btn btn-green" style="flex: 1;">📤 رفع صورة جديدة</button>
+                            <button type="button" onclick="openGalleryModal('bannerImg')" class="btn" style="background: #e68a10; flex: 1;">🖼️ من الاستوديو</button>
+                        </div>
+                    </div>
+                </div>
+                <div style="flex: 1; min-width: 250px;">
+                    <div class="form-group">
+                        <label>نوع التوجيه (عند النقر على البانر)</label>
+                        <select id="bannerLinkType" class="form-control" onchange="updateBannerLinkPlaceholder()">
+                            <option value="product">فتح منتج معين (بواسطة كود المنتج)</option>
+                            <option value="category">فتح قسم معين (بواسطة كود القسم)</option>
+                            <option value="external">رابط خارجي مخصص</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>قيمة التوجيه (الكود أو الرابط المطلوب)</label><input type="text" id="bannerLinkValue" class="form-control" placeholder="اكتب كود المنتج هنا..."></div>
+                    <div class="form-group"><label>أولوية الترتيب في السلايدر</label><input type="number" id="bannerPriority" class="form-control" value="1" min="1"></div>
+                </div>
+                <button class="btn btn-green" onclick="saveBanner()" style="width: 100%; padding: 15px; font-size: 18px;">➕ حفظ وتفعيل البانر الإعلاني على الواجهة</button>
+            </div>
+            <h3>البانرات والسلايدرز النشطة حالياً بالموقع</h3>
+            <table>
+                <thead><tr><th>الصورة</th><th>العنوان</th><th>التوجيه المستهدف</th><th>ترتيب العرض</th><th>حالة العرض</th><th>إجراء</th></tr></thead>
+                <tbody id="adminBannersBody"></tbody>
+            </table>
+        </div>
+        <div id="team" class="section">
+            <h3>إدارة فريق العمل والصلاحيات 👥</h3>
+            <div style="background: white; padding: 25px; border-radius: 8px; border: 1px solid #1d364a; margin-bottom: 30px;">
+                <p style="color: gray; font-size: 14px;">أضف بريد إلكتروني وكلمة مرور لأي فرد في فريقك، وسيحصل أوتوماتيكياً على صلاحيات الدخول للوحة الإدارة والتعديل على المنتجات.</p>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div class="form-group" style="flex: 1; min-width: 250px;">
+                        <label>البريد الإلكتروني للمدير الجديد</label>
+                        <input type="email" id="newAdminEmail" class="form-control" placeholder="ahmed@jory.com">
+                    </div>
+                    <div class="form-group" style="flex: 1; min-width: 250px;">
+                        <label>كلمة المرور (6 أحرف على الأقل)</label>
+                        <input type="password" id="newAdminPass" class="form-control" placeholder="******">
+                    </div>
+                </div>
+                <button class="btn btn-green" onclick="addNewAdmin(event)" style="width: 100%; padding: 15px; font-size: 18px; margin-top: 10px;">➕ إضافة المدير وفتح الصلاحيات</button>
+            </div>
+
+            <h3>المديرين الحاليين في النظام</h3>
+            <table>
+                <thead><tr><th>البريد الإلكتروني</th><th>تاريخ الإضافة</th><th>إجراء</th></tr></thead>
+                <tbody id="adminListBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="invoiceModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 1000; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl;">
+        <div style="position: relative; max-height: 95vh; overflow-y: auto; background: transparent; width: 1000px; max-width: 95%; display: flex; flex-direction: column; align-items: center;">
+            <div class="no-print" style="width: 100%; text-align: left; margin-bottom: 10px;">
+                <button onclick="printSingleInvoice()" style="background: #1d364a; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-size: 16px; font-weight: bold;">🖨️ طباعة الفاتورة</button>
+                <button onclick="document.getElementById('invoiceModal').style.display='none'" style="background: #d9534f; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-size: 16px; font-weight: bold; margin-right: 10px;">✖ إغلاق</button>
+            </div>
+            <div id="printArea" style="width: 100%; background: white; padding: 20px;">
+                <div style="border: 5px solid black; display: flex; direction: rtl; position: relative; background: white;">
+                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; z-index: 0; opacity: 0.15; pointer-events: none;">
+                        <div style="text-align: center; line-height: 1;">
+                            <span style="font-size: 130px; font-weight: 900; letter-spacing: -5px; color: #1d364a;">El</span>
+                            <span style="font-size: 130px; font-weight: 900; letter-spacing: -5px; color: #e68a10;">Jory</span><br>
+                            <span style="font-size: 50px; font-weight: bold; letter-spacing: 15px; color: #1d364a;">STORE</span>
+                        </div>
+                    </div>
+                    <div style="width: 85%; z-index: 1;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: center; border: none; font-size: 18px; font-weight: bold;">
+                            <tr>
+                                <td colspan="5" style="background: #e68a10; color: white; border-bottom: 2px solid black; padding: 10px; font-size: 30px; font-weight: 900; letter-spacing: 2px; text-align: center;">
+                                    El Jory Store &nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp; 01100395049
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="border: 2px solid black; border-right: none; padding: 8px; width: 15%; text-align: center;">التاريخ :-</td>
+                                <td colspan="4" style="border: 2px solid black; border-left: none; padding: 8px; font-size: 22px; text-align: center;" id="invDateNew"></td>
+                            </tr>
+                            <tr>
+                                <td style="border: 2px solid black; border-right: none; padding: 8px; text-align: center;">اسم العميل :-</td>
+                                <td style="border: 2px solid black; padding: 8px; width: 35%; text-align: center;" id="invCustNameNew"></td>
+                                <td style="border: 2px solid black; padding: 8px; width: 15%; text-align: center;">تليفون</td>
+                                <td colspan="2" style="border: 2px solid black; border-left: none; padding: 8px; font-size: 20px; text-align: center;" id="invCustPhoneNew"></td>
+                            </tr>
+                            <tr>
+                                <td style="border: 2px solid black; border-right: none; padding: 8px; text-align: center;">العنوان :-</td>
+                                <td colspan="4" style="border: 2px solid black; border-left: none; padding: 8px; text-align: center;" id="invCustAddrNew"></td>
+                            </tr>
+                            <tr style="background: #f9f9f9;">
+                                <td style="border: 2px solid black; border-right: none; padding: 10px; font-size: 20px; text-align: center; width: 12%;">كود</td>
+                                <td style="border: 2px solid black; padding: 10px; font-size: 20px; text-align: center; width: 38%;">اسم المنتج</td>
+                                <td style="border: 2px solid black; padding: 10px; font-size: 20px; text-align: center; width: 15%;">الكمية</td>
+                                <td style="border: 2px solid black; padding: 10px; font-size: 20px; text-align: center;">السعر للوحدة</td>
+                                <td style="border: 2px solid black; border-left: none; padding: 10px; font-size: 20px; text-align: center; width: 15%;">الإجمالي</td>
+                            </tr>
+                            <tbody id="invProductsNew"></tbody>
+                            <tr>
+                                <td colspan="4" style="border: 2px solid black; border-right: none; padding: 8px; text-align: center;">مصاريف شحن</td>
+                                <td style="border: 2px solid black; border-left: none; padding: 8px; font-size: 20px; text-align: center;" id="invShipFeeNew">0</td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" style="border: 2px solid black; border-right: none; border-bottom: none; padding: 8px; font-size: 24px; text-align: center; font-weight: bold;">الإجمالي</td>
+                                <td style="border: 2px solid black; border-left: none; border-bottom: none; padding: 8px; background: linear-gradient(to right, #1d364a, #e68a10); color: white; font-size: 26px; letter-spacing: 1px; text-align: center;" id="invTotalAmountNew"></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div style="width: 15%; border-right: 4px solid black; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 15px 0; z-index: 1; background: white;">
+                        <div style="width: 90px; height: 90px; display: flex; justify-content: center; align-items: center;">
+                            <img src="qr-code face book .png" alt="Facebook QR" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                        </div>
+                        <div style="width: 100%; padding: 0 10px; display: flex; justify-content: center; align-items: center; margin: 20px 0;">
+                            <img src="logo.png" alt="El Jory Store Logo" style="max-width: 100%; height: auto; object-fit: contain;">
+                        </div>
+                        <div style="width: 90px; height: 90px; display: flex; justify-content: center; align-items: center;">
+                            <img src="qr-code whatsapp .png" alt="WhatsApp QR" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                        </div>
+                    </div>
+                </div>
+                <div style="text-align: center; font-weight: bold; font-size: 18px; margin-top: 15px; color: black;">
+                    ضمان على منتجات الإكسسوارات لمدة 6 أشهر، وضمان الحماية لمدة 12 شهرًا من تاريخ الفاتورة.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="editCustomerModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 1000;">
+        <div style="background: white; padding: 30px; border-radius: 10px; width: 500px; max-width: 90%;">
+            <h3 style="margin-top:0; color:#1d364a;">⚙️ تعديل بيانات العميل</h3>
+            <input type="hidden" id="editCustPhoneKey">
+            <div class="form-group"><label>الاسم</label><input type="text" id="editCustName" class="form-control"></div>
+            <div class="form-group"><label>رقم التليفون</label><input type="text" id="editCustPhone" class="form-control" disabled></div>
+            <div class="form-group"><label>البريد الإلكتروني</label><input type="text" id="editCustEmail" class="form-control"></div>
+            <div class="form-group"><label>العنوان الأساسي</label><input type="text" id="editCustAddress" class="form-control"></div>
+            <div class="form-group"><label>رصيد النقاط الحالي</label><input type="number" id="editCustPoints" class="form-control"></div>
+            <div style="display:flex; gap:10px; margin-top:25px;">
+                <button class="btn btn-green" onclick="saveCustomerEdit()" style="flex:1; padding:12px; font-size:16px;">💾 حفظ التعديلات</button>
+                <button class="btn btn-red" onclick="closeCustomerModals()" style="flex:1; padding:12px; font-size:16px;">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="historyCustomerModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 1000;">
+        <div style="background: white; padding: 30px; border-radius: 10px; width: 750px; max-width: 90%; max-height: 90vh; overflow-y: auto;">
+            <h3 style="margin-top:0; color:#1d364a; border-bottom:2px solid #f38c18; padding-bottom:10px;" id="historyCustNameTitle">📜 سجل حركات النقاط</h3>
+            <table style="width:100%; text-align:right; border-collapse: collapse; margin-top:15px;">
+                <thead><tr><th style="padding:10px; background:#1d364a; color:white;">التاريخ</th><th style="padding:10px; background:#1d364a; color:white;">النوع</th><th style="padding:10px; background:#1d364a; color:white;">النقاط</th><th style="padding:10px; background:#1d364a; color:white;">تفاصيل الأوردر</th></tr></thead>
+                <tbody id="historyCustBody"></tbody>
+            </table>
+            <button class="btn btn-red" onclick="closeCustomerModals()" style="width:100%; margin-top:25px; padding:12px; font-size:16px;">✖ إغلاق السجل</button>
+        </div>
+    </div>
+
+    <div id="editCategoryModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 1000;">
+        <div style="background: white; padding: 30px; border-radius: 10px; width: 500px; max-width: 90%;">
+            <h3 style="margin-top:0; color:#1d364a;">⚙️ تعديل بيانات القسم</h3>
+            <input type="hidden" id="editCatId">
+            <div class="form-group"><label>الاسم بالعربي</label><input type="text" id="editCatNameAr" class="form-control"></div>
+            <div class="form-group"><label>الاسم بالإنجليزي</label><input type="text" id="editCatNameEn" class="form-control"></div>
+            <div class="form-group">
+                <label>رابط صورة القسم</label>
+                <input type="text" id="editCatImg" class="form-control" placeholder="https://...">
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button type="button" onclick="triggerDirectUpload('editCatImg')" class="btn btn-green" style="flex: 1;">📤 رفع</button>
+                    <button type="button" onclick="openGalleryModal('editCatImg')" class="btn" style="background: #e68a10; flex: 1;">🖼️ استوديو</button>
+                </div>
+            </div>
+            <div class="form-group"><label>أولوية الظهور</label><input type="number" id="editCatPriority" class="form-control" placeholder="مثال: 1, 2, 3..."></div>
+            <div style="display:flex; gap:10px; margin-top:25px;">
+                <button class="btn btn-green" onclick="saveCategoryEdit()" style="flex:1; padding:12px; font-size:16px;">💾 حفظ التعديلات</button>
+                <button class="btn btn-red" onclick="closeCategoryModal()" style="flex:1; padding:12px; font-size:16px;">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="editRegionModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 1000;">
+        <div style="background: white; padding: 30px; border-radius: 10px; width: 400px; max-width: 90%;">
+            <h3 style="margin-top:0; color:#1d364a;">🚚 تعديل بيانات المنطقة</h3>
+            <input type="hidden" id="editRegionIndex">
+            <div class="form-group"><label>اسم المنطقة</label><input type="text" id="editRegionName" class="form-control"></div>
+            <div class="form-group"><label>مصاريف الشحن (ج.م)</label><input type="number" id="editRegionFee" class="form-control" placeholder="اكتب 0 للشحن المجاني"></div>
+            <div style="display:flex; gap:10px; margin-top:25px;">
+                <button class="btn btn-green" onclick="saveRegionEdit()" style="flex:1; padding:12px; font-size:16px;">💾 حفظ</button>
+                <button class="btn btn-red" onclick="closeRegionModal()" style="flex:1; padding:12px; font-size:16px;">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="galleryModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 2000; direction: rtl; font-family: 'Segoe UI', Tahoma, Arial, sans-serif;">
+        <div style="background: white; width: 90%; max-width: 1000px; border-radius: 8px; padding: 20px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">
+                <h2 style="color: #1d364a; margin: 0;">🖼️ استوديو الصور (El Jory Gallery)</h2>
+                <button onclick="closeGalleryModal()" style="background: #d9534f; color: white; border: none; padding: 8px 15px; cursor: pointer; border-radius: 5px; font-weight: bold;">✖ إغلاق</button>
+            </div>
+            <div style="margin-bottom: 20px; background: #fdf5e6; padding: 20px; border-radius: 8px; border: 2px dashed #e68a10; text-align: center;">
+                <input type="file" id="uploadGalleryInput" accept="image/*" style="display: none;" onchange="uploadToGallery(event)">
+                <button onclick="document.getElementById('uploadGalleryInput').click()" style="background: #1d364a; color: white; border: none; padding: 12px 25px; cursor: pointer; border-radius: 5px; font-size: 16px; font-weight: bold;">➕ اختر صورة لرفعها للاستوديو</button>
+                <p style="font-size: 13px; color: #555; margin-top: 10px;">(السيستم يقوم بضغط الصور تلقائياً لتوفير المساحة)</p>
+            </div>
+            <div id="galleryGridArea" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px;"></div>
+        </div>
+    </div>
+
+    <input type="file" id="directUploadInput" accept="image/*" style="display: none;" onchange="handleDirectUpload(event)">
+    <div id="multiPrintArea" style="display: none;"></div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+
+    <script src="js/firebase-init.js"></script>
+
+    <script>
+        // دالة أساسية لتوحيد أرقام التليفونات في النظام كله
+        window.getShortPhone = function(str) {
+            if(!str) return "";
+            return String(str).replace(/\D/g, '').slice(-10);
+        };
+
+        // دالة آمنة موحدة: بتسحب آخر نسخة فعلية من فايربيس مباشرة (مش من النسخة المحلية القديمة)،
+        // تطبق التعديل المطلوب، وتحفظها تاني - عشان نمنع مسح بيانات بسبب نسخة محلية قديمة
+        window.safeUpdateList = function(path, transformFn) {
+            return db.ref(path).once('value').then(snapshot => {
+                let data = snapshot.val();
+                let arr = data ? (Array.isArray(data) ? data.filter(x=>x) : Object.values(data).filter(x=>x)) : [];
+                let updatedArr = transformFn(arr);
+                return db.ref(path).set(updatedArr).then(() => updatedArr);
+            });
+        }
+
+        window.editingProdId = null;
+
+        // ================= دوال التحكم في الأقسام =================
+        window.toggleSubmenu = function(menuId) {
+            let menu = document.getElementById(menuId);
+            menu.classList.toggle("open");
+        }
+
+        window.switchTab = function(tabId) { 
+            document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active')); 
+            document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active')); 
+            
+            let targetSection = document.getElementById(tabId);
+            if(!targetSection) { tabId = 'orders'; targetSection = document.getElementById(tabId); }
+            
+            targetSection.classList.add('active'); 
+            let btn = document.querySelector(`button[onclick="switchTab('${tabId}')"]`);
+            if(btn) {
+                btn.classList.add('active'); 
+                let parentMenu = btn.closest('.submenu');
+                if (parentMenu) parentMenu.classList.add('open');
+            }
+            localStorage.setItem("admin_active_tab", tabId); 
+        }
+
+
+        // ===================================================
+        // ====== إدارة السكاشن الاحترافية ==================
+        // ===================================================
+
+        window.updateSecLinkUI = function() {
+            let type = document.getElementById('secLinkType').value;
+            let boxes = ['secLinkProductBox','secLinkCategoryBox','secLinkSubcategoryBox','secLinkCustomListBox','secLinkExternalBox'];
+            let valueBox = document.getElementById('secLinkValueBox');
+            boxes.forEach(b => { let el = document.getElementById(b); if(el) el.style.display='none'; });
+
+            if(type === 'none') { valueBox.style.display = 'none'; return; }
+            valueBox.style.display = 'block';
+
+            let cats = JSON.parse(localStorage.getItem('eljory_categories') || '[]');
+            let lists = JSON.parse(localStorage.getItem('eljory_custom_lists') || '[]');
+
+            if(type === 'product') {
+                document.getElementById('secLinkProductBox').style.display = 'block';
+                document.getElementById('secLinkProductSearch').value = '';
+                document.getElementById('secProductResults').style.display = 'none';
+                document.getElementById('secSelectedProduct').style.display = 'none';
+                document.getElementById('secLinkValue').value = '';
+            } else if(type === 'category') {
+                document.getElementById('secLinkCategoryBox').style.display = 'block';
+                let sel = document.getElementById('secLinkCategorySelect');
+                sel.innerHTML = '<option value="">-- اختر --</option>';
+                cats.filter(c => !c.parentId).forEach(c => sel.innerHTML += `<option value="${c.id}">${c.nameAr}</option>`);
+                document.getElementById('secLinkValue').value = '';
+            } else if(type === 'subcategory') {
+                document.getElementById('secLinkSubcategoryBox').style.display = 'block';
+                let sel = document.getElementById('secLinkSubcategorySelect');
+                sel.innerHTML = '<option value="">-- اختر --</option>';
+                cats.filter(c => c.parentId).forEach(c => sel.innerHTML += `<option value="${c.id}">${c.nameAr}</option>`);
+                document.getElementById('secLinkValue').value = '';
+            } else if(type === 'customList') {
+                document.getElementById('secLinkCustomListBox').style.display = 'block';
+                let sel = document.getElementById('secLinkCustomListSelect');
+                sel.innerHTML = '<option value="">-- اختر --</option>';
+                lists.filter(l => l.isActive !== false).forEach(l => sel.innerHTML += `<option value="${l.id}">${l.name}</option>`);
+                document.getElementById('secLinkValue').value = '';
+            } else if(type === 'external') {
+                document.getElementById('secLinkExternalBox').style.display = 'block';
+                document.getElementById('secLinkValue').value = '';
+            }
+        };
+
+        window.secSearchProducts = function() {
+            let q = document.getElementById('secLinkProductSearch').value.trim().toLowerCase();
+            let resultsBox = document.getElementById('secProductResults');
+            if(!q) { resultsBox.style.display='none'; return; }
+            let products = JSON.parse(localStorage.getItem('eljory_products') || '[]');
+            let filtered = products.filter(p => p.isActive !== false && (p.titleAr.toLowerCase().includes(q) || (p.titleEn && p.titleEn.toLowerCase().includes(q)) || p.id.toLowerCase().includes(q))).slice(0,10);
+            if(!filtered.length) { resultsBox.innerHTML = '<div style="padding:10px;color:gray;">لا توجد نتائج</div>'; resultsBox.style.display='block'; return; }
+            resultsBox.innerHTML = filtered.map(p => `
+                <div onclick="secSelectProduct('${p.id}','${p.titleAr}')" style="padding:10px;border-bottom:1px solid #eee;cursor:pointer;display:flex;align-items:center;gap:10px;transition:0.2s;" onmouseover="this.style.background='#f0f8ff'" onmouseout="this.style.background='white'">
+                    <img src="${p.img}" style="width:35px;height:35px;object-fit:cover;border-radius:4px;">
+                    <div><strong style="font-size:13px;">${p.titleAr}</strong><br><small style="color:gray;">${p.id} - ${p.price} ج.م</small></div>
+                </div>`).join('');
+            resultsBox.style.display='block';
+        };
+
+        window.secSelectProduct = function(id, name) {
+            document.getElementById('secLinkValue').value = id;
+            document.getElementById('secLinkProductSearch').value = '';
+            document.getElementById('secProductResults').style.display = 'none';
+            let box = document.getElementById('secSelectedProduct');
+            box.innerHTML = `✅ تم اختيار: <strong>${name}</strong> (${id}) <button onclick="secClearProduct()" style="background:none;border:none;color:red;cursor:pointer;font-weight:bold;">✖</button>`;
+            box.style.display = 'block';
+        };
+
+        window.secClearProduct = function() {
+            document.getElementById('secLinkValue').value = '';
+            document.getElementById('secSelectedProduct').style.display = 'none';
+        };
+
+        window.saveSection = function() {
+            let title = document.getElementById('secTitle').value.trim();
+            let showTitle = document.getElementById('secShowTitle').value === '1';
+            let showProducts = document.getElementById('secShowProducts').value === '1';
+            let displayType = document.getElementById('secDisplayType').value;
+            let bgColor = document.getElementById('secBgColor').value;
+            let priority = parseInt(document.getElementById('secPriority').value) || 1;
+            let maxProducts = parseInt(document.getElementById('secMaxProducts').value) || 8;
+            let img = document.getElementById('secImg').value.trim();
+            let linkType = document.getElementById('secLinkType').value;
+            let linkValue = document.getElementById('secLinkValue') ? document.getElementById('secLinkValue').value.trim() : '';
+
+            if(!img && displayType !== 'productsOnly') return alert('يرجى اختيار صورة للسيكشن!');
+            if(linkType !== 'none' && linkType !== 'external' && !linkValue) return alert('يرجى تحديد قيمة الربط!');
+
+            safeUpdateList('/sections', sections => {
+                sections.push({
+                    id: 'SEC_' + Date.now(),
+                    title, showTitle, showProducts,
+                    displayType, bgColor: bgColor === '#ffffff' ? '' : bgColor,
+                    priority, maxProducts, img, linkType, linkValue,
+                    isActive: true
+                });
+                return sections;
+            }).then(() => {
+                alert('تم حفظ السيكشن بنجاح!');
+                document.getElementById('secTitle').value = '';
+                document.getElementById('secImg').value = '';
+                document.getElementById('secLinkType').value = 'none';
+                document.getElementById('secLinkValueBox').style.display = 'none';
+                document.getElementById('secLinkValue').value = '';
+                document.getElementById('secPriority').value = '1';
+                document.getElementById('secShowTitle').value = '1';
+                document.getElementById('secShowProducts').value = '0';
+            });
+        };
+
+        window.renderAdminSections = function() {
+            let tbody = document.getElementById('adminSectionsBody');
+            if(!tbody) return;
+            let sections = JSON.parse(localStorage.getItem('eljory_sections') || '[]');
+            sections.sort((a,b) => (a.priority||0)-(b.priority||0));
+            tbody.innerHTML = '';
+            if(!sections.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:gray;padding:20px;">لا توجد سكاشن بعد.</td></tr>'; return; }
+            let linkLabels = { none:'بدون', product:'منتج', category:'قسم', subcategory:'قسم فرعي', customList:'قائمة مخصصة', external:'رابط خارجي' };
+            let displayLabels = { fullBanner:'بانر كامل', halfBanner:'نصف بانر', slim:'رفيع', productsOnly:'منتجات فقط' };
+            sections.forEach(s => {
+                let isActive = s.isActive !== false;
+                tbody.innerHTML += `<tr style="${!isActive?'opacity:0.55;':''}">
+                    <td>${s.img ? `<img src="${s.img}" style="width:80px;height:30px;object-fit:cover;border-radius:4px;">` : '—'}</td>
+                    <td><strong>${s.title||'—'}</strong><br><small style="color:gray;">${s.showTitle?'يظهر العنوان':'العنوان مخفي'}</small></td>
+                    <td><span style="background:#1d364a;color:white;padding:3px 8px;border-radius:4px;font-size:12px;">${displayLabels[s.displayType]||s.displayType}</span></td>
+                    <td><small>${linkLabels[s.linkType]||s.linkType}: ${s.linkValue||'—'}</small></td>
+                    <td style="text-align:center;">${s.priority}</td>
+                    <td style="text-align:center;">${s.showProducts?'<span style="color:green;font-weight:bold;">✅ نعم</span>':'<span style="color:gray;">لا</span>'}</td>
+                    <td><button class="btn ${isActive?'btn-green':'btn-inactive'}" style="padding:4px 10px;" onclick="toggleSectionStatus('${s.id}')">${isActive?'نشط':'مخفي'}</button></td>
+                    <td><button class="btn btn-red" style="padding:4px 10px;" onclick="deleteSection('${s.id}')">حذف</button></td>
+                </tr>`;
+            });
+        };
+
+        window.toggleSectionStatus = function(id) {
+            safeUpdateList('/sections', secs => {
+                let i = secs.findIndex(s => s.id === id);
+                if(i > -1) secs[i].isActive = !(secs[i].isActive !== false);
+                return secs;
+            });
+        };
+
+        window.deleteSection = function(id) {
+            if(!confirm('متأكد من حذف هذا السيكشن؟')) return;
+            safeUpdateList('/sections', secs => secs.filter(s => s.id !== id));
+        };
+
+        // ===================================================
+        // ====== إدارة القوائم المخصصة =====================
+        // ===================================================
+
+        let currentEditingListId = null;
+
+        window.createCustomList = function() {
+            let name = document.getElementById('newListName').value.trim();
+            if(!name) return alert('يرجى كتابة اسم القائمة!');
+            safeUpdateList('/customLists', lists => {
+                if(lists.find(l => l.name === name)) throw new Error('DUPLICATE');
+                lists.push({ id: 'LST_' + Date.now(), name, products: [], isActive: true });
+                return lists;
+            }).then(() => {
+                document.getElementById('newListName').value = '';
+                alert('تم إنشاء القائمة!');
+            }).catch(e => { if(e.message==='DUPLICATE') alert('القائمة موجودة مسبقاً!'); });
+        };
+
+        window.renderAdminCustomLists = function() {
+            let tbody = document.getElementById('adminCustomListsBody');
+            if(!tbody) return;
+            let lists = JSON.parse(localStorage.getItem('eljory_custom_lists') || '[]');
+            let products = JSON.parse(localStorage.getItem('eljory_products') || '[]');
+            tbody.innerHTML = '';
+            if(!lists.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:gray;padding:20px;">لا توجد قوائم بعد.</td></tr>'; return; }
+            lists.forEach(l => {
+                let isActive = l.isActive !== false;
+                let count = (l.products || []).length;
+                tbody.innerHTML += `<tr style="${!isActive?'opacity:0.55;':''}">
+                    <td><code style="background:#eef2f5;padding:3px 8px;border-radius:4px;">${l.id}</code></td>
+                    <td><strong>${l.name}</strong></td>
+                    <td style="text-align:center;"><span style="background:#f38c18;color:white;padding:3px 8px;border-radius:12px;font-size:13px;">${count} منتج</span></td>
+                    <td><button class="btn ${isActive?'btn-green':'btn-inactive'}" style="padding:4px 10px;" onclick="toggleCustomListStatus('${l.id}')">${isActive?'نشطة':'مخفية'}</button></td>
+                    <td>
+                        <button class="btn" style="background:#17a2b8;margin-left:5px;padding:4px 10px;" onclick="openEditList('${l.id}')">⚙️ تعديل</button>
+                        <button class="btn btn-red" style="padding:4px 10px;" onclick="deleteCustomList('${l.id}')">حذف</button>
+                    </td>
+                </tr>`;
+            });
+        };
+
+        window.openEditList = function(id) {
+            let lists = JSON.parse(localStorage.getItem('eljory_custom_lists') || '[]');
+            let list = lists.find(l => l.id === id);
+            if(!list) return;
+            currentEditingListId = id;
+            document.getElementById('editListTitle').innerText = `تعديل: ${list.name}`;
+            document.getElementById('editListBox').style.display = 'block';
+            document.getElementById('listProductSearch').value = '';
+            document.getElementById('listProductResults').style.display = 'none';
+            renderListProducts(list.products || []);
+        };
+
+        window.closeEditList = function() {
+            currentEditingListId = null;
+            document.getElementById('editListBox').style.display = 'none';
+        };
+
+        window.listSearchProducts = function() {
+            let q = document.getElementById('listProductSearch').value.trim().toLowerCase();
+            let resultsBox = document.getElementById('listProductResults');
+            if(!q) { resultsBox.style.display='none'; return; }
+            let products = JSON.parse(localStorage.getItem('eljory_products') || '[]');
+            let lists = JSON.parse(localStorage.getItem('eljory_custom_lists') || '[]');
+            let currentList = lists.find(l => l.id === currentEditingListId);
+            let alreadyIn = currentList ? (currentList.products || []) : [];
+            let filtered = products.filter(p => p.isActive !== false && !alreadyIn.includes(p.id) && (p.titleAr.toLowerCase().includes(q) || (p.titleEn && p.titleEn.toLowerCase().includes(q)) || p.id.toLowerCase().includes(q))).slice(0,10);
+            if(!filtered.length) { resultsBox.innerHTML = '<div style="padding:10px;color:gray;">لا توجد نتائج</div>'; resultsBox.style.display='block'; return; }
+            resultsBox.innerHTML = filtered.map(p => `
+                <div onclick="addProductToList('${p.id}')" style="padding:10px;border-bottom:1px solid #eee;cursor:pointer;display:flex;align-items:center;gap:10px;transition:0.2s;" onmouseover="this.style.background='#f0f8ff'" onmouseout="this.style.background='white'">
+                    <img src="${p.img}" style="width:35px;height:35px;object-fit:cover;border-radius:4px;">
+                    <div><strong style="font-size:13px;">${p.titleAr}</strong><br><small style="color:gray;">${p.id} - ${p.price} ج.م</small></div>
+                </div>`).join('');
+            resultsBox.style.display='block';
+        };
+
+        window.addProductToList = function(productId) {
+            let lists = JSON.parse(localStorage.getItem('eljory_custom_lists') || '[]');
+            let list = lists.find(l => l.id === currentEditingListId);
+            if(!list) return;
+            if(!list.products) list.products = [];
+            if(!list.products.includes(productId)) {
+                list.products.push(productId);
+                renderListProducts(list.products);
+            }
+            document.getElementById('listProductSearch').value = '';
+            document.getElementById('listProductResults').style.display = 'none';
+        };
+
+        window.removeProductFromList = function(productId) {
+            let lists = JSON.parse(localStorage.getItem('eljory_custom_lists') || '[]');
+            let list = lists.find(l => l.id === currentEditingListId);
+            if(!list) return;
+            list.products = (list.products || []).filter(id => id !== productId);
+            renderListProducts(list.products);
+        };
+
+        window.renderListProducts = function(productIds) {
+            let container = document.getElementById('listProductsContainer');
+            let products = JSON.parse(localStorage.getItem('eljory_products') || '[]');
+            if(!productIds.length) { container.innerHTML = '<span style="color:gray;font-size:14px;">لم تضف منتجات بعد</span>'; return; }
+            container.innerHTML = productIds.map(id => {
+                let p = products.find(x => x.id === id);
+                let name = p ? p.titleAr : id;
+                let img = p ? p.img : '';
+                return `<div style="display:flex;align-items:center;gap:6px;background:#1d364a;color:white;padding:5px 10px;border-radius:20px;font-size:13px;">
+                    ${img ? `<img src="${img}" style="width:22px;height:22px;object-fit:cover;border-radius:50%;">` : ''}
+                    <span>${name}</span>
+                    <button onclick="removeProductFromList('${id}')" style="background:none;border:none;color:#ff9999;cursor:pointer;font-weight:bold;font-size:15px;">✖</button>
+                </div>`;
+            }).join('');
+        };
+
+        window.importListFromCSV = function(event) {
+            let file = event.target.files[0]; if(!file) return;
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                let text = e.target.result;
+                let ids = text.split(/[\r\n,;]+/).map(s => s.trim().replace(/^"|"$/g,'')).filter(Boolean);
+                let products = JSON.parse(localStorage.getItem('eljory_products') || '[]');
+                let validIds = products.map(p => p.id);
+                let lists = JSON.parse(localStorage.getItem('eljory_custom_lists') || '[]');
+                let list = lists.find(l => l.id === currentEditingListId);
+                if(!list) return;
+                let added = 0;
+                ids.forEach(id => { if(validIds.includes(id) && !(list.products||[]).includes(id)) { if(!list.products) list.products=[]; list.products.push(id); added++; } });
+                renderListProducts(list.products || []);
+                alert(`تم إضافة ${added} منتج من الشيت!`);
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        };
+
+        window.saveCurrentList = function() {
+            if(!currentEditingListId) return;
+            let lists = JSON.parse(localStorage.getItem('eljory_custom_lists') || '[]');
+            let list = lists.find(l => l.id === currentEditingListId);
+            if(!list) return;
+            safeUpdateList('/customLists', allLists => {
+                let i = allLists.findIndex(l => l.id === currentEditingListId);
+                if(i > -1) allLists[i].products = list.products || [];
+                return allLists;
+            }).then(() => { alert('تم الحفظ بنجاح!'); closeEditList(); });
+        };
+
+        window.toggleCustomListStatus = function(id) {
+            safeUpdateList('/customLists', lists => {
+                let i = lists.findIndex(l => l.id === id);
+                if(i > -1) lists[i].isActive = !(lists[i].isActive !== false);
+                return lists;
+            });
+        };
+
+        window.deleteCustomList = function(id) {
+            if(!confirm('متأكد من حذف هذه القائمة؟')) return;
+            safeUpdateList('/customLists', lists => lists.filter(l => l.id !== id));
+        };
+        
+        window.checkDataIntegrity = function() {
+            let products = JSON.parse(localStorage.getItem("eljory_products")) || [];
+            let brokenProducts = 0;
+            products.forEach(p => { if(parseFloat(p.price) < 0 || parseInt(p.stock) < 0) brokenProducts++; });
+            
+            let checkEl = document.getElementById("dataIntegrityCheck");
+            if(checkEl) {
+                if(brokenProducts > 0) {
+                    checkEl.innerHTML = `⚠️ تنبيه: تم رصد عدد (${brokenProducts}) منتجات ببيانات سالبة خاطئة في المخزن!`;
+                    checkEl.style.color = "#d9534f";
+                } else {
+                    checkEl.innerHTML = `✅ جميع المدخلات والبيانات متوافقة ومستقرة تماماً.`;
+                    checkEl.style.color = "#28a745";
+                }
+            }
+        }
+
+        // ================= الأقسام (Categories) =================
+        window.loadAdminCategories = function() { 
+            let cats = JSON.parse(localStorage.getItem("eljory_categories")) || []; 
+            let parentSelect = document.getElementById("newCatParent"); 
+            let prodMainSelect = document.getElementById("newProdCategory"); 
+            let listContainer = document.getElementById("adminCategoriesList");
+
+            cats.sort((a, b) => (parseInt(a.priority) || 0) - (parseInt(b.priority) || 0));
+
+            if(parentSelect) parentSelect.innerHTML = `<option value="">-- رئيسي --</option>`; 
+            if(prodMainSelect) prodMainSelect.innerHTML = `<option value="">-- اختر --</option>`; 
+            if(listContainer) listContainer.innerHTML = "";
+
+            cats.filter(c => !c.parentId).forEach(mc => { 
+                if(parentSelect) parentSelect.innerHTML += `<option value="${mc.id}">${mc.nameAr}</option>`; 
+                if(prodMainSelect) prodMainSelect.innerHTML += `<option value="${mc.id}">${mc.nameAr}</option>`; 
+                
+                if(listContainer) {
+                    let isActive = mc.isActive !== false;
+                    let toggleBtn = `<button onclick="toggleCategoryStatus('${mc.id}')" style="float:left; background:${isActive ? '#28a745' : '#6c757d'}; color:white; border:none; padding:4px 8px; border-radius:3px; margin-right:10px; cursor:pointer;">${isActive ? 'نشط 👁️' : 'مخفي 🙈'}</button>`;
+                    let editBtn = `<button onclick="editCategory('${mc.id}')" style="float:left; background:#17a2b8; color:white; border:none; padding:4px 8px; border-radius:3px; margin-right:10px; cursor:pointer;">⚙️ تعديل</button>`;
+                    let priorityBadge = `<span style="background:#f38c18; color:white; padding:3px 8px; border-radius:12px; font-size:12px; margin-right:10px;">أولوية: ${mc.priority || 0}</span>`;
+                    
+                    listContainer.innerHTML += `<div style="background:white; padding:15px; border:1px solid #ddd; border-radius:5px; margin-bottom:10px;"><strong>${mc.nameAr}</strong> <small style="color:gray;">(${mc.id})</small> ${priorityBadge} <button onclick="deleteCategory('${mc.id}')" style="float:left; background:none; border:none; color:red; font-weight:bold; cursor:pointer;">✖ حذف</button> ${toggleBtn} ${editBtn}</div>`;
+                    
+                    cats.filter(sc => sc.parentId === mc.id).forEach(sc => {
+                        let subActive = sc.isActive !== false;
+                        let subToggle = `<button onclick="toggleCategoryStatus('${sc.id}')" style="float:left; background:${subActive ? '#28a745' : '#6c757d'}; color:white; border:none; padding:3px 6px; border-radius:3px; margin-right:10px; cursor:pointer; font-size:12px;">${subActive ? 'نشط 👁️' : 'مخفي 🙈'}</button>`;
+                        let subEdit = `<button onclick="editCategory('${sc.id}')" style="float:left; background:#17a2b8; color:white; border:none; padding:3px 6px; border-radius:3px; margin-right:10px; cursor:pointer; font-size:12px;">⚙️ تعديل</button>`;
+                        let subPriorityBadge = `<span style="background:#f38c18; color:white; padding:2px 6px; border-radius:10px; font-size:11px; margin-right:10px;">أولوية: ${sc.priority || 0}</span>`;
+                        
+                        listContainer.innerHTML += `<div style="background:#f9f9f9; padding:10px 20px; border:1px solid #ddd; border-radius:5px; margin-bottom:5px; margin-right:30px; color:#555;">- ${sc.nameAr} <small>(${sc.id})</small> ${subPriorityBadge} <button onclick="deleteCategory('${sc.id}')" style="float:left; background:none; border:none; color:red; font-weight:bold; cursor:pointer;">✖ حذف</button> ${subToggle} ${subEdit}</div>`;
+                    });
+                }
+            }); 
+            updateSubCatsDropdown(); 
+        }
+
+        window.editCategory = function(id) {
+            let cats = JSON.parse(localStorage.getItem("eljory_categories")) || [];
+            let cat = cats.find(c => c.id === id);
+            if(!cat) return;
+            document.getElementById("editCatId").value = cat.id;
+            document.getElementById("editCatNameAr").value = cat.nameAr || "";
+            document.getElementById("editCatNameEn").value = cat.nameEn || "";
+            document.getElementById("editCatImg").value = cat.img || "";
+            document.getElementById("editCatPriority").value = cat.priority || 0;
+            document.getElementById("editCategoryModal").style.display = "flex";
+        }
+
+        window.saveCategoryEdit = function() {
+            let id = document.getElementById("editCatId").value;
+            let newNameAr = document.getElementById("editCatNameAr").value.trim();
+            let newNameEn = document.getElementById("editCatNameEn").value.trim();
+            let newImg = document.getElementById("editCatImg").value.trim();
+            let newPriority = parseInt(document.getElementById("editCatPriority").value) || 0;
+            safeUpdateList('/categories', cats => {
+                let index = cats.findIndex(c => c.id === id);
+                if(index > -1) {
+                    cats[index].nameAr = newNameAr;
+                    cats[index].nameEn = newNameEn;
+                    cats[index].img = newImg;
+                    cats[index].priority = newPriority;
+                }
+                return cats;
+            }).then(() => {
+                closeCategoryModal(); alert("تم تحديث بيانات القسم بنجاح!");
+            });
+        }
+
+        window.closeCategoryModal = function() { document.getElementById("editCategoryModal").style.display = "none"; }
+        
+        window.toggleCategoryStatus = function(id) {
+            safeUpdateList('/categories', cats => {
+                let index = cats.findIndex(c => c.id === id);
+                if(index > -1) cats[index].isActive = !(cats[index].isActive !== false);
+                return cats;
+            });
+        }
+
+        window.deleteCategory = function(id) {
+            if(!confirm("هل أنت متأكد من مسح هذا القسم؟")) return;
+            safeUpdateList('/categories', cats => cats.filter(c => c.id !== id && c.parentId !== id));
+        }
+
+        window.updateSubCatsDropdown = function() { 
+            let cats = JSON.parse(localStorage.getItem("eljory_categories")) || []; 
+            let mainCatId = document.getElementById("newProdCategory").value; 
+            let subSelect = document.getElementById("newProdSubCategory"); 
+            if(!subSelect) return; 
+            subSelect.innerHTML = `<option value="">-- بدون --</option>`; 
+            cats.filter(c => c.parentId === mainCatId).forEach(sc => { subSelect.innerHTML += `<option value="${sc.id}">${sc.nameAr}</option>`; }); 
+        }
+        
+        window.addCategory = function() { 
+            let id = document.getElementById("newCatId").value.trim(); 
+            let nameAr = document.getElementById("newCatNameAr").value.trim(); 
+            let parentId = document.getElementById("newCatParent").value; 
+            if(!id || !nameAr) return; 
+            safeUpdateList('/categories', cats => {
+                cats.push({ id, nameAr, nameEn: nameAr, parentId: parentId || null, isActive: true });
+                return cats;
+            }).then(() => {
+                alert("تم الإضافة"); document.getElementById("newCatId").value=""; document.getElementById("newCatNameAr").value=""; 
+            });
+        }
+
+        // ================= المنتجات (Products) =================
+        window.saveProduct = function() {
+            let id = document.getElementById("newProdId").value.trim();
+            let titleAr = document.getElementById("newProdNameAr").value.trim();
+            let titleEn = document.getElementById("newProdNameEn").value.trim();
+            let price = parseFloat(document.getElementById("newProdPrice").value);
+            let category = document.getElementById("newProdCategory").value;
+            let subCategory = document.getElementById("newProdSubCategory").value || "";
+            let stock = parseInt(document.getElementById("newProdStock").value);
+            let img = document.getElementById("newProdImg").value.trim() || "https://via.placeholder.com/200";
+            let descAr = document.getElementById("newProdDescAr").value.trim();
+            let descEn = document.getElementById("newProdDescEn").value.trim();
+
+            if (!id || !titleAr || isNaN(price) || !category) return alert("يرجى ملء الحقول الأساسية!");
+            if (price < 0 || isNaN(stock) || stock < 0) return alert("خطأ: لا يمكن إضافة أسعار أو كميات سالبة!");
+
+            db.ref('/products/' + id).once('value').then(snapshot => {
+                let existingProd = snapshot.val() || {};
+                
+                if (!window.editingProdId && snapshot.exists()) {
+                    return alert("كود المنتج موجود مسبقاً! يرجى اختيار كود آخر.");
+                }
+
+                let newProd = { 
+                    id: id, titleAr: titleAr, titleEn: titleEn, price: price, stock: stock, 
+                    category: category, subCategory: subCategory, img: img, points: existingProd.points || 0, 
+                    descAr: descAr, descEn: descEn, isActive: existingProd.hasOwnProperty('isActive') ? existingProd.isActive : true 
+                };
+
+                db.ref('/products/' + id).set(newProd).then(() => {
+                    alert(window.editingProdId ? "تم تعديل المنتج بنجاح! 💾" : "تم حفظ المنتج بنجاح! ☁️");
+                    window.editingProdId = null;
+                    document.getElementById("newProdId").disabled = false;
+                    document.getElementById("btnSaveProd").innerHTML = "➕ حفظ المنتج";
+                    document.querySelectorAll("#products input, #products textarea").forEach(el => { 
+                        if(el.id !== "newProdImg") el.value = "";
+                    });
+                });
+            });
+        };
+
+        window.toggleProductStatus = function(id) {
+            db.ref('/products/' + id).once('value').then(snapshot => {
+                if(snapshot.exists()) {
+                    let p = snapshot.val();
+                    let currentStatus = p.isActive !== false;
+                    db.ref('/products/' + id).update({ isActive: !currentStatus });
+                }
+            });
+        }
+
+        window.editProduct = function(id) {
+            db.ref('/products/' + id).once('value').then(snapshot => {
+                if(snapshot.exists()) {
+                    let p = snapshot.val();
+                    document.getElementById("newProdId").value = p.id; 
+                    document.getElementById("newProdId").disabled = true; 
+                    document.getElementById("newProdNameAr").value = p.titleAr || ""; 
+                    document.getElementById("newProdNameEn").value = p.titleEn || "";
+                    document.getElementById("newProdPrice").value = p.price || 0; 
+                    document.getElementById("newProdStock").value = p.stock || 0;
+                    document.getElementById("newProdImg").value = p.img || ""; 
+                    document.getElementById("newProdDescAr").value = p.descAr || "";
+                    document.getElementById("newProdDescEn").value = p.descEn || ""; 
+                    document.getElementById("newProdCategory").value = p.category || "";
+                    
+                    if(typeof updateSubCatsDropdown === "function") updateSubCatsDropdown();
+                    if(p.subCategory) document.getElementById("newProdSubCategory").value = p.subCategory;
+                    
+                    document.getElementById("btnSaveProd").innerHTML = "💾 حفظ التعديلات";
+                    window.editingProdId = id; 
+                    window.scrollTo(0, 0); 
+                } else {
+                    alert("هذا المنتج غير موجود في قاعدة البيانات!");
+                }
+            });
+        }
+
+        window.deleteProduct = function(id) {
+            if(confirm("هل أنت متأكد من حذف هذا المنتج نهائياً من الموقع؟")) {
+                db.ref('/products/' + id).remove().then(() => {
+                    alert("تم مسح المنتج من السحابة!");
+                });
+            }
+        };
+
+        window.renderAdminProducts = function() {
+            let tbody = document.getElementById("adminProductsBody");
+            let products = JSON.parse(localStorage.getItem("eljory_products")) || [];
+            let cats = JSON.parse(localStorage.getItem("eljory_categories")) || [];
+            if(!tbody) return; tbody.innerHTML = "";
+            
+            products.forEach(p => {
+                let mainCat = cats.find(c => c.id === p.category); let subCat = cats.find(c => c.id === p.subCategory);
+                let catName = mainCat ? mainCat.nameAr : p.category; let subName = subCat ? subCat.nameAr : "-";
+                let stockColor = p.stock <= 0 ? "color: red; font-weight: bold;" : "";
+                let isActive = p.isActive !== false;
+                let activeBtn = `<button class="btn ${isActive ? 'btn-green' : 'btn-inactive'}" style="padding:5px 10px; width:100px;" onclick="toggleProductStatus('${p.id}')">${isActive ? 'نشط 👁️' : 'مخفي 🙈'}</button>`;
+
+                tbody.innerHTML += `<tr style="${!isActive ? 'opacity:0.6;' : ''}">
+                    <td><strong>${p.id}</strong></td><td>${p.titleAr}</td><td>${catName} <br> <small style="color:#f38c18">${subName}</small></td>
+                    <td>${p.price} ج.م</td><td style="${stockColor}">${p.stock}</td><td>${activeBtn}</td>
+                    <td>
+                        <button class="btn" style="background:#f38c18; margin-bottom:5px;" onclick="editProduct('${p.id}')">تعديل</button>
+                        <button class="btn btn-red" onclick="deleteProduct('${p.id}')">حذف</button>
+                    </td></tr>`;
+            });
+        }
+        
+        window.exportProductsCSV = function() {
+            let products = JSON.parse(localStorage.getItem("eljory_products")) || [];
+            if(products.length === 0) return alert("لا توجد منتجات لتصديرها");
+            let csvContent = "كود_المنتج;الاسم_عربي;الاسم_انجليزي;القسم_الرئيسي;القسم_الفرعي;الصورة;المخزون;السعر;نقاط_الولاء;الوصف_عربي;الوصف_انجليزي\r\n";
+            products.forEach(p => {
+                let row = [ `"${p.id}"`, `"${p.titleAr}"`, `"${p.titleEn || ""}"`, `"${p.category}"`, `"${p.subCategory || ""}"`, `"${p.img}"`, p.stock, p.price, (p.points || 0), `"${(p.descAr || "").replace(/"/g, '""')}"`, `"${(p.descEn || "").replace(/"/g, '""')}"` ];
+                csvContent += row.join(";") + "\r\n";
+            });
+            let bom = new Uint8Array([0xEF, 0xBB, 0xBF]); let blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
+            let url = URL.createObjectURL(blob); let link = document.createElement("a"); link.setAttribute("href", url); link.setAttribute("download", `ElJory_Products.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        }
+
+        window.importProductsCSV = function(event) {
+            const file = event.target.files[0]; if(!file) return; const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result; const lines = text.split(/\r?\n/).filter(line => line.trim() !== "" && !line.startsWith("sep="));
+                if(lines.length <= 1) return alert("الملف فارغ.");
+                let delimiter = lines[0].includes(";") ? ";" : ","; let splitRegex = new RegExp(delimiter + "(?=(?:(?:[^\"]*\"){2})*[^\"]*$)");
+                let updates = {};
+
+                for(let i = 1; i < lines.length; i++) {
+                    let cols = lines[i].split(splitRegex); if(cols.length < 8) continue;
+                    let clean = (str) => str ? str.replace(/^"|"$/g, "").replace(/""/g, '"').trim() : "";
+                    let id = clean(cols[0]); let titleAr = clean(cols[1]); let titleEn = clean(cols[2]); let cat = clean(cols[3]); let subCat = clean(cols[4]); let img = clean(cols[5]);
+                    let stock = parseInt(clean(cols[6])) || 0; let price = parseFloat(clean(cols[7])) || 0; let points = parseFloat(clean(cols[8])) || 0; let descAr = clean(cols[9]); let descEn = clean(cols[10]);
+                    if(!id || !titleAr) continue;
+                    updates[id] = { id, titleAr, titleEn, category: cat, subCategory: subCat, img, stock, price, points, descAr, descEn, isActive: true };
+                }
+                
+                db.ref('/products').update(updates).then(() => {
+                    alert(`تم استيراد المنتجات بنجاح!`); event.target.value = ""; 
+                });
+            }; reader.readAsText(file);
+        }
+
+        // ================= المناطق (Regions) =================
+        window.loadAdminRegions = function() {
+            let regions = JSON.parse(localStorage.getItem("eljory_regions")) || [];
+            let list = document.getElementById("adminRegionsList");
+            if(list) { 
+                list.innerHTML = ""; 
+                regions.forEach((reg) => {
+                    let isActive = reg.isActive !== false;
+                    let bg = isActive ? "#1d364a" : "#6c757d";
+                    let btnText = isActive ? "نشط 👁️" : "مخفي 🙈"; let btnColor = isActive ? "#28a745" : "#5a6268";
+                    let feeTxt = (reg.fee === 0 || !reg.fee) ? "مجاني" : `${reg.fee} ج.م`;
+                    let safeName = reg.name.replace(/'/g, "\\'");
+
+                    list.innerHTML += `<div class="badge" style="background:${bg}; font-size:14px; padding:8px 15px; margin-left:10px; display:inline-flex; align-items:center; gap:10px; margin-bottom:10px;">
+                        ${reg.name} <span style="color:#f38c18;">(${feeTxt})</span>
+                        <button onclick="openEditRegion('${safeName}')" style="background:#17a2b8; color:white; border:none; padding:3px 8px; border-radius:3px; cursor:pointer; font-size:12px;">⚙️ تعديل</button>
+                        <button onclick="toggleRegionStatus('${safeName}')" style="background:${btnColor}; color:white; border:none; padding:3px 8px; border-radius:3px; cursor:pointer; font-size:12px;">${btnText}</button>
+                        <span class="badge-remove" style="margin:0; padding:0;" onclick="deleteAdminRegion('${safeName}')">✖</span>
+                    </div>`;
+                }); 
+            }
+        }
+
+        window.addAdminRegion = function() {
+            let name = document.getElementById("newRegionName").value.trim();
+            let feeInput = document.getElementById("newRegionFee") ? document.getElementById("newRegionFee").value : "0";
+            let fee = feeInput === "" ? 0 : parseFloat(feeInput);
+            
+            if (!name) return alert("يرجى إدخال اسم المنطقة!");
+
+            safeUpdateList('/regions', regions => {
+                if(regions.find(r => r.name === name)) throw new Error("DUPLICATE_NAME");
+                regions.push({ name: name, isActive: true, fee: fee });
+                return regions;
+            }).then(() => {
+                document.getElementById("newRegionName").value = ""; 
+                if(document.getElementById("newRegionFee")) document.getElementById("newRegionFee").value = "";
+                alert("تمت إضافة المنطقة للسحابة بنجاح!");
+            }).catch(err => {
+                if(err.message === "DUPLICATE_NAME") alert("هذه المنطقة موجودة مسبقاً!");
+                else { console.error(err); alert("حدث خطأ أثناء الحفظ."); }
+            });
+        };
+
+        window.deleteAdminRegion = function(regionName) {
+            if(confirm("هل أنت متأكد من مسح هذه المنطقة؟")) {
+                safeUpdateList('/regions', regions => regions.filter(r => r.name !== regionName)).then(() => {
+                    alert("تم الحذف بنجاح!");
+                });
+            }
+        };
+
+        window.openEditRegion = function(regionName) {
+            let regions = JSON.parse(localStorage.getItem("eljory_regions")) || [];
+            let reg = regions.find(r => r.name === regionName);
+            if(reg) {
+                document.getElementById("editRegionIndex").value = regionName;
+                document.getElementById("editRegionName").value = reg.name;
+                document.getElementById("editRegionFee").value = reg.fee || 0;
+                document.getElementById("editRegionModal").style.display = "flex";
+            }
+        }
+
+        window.saveRegionEdit = function() {
+            let originalName = document.getElementById("editRegionIndex").value;
+            let newName = document.getElementById("editRegionName").value.trim();
+            let feeInput = document.getElementById("editRegionFee").value;
+            let newFee = feeInput === "" ? 0 : parseFloat(feeInput);
+            if(!newName) return alert("الاسم مطلوب!");
+
+            safeUpdateList('/regions', regions => {
+                if(regions.find(r => r.name === newName && r.name !== originalName)) throw new Error("DUPLICATE_NAME");
+                let index = regions.findIndex(r => r.name === originalName);
+                if(index > -1) { regions[index].name = newName; regions[index].fee = newFee; }
+                return regions;
+            }).then(() => { closeRegionModal(); alert("تم التحديث!"); })
+              .catch(err => {
+                  if(err.message === "DUPLICATE_NAME") alert("هذا الاسم مستخدم لمنطقة أخرى!");
+                  else { console.error(err); alert("حدث خطأ أثناء الحفظ."); }
+              });
+        }
+        
+        window.toggleRegionStatus = function(regionName) {
+            safeUpdateList('/regions', regions => {
+                let index = regions.findIndex(r => r.name === regionName);
+                if(index > -1) regions[index].isActive = !(regions[index].isActive !== false);
+                return regions;
+            });
+        }
+
+        window.closeRegionModal = function() { document.getElementById("editRegionModal").style.display = "none"; }
+
+        // ================= العملاء (Customers) =================
+        window.renderAdminCustomers = function() {
+            let tbody = document.getElementById("adminCustomersBody"); 
+            if(!tbody) return; tbody.innerHTML = "";
+            let usersDB = JSON.parse(localStorage.getItem("eljory_users_db")) || []; 
+            let ordersDB = JSON.parse(localStorage.getItem("eljory_orders")) || [];
+            
+            usersDB.reverse().forEach((u) => {
+                let userOrders = ordersDB.filter(o => o.customer && window.getShortPhone(o.customer.phone) === window.getShortPhone(u.phone));
+                let deliveredOrders = userOrders.filter(o => o.status === "Delivered").length;
+                let totalSpent = userOrders.filter(o => o.status === "Delivered").reduce((sum, order) => sum + order.total, 0);
+                let primaryAddr = u.addresses && u.addresses.find(a => a.isPrimary) ? u.addresses.find(a => a.isPrimary).text : (u.address || "غير محدد");
+                let blockStatus = u.isBlocked ? `<span style="color:red; font-weight:bold;">محظور ❌</span>` : `<span style="color:green; font-weight:bold;">نشط ✅</span>`;
+                let historyCount = u.pointsHistory ? u.pointsHistory.length : 0;
+                let safePhone = u.phone;
+
+                tbody.innerHTML += `
+                <tr style="${u.isBlocked ? 'background-color: #ffeaea;' : ''}">
+                    <td><strong>${u.id || 'قديم'}</strong></td>
+                    <td><strong>${u.name}</strong><br><small>📞 ${u.phone}</small><br><small>✉️ ${u.email || '-'}</small></td>
+                    <td><small>${primaryAddr}</small></td>
+                    <td><small>${u.joinDate || 'غير مسجل'}</small></td>
+                    <td style="text-align:center;"><strong>${userOrders.length}</strong></td>
+                    <td style="text-align:center;"><span style="color:green;">${deliveredOrders}</span> / <span style="color:red;">${userOrders.filter(o => o.status === "Cancelled").length}</span></td>
+                    <td style="color:#f38c18; font-weight:bold;">${totalSpent} ج.م <br><small style="color:#1d364a;">🪙 رصيد: ${u.points || 0}</small></td>
+                    <td>${blockStatus}</td>
+                    <td>
+                        <button class="btn" style="background:#17a2b8; margin-bottom:5px; padding: 5px 10px;" onclick="editCustomerFull('${safePhone}')">⚙️ تعديل</button>
+                        <button class="btn" style="background:#f38c18; margin-bottom:5px; padding: 5px 10px;" onclick="viewCustomerPointsHistory('${safePhone}')">📜 السجل (${historyCount})</button>
+                        <button class="btn btn-red" style="margin-bottom:5px; padding: 5px 10px;" onclick="deleteCustomerFull('${safePhone}')">🗑️ حذف</button>
+                        <button class="btn ${u.isBlocked ? 'btn-green' : 'btn-red'}" style="padding: 5px 10px;" onclick="toggleBlockUser('${safePhone}')">${u.isBlocked ? 'فك الحظر' : 'حظر'}</button>
+                    </td>
+                </tr>`;
+            });
+        }
+
+        window.deleteCustomerFull = function(phone) {
+            let phoneKey = window.getShortPhone(phone);
+            if(confirm("هل أنت متأكد من حذف هذا العميل وكل بياناته نهائياً؟")) {
+                db.ref('/users/' + phoneKey).remove().then(() => {
+                    alert("تم مسح العميل من الداتابيز بنجاح! 🗑️");
+                    // الحذف المستهدف أعلاه كافي وآمن - مفيش داعي نكتب فوق /users بالكامل تاني
+                    if (typeof renderAdminCustomers === "function") renderAdminCustomers();
+                });
+            }
+        };
+
+        window.editCustomerFull = function(phone) {
+            let usersDB = JSON.parse(localStorage.getItem("eljory_users_db")) || []; 
+            let u = usersDB.find(x => window.getShortPhone(x.phone) === window.getShortPhone(phone)); if(!u) return;
+            
+            document.getElementById("editCustPhoneKey").value = window.getShortPhone(phone); 
+            document.getElementById("editCustName").value = u.name || "";
+            document.getElementById("editCustPhone").value = u.phone || ""; 
+            document.getElementById("editCustEmail").value = u.email || "";
+            document.getElementById("editCustPoints").value = u.points || 0;
+            
+            let primaryAddr = "";
+            if (u.addresses && u.addresses.length > 0) { let p = u.addresses.find(a => a.isPrimary); primaryAddr = p ? p.text : u.addresses[0].text; } 
+            else if (u.address) { primaryAddr = u.address; }
+            document.getElementById("editCustAddress").value = primaryAddr;
+            document.getElementById("editCustomerModal").style.display = "flex";
+        }
+
+        window.saveCustomerEdit = function() {
+            let phoneKey = document.getElementById("editCustPhoneKey").value;
+            let usersDB = JSON.parse(localStorage.getItem("eljory_users_db")) || [];
+            let u = usersDB.find(x => window.getShortPhone(x.phone) === phoneKey); if(!u) return;
+
+            let name = document.getElementById("editCustName").value.trim();
+            let email = document.getElementById("editCustEmail").value.trim(); 
+            let points = parseFloat(document.getElementById("editCustPoints").value) || 0;
+            let newAddrText = document.getElementById("editCustAddress").value.trim();
+            
+            let addrs = u.addresses || [];
+            if(newAddrText) {
+                let pIdx = addrs.findIndex(a => a.isPrimary);
+                if(pIdx > -1) { addrs[pIdx].text = newAddrText; } 
+                else { addrs.forEach(a => a.isPrimary = false); addrs.push({ text: newAddrText, isPrimary: true }); }
+            }
+            
+            db.ref('/users/' + phoneKey).update({name, email, points, addresses: addrs}).then(() => {
+                closeCustomerModals(); alert("تم التعديل!");
+            });
+        }
+
+        window.viewCustomerPointsHistory = function(phone) {
+            let usersDB = JSON.parse(localStorage.getItem("eljory_users_db")) || []; 
+            let u = usersDB.find(x => window.getShortPhone(x.phone) === window.getShortPhone(phone)); if(!u) return;
+            document.getElementById("historyCustNameTitle").innerText = `📜 سجل حركات النقاط: ${u.name} | الرصيد الحالي: ${u.points || 0}`;
+            let tbody = document.getElementById("historyCustBody"); tbody.innerHTML = "";
+            let history = u.pointsHistory || [];
+            if(history.length === 0) { tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:gray;">لا يوجد حركات.</td></tr>`; } else {
+                [...history].reverse().forEach(h => {
+                    let isEarn = h.type === "earn"; let typeBadge = isEarn ? `<span style="background:#28a745; color:white; padding:3px 8px; border-radius:4px; font-size:12px;">إضافة</span>` : `<span style="background:#d9534f; color:white; padding:3px 8px; border-radius:4px; font-size:12px;">خصم</span>`;
+                    let sign = isEarn ? "+" : "-"; let color = isEarn ? "green" : "red";
+                    tbody.innerHTML += `<tr><td style="padding:10px; border-bottom:1px solid #eee;">${h.date}</td><td style="padding:10px; border-bottom:1px solid #eee;">${typeBadge}</td><td style="padding:10px; border-bottom:1px solid #eee; color:${color}; font-weight:bold;">${sign}${h.amount}</td><td style="padding:10px; border-bottom:1px solid #eee;">${h.reason}</td></tr>`;
+                });
+            }
+            document.getElementById("historyCustomerModal").style.display = "flex";
+        }
+
+        window.closeCustomerModals = function() { document.getElementById("editCustomerModal").style.display = "none"; document.getElementById("historyCustomerModal").style.display = "none"; }
+        
+        window.toggleBlockUser = function(phone) { 
+            let phoneKey = window.getShortPhone(phone);
+            let usersDB = JSON.parse(localStorage.getItem("eljory_users_db")) || []; 
+            let u = usersDB.find(x => window.getShortPhone(x.phone) === phoneKey);
+            if(u) { db.ref('/users/' + phoneKey).update({isBlocked: !u.isBlocked}); } 
+        }
+
+        // ================= الطلبات (Orders) =================
+        window.toggleAllOrders = function(source) { document.querySelectorAll('.order-checkbox').forEach(cb => cb.checked = source.checked); }
+        
+        window.loadAdminOrders = function() {
+            let orders = JSON.parse(localStorage.getItem("eljory_orders")) || []; let tbody = document.getElementById("adminOrdersBody"); if(!tbody) return;
+            let filterId = document.getElementById("filterOrderId") ? document.getElementById("filterOrderId").value.trim().toLowerCase() : "";
+            let filterPhone = document.getElementById("filterPhone") ? document.getElementById("filterPhone").value.trim() : "";
+            let filterStatus = document.getElementById("filterStatus") ? document.getElementById("filterStatus").value : "all";
+            let filterDate = document.getElementById("filterDate") ? document.getElementById("filterDate").value.trim() : "";
+            
+            tbody.innerHTML = ""; if(document.getElementById("selectAllOrders")) document.getElementById("selectAllOrders").checked = false;
+            let filteredOrders = [...orders].reverse();
+            filteredOrders.forEach(order => {
+                let c = order.customer || {};
+                if(filterId && !order.id.toLowerCase().includes(filterId)) return; 
+                if(filterPhone && (!c.phone || !c.phone.includes(filterPhone))) return; 
+                if(filterDate && (!order.date || !order.date.includes(filterDate))) return;
+                
+                let st = order.status || "Pending";
+                if(filterStatus !== "all") { 
+                    if(filterStatus === "Pending" && st !== "Pending" && st !== "Processing") return; 
+                    if(filterStatus !== "Pending" && st !== filterStatus) return; 
+                }
+                
+                let statusText = ""; let statusColor = ""; let actionBtns = "";
+                if(st === "Pending" || st === "Processing") { 
+                    statusText = "تم الطلب ⏳"; statusColor = "#f38c18"; actionBtns = `<button class="btn" style="background:#17a2b8; margin-bottom:5px;" onclick="changeOrderStatus('${order.id}', 'Shipped')">🚚 شحن</button> <button class="btn btn-green" style="margin-bottom:5px;" onclick="changeOrderStatus('${order.id}', 'Delivered')">✅ توصيل</button> <button class="btn btn-red" onclick="cancelOrderAdmin('${order.id}')">❌ إلغاء</button>`; 
+                } else if(st === "Shipped") { 
+                    statusText = "تم الشحن 🚚"; statusColor = "#17a2b8"; actionBtns = `<button class="btn btn-green" style="margin-bottom:5px;" onclick="changeOrderStatus('${order.id}', 'Delivered')">✅ توصيل</button> <button class="btn btn-red" onclick="cancelOrderAdmin('${order.id}')">❌ إلغاء</button>`; 
+                } else if(st === "Delivered") { 
+                    statusText = "تم التوصيل ✅"; statusColor = "#28a745"; actionBtns = `<span style="color:gray; font-size:12px; font-weight:bold;">مكتملة</span>`; 
+                } else if(st === "Cancelled") { 
+                    statusText = "تم الإلغاء ❌"; statusColor = "#d9534f"; actionBtns = `<span style="color:gray; font-size:12px; font-weight:bold;">ملغي</span>`; 
+                }
+                tbody.innerHTML += `<tr><td style="text-align: center;"><input type="checkbox" class="order-checkbox" value="${order.id}" style="width:18px; height:18px; cursor:pointer;"></td><td><strong>${order.id}</strong></td><td>${order.date}</td><td><strong>${c.name}</strong><br><small>📞 ${c.phone}</small></td><td style="color:#f38c18; font-weight:bold;">${order.total} ج.م</td><td style="color:${statusColor}; font-weight:bold;">${statusText}</td><td><button class="btn" style="background: #1d364a; margin-bottom:5px;" onclick="openInvoice('${order.id}')">👁️ الفاتورة</button><br>${actionBtns}</td></tr>`;
+            });
+        }
+        
+        window.changeOrderStatus = function(orderId, newStatus) { 
+            let orders = JSON.parse(localStorage.getItem("eljory_orders")) || []; 
+            let order = orders.find(o => o.id === orderId); if(!order) return;
+            
+            let oldStatus = order.status; 
+            db.ref('/orders/' + orderId).update({status: newStatus}).then(() => {
+                let alertMsg = "تم تغيير حالة الطلب بنجاح!";
+                
+                if (newStatus === "Delivered" && oldStatus !== "Delivered") {
+                    let loyaltySettings = JSON.parse(localStorage.getItem("eljory_loyalty_settings")) || { system: "global", spent: 10, earn: 1 };
+                    let pointsEarned = 0; let orderTotal = parseFloat(order.total) || 0;
+                    let orderPhoneShort = window.getShortPhone(order.customer.phone);
+                    let usersDB = JSON.parse(localStorage.getItem("eljory_users_db")) || [];
+                    let u = usersDB.find(u => window.getShortPhone(u.phone) === orderPhoneShort);
+                    
+                    if (u) {
+                        if (loyaltySettings.system === "global") {
+                            let spent = parseFloat(loyaltySettings.spent) || 10; let earn = parseFloat(loyaltySettings.earn) || 1;
+                            pointsEarned = Math.floor(orderTotal / spent) * earn;
+                        } else if (loyaltySettings.system === "product") {
+                            let productsDB = JSON.parse(localStorage.getItem("eljory_products")) || [];
+                            if(order.items) { order.items.forEach(item => { let p = productsDB.find(prod => String(prod.id) === String(item.id)); if (p && p.points) pointsEarned += (parseFloat(p.points) * (parseInt(item.qty) || 1)); }); }
+                        }
+                        if (pointsEarned > 0) {
+                            db.ref('/users/' + orderPhoneShort + '/points').transaction(curr => (curr || 0) + pointsEarned);
+                            let historyRef = db.ref('/users/' + orderPhoneShort + '/pointsHistory');
+                            historyRef.once('value').then(snap => {
+                                let hist = snap.val() || [];
+                                hist.push({ type: "earn", amount: pointsEarned, reason: `كسب نقاط من طلب رقم #${order.id} (بقيمة ${orderTotal} ج.م)`, date: new Date().toLocaleDateString('en-GB') });
+                                historyRef.set(hist);
+                            });
+                            db.ref('/orders/' + orderId).update({earnedPoints: pointsEarned}); 
+                            alertMsg = `تم التوصيل بنجاح! ✅\nتمت إضافة (${pointsEarned}) نقطة لمحفظة العميل.`;
+                        }
+                    } else { alertMsg = `تم التوصيل ✅\n⚠️ تحذير: لم يتم العثور على حساب مسجل لإضافة النقاط.`; }
+                }
+                alert(alertMsg); 
+            });
+        };
+
+        window.cancelOrderAdmin = function(orderId) {
+            if(!confirm("هل أنت متأكد من إلغاء هذا الطلب وإرجاع المنتجات للمخزون؟")) return;
+            let orders = JSON.parse(localStorage.getItem("eljory_orders")) || [];
+            let order = orders.find(o => o.id === orderId); if(!order) return;
+
+            db.ref('/orders/' + orderId).update({status: "Cancelled"}).then(() => {
+                if(order.items) {
+                    order.items.forEach(item => {
+                        db.ref('/products/' + item.id + '/stock').transaction(stock => (stock || 0) + item.qty);
+                    });
+                }
+                alert("تم الإلغاء بنجاح!");
+            });
+        };
+
+        window.openInvoice = function(orderId) {
+            let orders = JSON.parse(localStorage.getItem("eljory_orders")) || [];
+            let order = orders.find(o => o.id === orderId); if(!order) return; 
+            
+            let c = order.customer || {}; 
+            document.getElementById("invCustNameNew").innerText = c.name || "---";
+            document.getElementById("invCustPhoneNew").innerText = c.phone || "---";
+            document.getElementById("invCustAddrNew").innerText = c.address || "---";
+            document.getElementById("invDateNew").innerText = order.date || "---";
+            document.getElementById("invShipFeeNew").innerText = order.shippingFee || "0";
+            
+            let tbody = document.getElementById("invProductsNew"); 
+            let allProds = JSON.parse(localStorage.getItem("eljory_products")) || [];
+            let rowsHtml = "";
+            
+            order.items.forEach(item => { 
+                let pData = allProds.find(p => p.id === item.id); 
+                let pName = pData ? pData.titleAr : item.id; 
+                let rowTotal = item.price * item.qty;
+                rowsHtml += `<tr><td style="border: 2px solid black; border-right: none; padding: 6px; text-align: center;">${item.id}</td><td style="border: 2px solid black; padding: 6px; text-align: center;">${pName}</td><td style="border: 2px solid black; padding: 6px; text-align: center;">${item.qty}</td><td style="border: 2px solid black; padding: 6px; text-align: center;">${item.price}</td><td style="border: 2px solid black; border-left: none; padding: 6px; text-align: center;">${rowTotal}</td></tr>`; 
+            });
+            
+            let emptyRows = 4 - order.items.length; if (emptyRows < 0) emptyRows = 0;
+            for(let i=0; i < emptyRows; i++){ rowsHtml += `<tr><td style="border: 2px solid black; border-right: none; height: 25px; text-align: center;"></td><td style="border: 2px solid black; text-align: center;"></td><td style="border: 2px solid black; text-align: center;"></td><td style="border: 2px solid black; text-align: center;"></td><td style="border: 2px solid black; border-left: none; text-align: center;"></td></tr>`; }
+            
+            tbody.innerHTML = rowsHtml;
+            document.getElementById("invTotalAmountNew").innerText = order.total; 
+            document.getElementById("invoiceModal").style.display = "flex";
+        }
+
+        window.printSingleInvoice = function() {
+            let printContent = document.getElementById("printArea").innerHTML;
+            printContentViaIframe(`<div class="page-break">${printContent}</div>`);
+        }
+
+        window.printSelectedOrders = function() {
+            let checkboxes = document.querySelectorAll('.order-checkbox:checked');
+            if(checkboxes.length === 0) { alert("يرجى تحديد طلب واحد على الأقل للطباعة"); return; }
+            let orders = JSON.parse(localStorage.getItem("eljory_orders")) || [];
+            let allInvoicesHtml = "";
+            checkboxes.forEach(cb => {
+                let order = orders.find(o => o.id === cb.value); if(!order) return;
+                allInvoicesHtml += `<div class="page-break">` + generateInvoiceTemplate(order) + `</div>`;
+            });
+            printContentViaIframe(allInvoicesHtml);
+        }
+
+        window.printContentViaIframe = function(content) {
+            let iframe = document.createElement('iframe'); iframe.style.display = 'none'; document.body.appendChild(iframe);
+            let basePath = window.location.href.split('?')[0]; basePath = basePath.substring(0, basePath.lastIndexOf('/') + 1);
+            let html = `
+            <html dir="rtl"><head><title>طباعة الفاتورة - El Jory Store</title><base href="${basePath}">
+                <style> @page { size: A5 landscape; margin: 3mm; } body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: white; margin: 0; padding: 0; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; } .page-break { page-break-after: always; page-break-inside: avoid; width: 100%; height: 138mm; overflow: hidden; margin: 0; padding: 5px; } .page-break:last-child { page-break-after: auto; } .page-break > div, #printArea { zoom: 0.7; width: 100% !important; max-width: 1000px; margin: 0 auto; padding: 0 !important; } table { font-size: 16px !important; margin-bottom: 0 !important; } td { padding: 4px !important; } td[style*="height: 25px"] { height: 18px !important; } div[style*="margin-top: 15px"] { margin-top: 5px !important; font-size: 14px !important; } div[style*="margin-top: 10px"] { margin-top: 2px !important; font-size: 14px !important; } </style>
+            </head><body>${content}<script>window.onload = function() { setTimeout(() => { window.print(); }, 800); }<\/script></body></html>`;
+            iframe.contentWindow.document.open(); iframe.contentWindow.document.write(html); iframe.contentWindow.document.close();
+            setTimeout(() => { document.body.removeChild(iframe); }, 5000); 
+        }
+
+        window.generateInvoiceTemplate = function(order) {
+            let allProds = JSON.parse(localStorage.getItem("eljory_products")) || []; let c = order.customer || {}; 
+            let custName = c.name || "---"; let custPhone = c.phone || "---"; let custAddr = c.address || "---"; let orderDate = order.date || "---"; let shipFee = order.shippingFee || "0";
+            let rowsHtml = "";
+            order.items.forEach(item => { 
+                let pData = allProds.find(p => p.id === item.id); let pName = pData ? pData.titleAr : item.id; let rowTotal = item.price * item.qty;
+                rowsHtml += `<tr><td style="border: 2px solid black; border-right: none; padding: 6px; text-align: center;">${item.id}</td><td style="border: 2px solid black; padding: 6px; text-align: center;">${pName}</td><td style="border: 2px solid black; padding: 6px; text-align: center;">${item.qty}</td><td style="border: 2px solid black; padding: 6px; text-align: center;">${item.price}</td><td style="border: 2px solid black; border-left: none; padding: 6px; text-align: center;">${rowTotal}</td></tr>`; 
+            });
+            let emptyRows = 4 - order.items.length; if (emptyRows < 0) emptyRows = 0;
+            for(let i=0; i < emptyRows; i++){ rowsHtml += `<tr><td style="border: 2px solid black; border-right: none; height: 25px; text-align: center;"></td><td style="border: 2px solid black; text-align: center;"></td><td style="border: 2px solid black; text-align: center;"></td><td style="border: 2px solid black; text-align: center;"></td><td style="border: 2px solid black; border-left: none; text-align: center;"></td></tr>`; }
+            return `<div style="width: 100%; max-width: 1000px; margin: 0 auto; background: white; padding: 5px;"><div style="border: 4px solid black; display: flex; direction: rtl; position: relative; background: white;"><div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; z-index: 0; opacity: 0.15; pointer-events: none;"><div style="text-align: center; line-height: 1;"><span style="font-size: 120px; font-weight: 900; letter-spacing: -5px; color: #1d364a;">El</span><span style="font-size: 120px; font-weight: 900; letter-spacing: -5px; color: #e68a10;">Jory</span><br><span style="font-size: 40px; font-weight: bold; letter-spacing: 15px; color: #1d364a;">STORE</span></div></div><div style="width: 85%; z-index: 1;"><table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 18px; font-weight: bold;"><tr><td colspan="5" style="background: #e68a10; color: white; border-bottom: 2px solid black; padding: 8px; font-size: 28px; font-weight: 900; letter-spacing: 2px; text-align: center;">El Jory Store &nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp; 01100395049</td></tr><tr><td style="border: 2px solid black; border-right: none; padding: 6px; width: 15%; text-align: center;">التاريخ :-</td><td colspan="4" style="border: 2px solid black; border-left: none; padding: 6px; font-size: 20px; text-align: center;">${orderDate}</td></tr><tr><td style="border: 2px solid black; border-right: none; padding: 6px; text-align: center;">اسم العميل :-</td><td style="border: 2px solid black; padding: 6px; width: 35%; text-align: center;">${custName}</td><td style="border: 2px solid black; padding: 6px; width: 15%; text-align: center;">تليفون</td><td colspan="2" style="border: 2px solid black; border-left: none; padding: 6px; font-size: 18px; text-align: center;">${custPhone}</td></tr><tr><td style="border: 2px solid black; border-right: none; padding: 6px; text-align: center;">العنوان :-</td><td colspan="4" style="border: 2px solid black; border-left: none; padding: 6px; text-align: center;">${custAddr}</td></tr><tr style="background: #f9f9f9;"><td style="border: 2px solid black; border-right: none; padding: 8px; font-size: 18px; text-align: center; width: 12%;">كود</td><td style="border: 2px solid black; padding: 8px; font-size: 18px; text-align: center; width: 38%;">اسم المنتج</td><td style="border: 2px solid black; padding: 8px; font-size: 18px; text-align: center;">الكمية</td><td style="border: 2px solid black; padding: 8px; font-size: 18px; text-align: center;">السعر للوحدة</td><td style="border: 2px solid black; border-left: none; padding: 8px; font-size: 18px; text-align: center; width: 15%;">الإجمالي</td></tr>${rowsHtml}<tr><td colspan="4" style="border: 2px solid black; border-right: none; padding: 6px; text-align: center;">مصاريف شحن</td><td style="border: 2px solid black; border-left: none; padding: 6px; font-size: 18px; text-align: center;">${shipFee}</td></tr><tr><td colspan="4" style="border: 2px solid black; border-right: none; border-bottom: none; padding: 6px; font-size: 22px; text-align: center; font-weight: bold;">الإجمالي</td><td style="border: 2px solid black; border-left: none; border-bottom: none; padding: 6px; background: linear-gradient(to right, #1d364a, #e68a10); color: white; font-size: 24px; letter-spacing: 1px; text-align: center; -webkit-print-color-adjust: exact;">${order.total}</td></tr></table></div><div style="width: 15%; border-right: 4px solid black; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 10px 0; z-index: 1; background: white;"><div style="width: 80px; height: 80px; display: flex; justify-content: center; align-items: center;"><img src="qr-code face book .png" alt="Facebook QR" style="max-width: 100%; max-height: 100%; object-fit: contain;"></div><div style="width: 100%; padding: 0 5px; display: flex; justify-content: center; align-items: center; margin: 15px 0;"><img src="logo.png" alt="El Jory Store Logo" style="max-width: 100%; height: auto; object-fit: contain;"></div><div style="width: 80px; height: 80px; display: flex; justify-content: center; align-items: center;"><img src="qr-code whatsapp .png" alt="WhatsApp QR" style="max-width: 100%; max-height: 100%; object-fit: contain;"></div></div></div><div style="text-align: center; font-weight: bold; font-size: 14px; margin-top: 10px; color: black;">ضمان على منتجات الإكسسوارات لمدة 6 أشهر، وضمان الحماية لمدة 12 شهرًا من تاريخ الفاتورة.</div></div>`;
+        }
+
+        // ================= العروض والبروموكود (Promos) =================
+        let promoSelectedProducts = [];
+        window.togglePromoValue = function() { let type = document.getElementById("promoType").value; document.getElementById("promoValueGroup").style.display = type === "shipping" ? "none" : "block"; }
+        window.togglePromoScope = function() {
+            let scope = document.getElementById("promoScope").value; let box = document.getElementById("specificProductsBox");
+            if(scope === "specific") { box.style.display = "block"; let products = JSON.parse(localStorage.getItem("eljory_products")) || []; let select = document.getElementById("promoSelectProd"); select.innerHTML = `<option value="">-- اختر منتج --</option>`; products.forEach(p => select.innerHTML += `<option value="${p.id}">${p.titleAr} (${p.id})</option>`); renderPromoSelectedList(); } else { box.style.display = "none"; promoSelectedProducts = []; }
+        }
+        window.addProdToPromo = function() { let select = document.getElementById("promoSelectProd"); let val = select.value; if(val && !promoSelectedProducts.includes(val)) { promoSelectedProducts.push(val); renderPromoSelectedList(); } }
+        window.removeProdFromPromo = function(id) { promoSelectedProducts = promoSelectedProducts.filter(p => p !== id); renderPromoSelectedList(); }
+        window.renderPromoSelectedList = function() { let list = document.getElementById("promoSelectedList"); list.innerHTML = ""; let products = JSON.parse(localStorage.getItem("eljory_products")) || []; promoSelectedProducts.forEach(id => { let p = products.find(prod => prod.id === id); let name = p ? p.titleAr : id; list.innerHTML += `<span class="badge">${name} <span class="badge-remove" onclick="removeProdFromPromo('${id}')">✖</span></span>`; }); }
+        window.uploadPromoFile = function(event) {
+            const file = event.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = function(e) { const text = e.target.result; const ids = text.split(/[\r\n,]+/).map(id => id.trim()).filter(id => id); let products = JSON.parse(localStorage.getItem("eljory_products")) || []; let validIds = products.map(p => p.id); let addedCount = 0; ids.forEach(id => { if(validIds.includes(id) && !promoSelectedProducts.includes(id)) { promoSelectedProducts.push(id); addedCount++; } }); renderPromoSelectedList(); alert(`تم سحب ${addedCount} منتج صحيح من الملف!`); event.target.value = ""; }; reader.readAsText(file);
+        }
+        
+        window.savePromo = function() {
+            let code = document.getElementById("promoCode").value.trim().toUpperCase(); let type = document.getElementById("promoType").value; let value = parseFloat(document.getElementById("promoValue").value) || 0; let scope = document.getElementById("promoScope").value; let start = document.getElementById("promoStart").value; let end = document.getElementById("promoEnd").value; let label = document.getElementById("promoLabel").value.trim() || "خصم خاص!";
+            if(!code || !start || !end) return alert("يرجى كتابة الكود وتحديد وقت البدء والانتهاء!"); if(type !== "shipping" && value <= 0) return alert("يرجى كتابة قيمة الخصم!"); if(scope === "specific" && promoSelectedProducts.length === 0) return alert("لم تقم بتحديد أي منتجات للخصم!");
+
+            safeUpdateList('/promos', promos => {
+                if(promos.find(p => p.code === code)) throw new Error("DUPLICATE_CODE");
+                promos.push({ code: code, type: type, value: value, scope: scope, products: scope === "specific" ? [...promoSelectedProducts] : [], start: start, end: end, label: label });
+                return promos;
+            }).then(() => {
+                alert("تم حفظ البروموكود!"); document.getElementById("promoCode").value = ""; promoSelectedProducts = []; 
+            }).catch(err => {
+                if(err.message === "DUPLICATE_CODE") alert("كود الخصم ده موجود قبل كده!");
+                else { console.error(err); alert("حدث خطأ أثناء الحفظ."); }
+            });
+        }
+        
+        window.renderAdminPromos = function() {
+            let tbody = document.getElementById("adminPromosBody"); if(!tbody) return; let promos = JSON.parse(localStorage.getItem("eljory_promos")) || []; tbody.innerHTML = ""; let now = new Date();
+            promos.forEach((p) => {
+                let sDate = new Date(p.start); let eDate = new Date(p.end); let status = ""; let color = "";
+                if(now < sDate) { status = "لم يبدأ بعد ⏳"; color = "#f38c18"; } else if(now > eDate) { status = "منتهي ❌"; color = "#d9534f"; } else { status = "نشط الآن ✅"; color = "#28a745"; }
+                let typeText = p.type === "percent" ? "نسبة %" : (p.type === "fixed" ? "مبلغ ثابت" : "شحن مجاني"); let scopeText = p.scope === "all" ? "الكل" : `${(p.products || []).length} منتجات`;
+                tbody.innerHTML += `<tr><td><strong>${p.code}</strong></td><td>${typeText}</td><td>${p.type === "shipping" ? "-" : p.value}</td><td style="font-size:12px;">${p.start.replace("T", " ")}</td><td style="font-size:12px;">${p.end.replace("T", " ")}</td><td>${scopeText}</td><td style="color:${color}; font-weight:bold;">${status}</td><td><button class="btn btn-red" onclick="deletePromo('${p.code}')">حذف</button></td></tr>`;
+            });
+        }
+        
+        window.deletePromo = function(code) { 
+            safeUpdateList('/promos', promos => promos.filter(p => p.code !== code));
+        }
+
+        // ================= الولاء والمكافآت (Loyalty & Rewards) =================
+        window.loadAdminLoyalty = function() {
+            let settings = JSON.parse(localStorage.getItem("eljory_loyalty_settings")) || { system: "global", spent: 10, earn: 1, expiry: "" };
+            if(document.getElementById("loyaltySysGlobal")) {
+                document.getElementById("loyaltySysGlobal").checked = settings.system === "global"; document.getElementById("loyaltySysProduct").checked = settings.system === "product";
+                document.getElementById("loyaltyGlobalSpent").value = settings.spent; document.getElementById("loyaltyGlobalEarn").value = settings.earn; document.getElementById("loyaltyExpiry").value = settings.expiry;
+                toggleLoyaltyView(); renderLoyaltyProductsTable();
+            }
+        }
+        window.toggleLoyaltyView = function() {
+            let system = document.querySelector('input[name="loyaltySystem"]:checked').value; document.getElementById("loyaltyGlobalSettings").style.display = system === "global" ? "block" : "none"; document.getElementById("loyaltyProductSettings").style.display = system === "product" ? "block" : "none";
+            document.getElementById("labelSysGlobal").style.borderColor = system === "global" ? "#f38c18" : "transparent"; document.getElementById("labelSysProduct").style.borderColor = system === "product" ? "#f38c18" : "transparent";
+        }
+        window.saveLoyaltySettings = function() {
+            let system = document.querySelector('input[name="loyaltySystem"]:checked').value; let spent = document.getElementById("loyaltyGlobalSpent").value || 10; let earn = document.getElementById("loyaltyGlobalEarn").value || 1; let expiry = document.getElementById("loyaltyExpiry").value;
+            let settings = { system: system, spent: parseFloat(spent), earn: parseFloat(earn), expiry: expiry }; 
+            db.ref('/settings').set(settings).then(() => alert("تم حفظ إعدادات الولاء!"));
+        }
+        window.renderLoyaltyProductsTable = function() {
+            let tbody = document.getElementById("loyaltyProductsBody"); if(!tbody) return; tbody.innerHTML = ""; let products = JSON.parse(localStorage.getItem("eljory_products")) || [];
+            products.forEach((p) => { let currentPts = p.points || 0; tbody.innerHTML += `<tr><td><img src="${p.img}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;"></td><td><strong>${p.titleAr}</strong></td><td>${p.price} ج.م</td><td><input type="number" id="pts_${p.id}" class="form-control" value="${currentPts}" style="width: 100%;"></td><td><button class="btn btn-green" onclick="saveProductPoints('${p.id}')">حفظ</button></td></tr>`; });
+        }
+        window.saveProductPoints = function(productId) {
+            let newPts = parseFloat(document.getElementById(`pts_${productId}`).value) || 0; 
+            db.ref('/products/' + productId + '/points').set(newPts).then(() => alert("تم حفظ النقاط للمنتج!"));
+        }
+
+        window.toggleRewardFields = function() {
+            let type = document.getElementById("rewardType").value; document.getElementById("rewardDiscountGroup").style.display = type === "discount" ? "block" : "none"; document.getElementById("rewardGiftDescGroup").style.display = type === "gift" ? "block" : "none"; document.getElementById("rewardGiftImgGroup").style.display = type === "gift" ? "block" : "none";
+        }
+        window.saveReward = function() {
+            let name = document.getElementById("rewardName").value.trim(); let cost = parseInt(document.getElementById("rewardCost").value); let type = document.getElementById("rewardType").value; let discountVal = parseFloat(document.getElementById("rewardDiscountVal").value) || 0; let giftDesc = document.getElementById("rewardGiftDesc").value.trim(); let giftImg = document.getElementById("rewardGiftImg").value.trim();
+            if(!name || isNaN(cost) || cost <= 0) return alert("يرجى إدخال تكلفة المكافأة بشكل صحيح!"); if(type === "discount" && discountVal <= 0) return alert("يرجى إدخال قيمة الخصم!"); if(type === "gift" && !giftDesc) return alert("يرجى كتابة الوصف!");
+            safeUpdateList('/rewards', rewards => {
+                rewards.push({ id: "RWD_" + Date.now(), name: name, cost: cost, type: type, discountVal: discountVal, giftDesc: giftDesc, giftImg: giftImg || "https://via.placeholder.com/100" });
+                return rewards;
+            }).then(() => {
+                alert("تمت إضافة المكافأة!"); document.getElementById("rewardName").value = ""; document.getElementById("rewardCost").value = ""; document.getElementById("rewardDiscountVal").value = ""; document.getElementById("rewardGiftDesc").value = ""; document.getElementById("rewardGiftImg").value = ""; 
+            });
+        }
+        window.renderAdminRewards = function() {
+            let tbody = document.getElementById("adminRewardsBody"); if(!tbody) return; tbody.innerHTML = ""; let rewards = JSON.parse(localStorage.getItem("eljory_rewards")) || [];
+            rewards.forEach((r) => {
+                let typeText = r.type === "discount" ? "خصم مالي" : (r.type === "shipping" ? "شحن مجاني" : "هدية خارجية"); let detailsText = r.type === "discount" ? `خصم ${r.discountVal} ج.م` : (r.type === "shipping" ? "-" : `<img src="${r.giftImg}" style="width:40px; height:40px; object-fit:cover; border-radius:5px;"><br><small style="color:gray;">${r.giftDesc}</small>`);
+                tbody.innerHTML += `<tr><td><strong>${r.name}</strong></td><td>${typeText}</td><td><span style="color:#f38c18; font-weight:bold; font-size:16px;">${r.cost} نقطة</span></td><td>${detailsText}</td><td><button class="btn btn-red" onclick="deleteReward('${r.id}')">حذف</button></td></tr>`;
+            });
+        }
+        window.deleteReward = function(id) { if(!confirm("متأكد من الحذف؟")) return; safeUpdateList('/rewards', rewards => rewards.filter(r => r.id !== id)); }
+
+        window.renderGlobalPoints = function() {
+            let tbody = document.getElementById("globalPointsBody"); if(!tbody) return;
+            let nameF = document.getElementById("filterPtsName").value.trim().toLowerCase(); let phoneF = document.getElementById("filterPtsPhone").value.trim(); let reasonF = document.getElementById("filterPtsReason").value.trim().toLowerCase(); let dateF = document.getElementById("filterPtsDate").value.trim().toLowerCase();
+            let usersDB = JSON.parse(localStorage.getItem("eljory_users_db")) || []; let allTransactions = [];
+            usersDB.forEach(u => { if(u.pointsHistory && u.pointsHistory.length > 0) { u.pointsHistory.forEach(h => { allTransactions.push({ name: u.name || "غير معروف", phone: u.phone || "-", date: h.date || "", type: h.type, amount: h.amount, reason: h.reason || "" }); }); } });
+            allTransactions.reverse();
+            let filtered = allTransactions.filter(t => {
+                if(nameF && !t.name.toLowerCase().includes(nameF)) return false; if(phoneF && !t.phone.includes(phoneF)) return false;
+                if(reasonF && !t.reason.toLowerCase().includes(reasonF)) return false; if(dateF && !t.date.toLowerCase().includes(dateF)) return false; return true;
+            });
+            tbody.innerHTML = "";
+            if(filtered.length === 0) { tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:gray; padding:20px;">لا توجد حركات مطابقة للبحث.</td></tr>`; return; }
+            filtered.forEach(t => {
+                let isEarn = t.type === "earn"; let typeBadge = isEarn ? `<span style="background:#28a745; color:white; padding:3px 8px; border-radius:4px; font-size:12px;">إضافة</span>` : `<span style="background:#d9534f; color:white; padding:3px 8px; border-radius:4px; font-size:12px;">خصم</span>`;
+                let sign = isEarn ? "+" : "-"; let color = isEarn ? "green" : "red";
+                tbody.innerHTML += `<tr><td style="font-size:13px;">${t.date}</td><td><strong>${t.name}</strong><br><small>📞 ${t.phone}</small></td><td>${typeBadge}</td><td style="color:${color}; font-weight:bold; font-size:15px;">${sign}${t.amount}</td><td style="font-size:13px;">${t.reason}</td></tr>`;
+            });
+        }
+        window.exportGlobalPointsCSV = function() {
+            let usersDB = JSON.parse(localStorage.getItem("eljory_users_db")) || []; let allTransactions = [];
+            usersDB.forEach(u => { if(u.pointsHistory && u.pointsHistory.length > 0) { u.pointsHistory.forEach(h => { allTransactions.push({ name: u.name || "غير معروف", phone: u.phone || "-", date: h.date || "", type: h.type, amount: h.amount, reason: h.reason || "" }); }); } });
+            if(allTransactions.length === 0) return alert("لا توجد بيانات لتصديرها.");
+            let csvContent = "التاريخ;اسم العميل;التليفون;نوع الحركة;النقاط;السبب والتفاصيل\r\n";
+            allTransactions.reverse().forEach(t => { let typeStr = t.type === "earn" ? "إضافة" : "خصم"; let sign = t.type === "earn" ? "+" : "-"; let row = [`"${t.date}"`, `"${t.name}"`, `"${t.phone}"`, `"${typeStr}"`, `"${sign}${t.amount}"`, `"${t.reason}"`]; csvContent += row.join(";") + "\r\n"; });
+            let bom = new Uint8Array([0xEF, 0xBB, 0xBF]); let blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' }); let url = URL.createObjectURL(blob); let link = document.createElement("a"); link.setAttribute("href", url); link.setAttribute("download", `ElJory_Points_History.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        }
+
+        // ================= واجهة المتجر والبانرات (Storefront & Banners) =================
+        window.updateBannerLinkPlaceholder = function() {
+            let type = document.getElementById("bannerLinkType").value; let input = document.getElementById("bannerLinkValue");
+            if(type === "product") input.placeholder = "اكتب كود المنتج المستهدف هنا..."; else if(type === "category") input.placeholder = "اكتب كود القسم المستهدف هنا..."; else input.placeholder = "https://example.com/custom-link";
+        }
+        window.saveBanner = function() {
+            let title = document.getElementById("bannerTitle").value.trim(); let img = document.getElementById("bannerImg").value.trim(); let linkType = document.getElementById("bannerLinkType").value; let linkValue = document.getElementById("bannerLinkValue").value.trim(); let priority = parseInt(document.getElementById("bannerPriority").value) || 1;
+            if(!img) return alert("يرجى اختيار صورة للبانر الإعلاني!");
+            safeUpdateList('/banners', banners => {
+                banners.push({ id: "BNR_" + Date.now(), title, img, linkType, linkValue, priority, isActive: true });
+                return banners;
+            }).then(() => {
+                document.getElementById("bannerTitle").value = ""; document.getElementById("bannerLinkValue").value = ""; document.getElementById("bannerPriority").value = "1";
+                alert("تم حفظ وتفعيل البانر الإعلاني على الواجهة!");
+            });
+        }
+        window.renderAdminBanners = function() {
+            let tbody = document.getElementById("adminBannersBody"); if(!tbody) return; tbody.innerHTML = "";
+            let banners = JSON.parse(localStorage.getItem("eljory_banners")) || []; banners.sort((a,b) => a.priority - b.priority);
+            if(banners.length === 0) { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:gray; padding:20px;">لا توجد إعلانات أو بانرات معروضة حالياً.</td></tr>`; return; }
+            banners.forEach((b) => {
+                let isActive = b.isActive !== false; let activeBtn = `<button class="btn ${isActive ? 'btn-green' : 'btn-inactive'}" style="padding:5px 10px;" onclick="toggleBannerStatus('${b.id}')">${isActive ? 'نشط 👁️' : 'مخفي 🙈'}</button>`;
+                let routeTxt = b.linkType === "product" ? `منتج: ${b.linkValue}` : (b.linkType === "category" ? `قسم: ${b.linkValue}` : `رابط: ${b.linkValue || '-'}`);
+                tbody.innerHTML += `<tr><td><img src="${b.img}" style="width:120px; height:40px; object-fit:cover; border-radius:4px; border:1px solid #ddd;"></td><td><strong>${b.title || "بدون عنوان"}</strong></td><td><small style="background:#eef2f5; padding:3px 6px; border-radius:4px;">${routeTxt}</small></td><td>${b.priority}</td><td>${activeBtn}</td><td><button class="btn btn-red" onclick="deleteBanner('${b.id}')">حذف</button></td></tr>`;
+            });
+        }
+        window.toggleBannerStatus = function(id) {
+            safeUpdateList('/banners', banners => {
+                let index = banners.findIndex(b => b.id === id);
+                if(index > -1) banners[index].isActive = !banners[index].isActive;
+                return banners;
+            });
+        }
+        window.deleteBanner = function(id) {
+            if(!confirm("هل أنت متأكد من مسح هذا البانر الإعلاني؟")) return;
+            safeUpdateList('/banners', banners => banners.filter(b => b.id !== id));
+        }
+
+        // ================= استوديو الصور (Gallery) =================
+        let currentTargetInputId = null; let directUploadTargetId = null;
+        window.openGalleryModal = function(targetInputId = null) { currentTargetInputId = targetInputId; document.getElementById("galleryModal").style.display = "flex"; renderGalleryGrid(); }
+        window.closeGalleryModal = function() { document.getElementById("galleryModal").style.display = "none"; currentTargetInputId = null; }
+        window.renderGalleryGrid = function() {
+            let gallery = JSON.parse(localStorage.getItem("eljory_gallery")) || []; let gridArea = document.getElementById("galleryGridArea"); gridArea.innerHTML = "";
+            if(gallery.length === 0) { gridArea.innerHTML = "<p style='grid-column: 1 / -1; text-align: center; color: gray; padding: 20px; font-weight:bold;'>الاستوديو فارغ حالياً.</p>"; return; }
+            [...gallery].reverse().forEach((imgObj) => {
+                gridArea.innerHTML += `<div style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; flex-direction: column;"><div style="height: 150px; background: #f4f4f4; display: flex; justify-content: center; align-items: center; overflow: hidden;"><img src="${imgObj.data}" style="width: 100%; height: 100%; object-fit: cover; cursor: pointer;" onclick="selectImageFromGallery('${imgObj.data}')" title="اضغط لاختيار هذه الصورة"></div><div style="padding: 10px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between;"><p style="font-size: 12px; margin: 0 0 10px 0; color: #333; word-break: break-all; text-align: center; font-weight: bold;">${imgObj.name}</p><button onclick="deleteFromGallery('${imgObj.id}')" style="background: #d9534f; color: white; border: none; padding: 5px; cursor: pointer; border-radius: 4px; font-size: 12px; width: 100%;">🗑️ حذف الصورة</button></div></div>`;
+            });
+        }
+        window.selectImageFromGallery = function(imgData) {
+            if (currentTargetInputId) { let inputField = document.getElementById(currentTargetInputId); if(inputField) { inputField.value = imgData; inputField.dispatchEvent(new Event('change')); } closeGalleryModal(); } 
+            else { navigator.clipboard.writeText(imgData).then(() => alert("📋 تم نسخ الرابط السحابي للصورة!")); }
+        }
+        window.triggerDirectUpload = function(inputId) { directUploadTargetId = inputId; document.getElementById("directUploadInput").click(); };
+        window.handleDirectUpload = function(event) { let file = event.target.files[0]; if(!file) return; compressAndSaveImage(file, true); };
+        window.uploadToGallery = function(event) { let file = event.target.files[0]; if(!file) return; compressAndSaveImage(file, false); };
+
+        function compressAndSaveImage(file, isDirectUpload) {
+            let targetId = isDirectUpload ? directUploadTargetId : null; let isBanner = targetId === 'bannerImg' || targetId === 'editBannerImg'; let isProduct = targetId === 'newProdImg' || targetId === 'editCatImg';
+            let targetW, targetH, forceCrop = false;
+            if (isBanner) { targetW = 1200; targetH = 400; forceCrop = true; } else if (isProduct) { targetW = 600; targetH = 600; forceCrop = true; } else { targetW = 800; forceCrop = false; }
+            let uploadMsg = isDirectUpload && targetId ? document.getElementById(targetId) : null; if(uploadMsg) uploadMsg.value = "جاري الرفع لـ Firebase... ⏳";
+
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                let img = new Image();
+                img.onload = function() {
+                    let canvas = document.createElement('canvas'); let ctx = canvas.getContext('2d');
+                    if (forceCrop) {
+                        canvas.width = targetW; canvas.height = targetH; let imgRatio = img.width / img.height; let targetRatio = targetW / targetH; let srcX = 0, srcY = 0, srcW = img.width, srcH = img.height;
+                        if (imgRatio > targetRatio) { srcW = img.height * targetRatio; srcX = (img.width - srcW) / 2; } else { srcH = img.width / targetRatio; srcY = (img.height - srcH) / 2; }
+                        ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, targetW, targetH);
+                    } else {
+                        let scaleSize = targetW / img.width; if (img.width > targetW) { canvas.width = targetW; canvas.height = img.height * scaleSize; } else { canvas.width = img.width; canvas.height = img.height; }
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    }
+                    canvas.toBlob(function(blob) {
+                        let fileName = "IMG_" + Date.now() + ".jpg"; let storageRef = storage.ref('gallery/' + fileName);
+                        storageRef.put(blob).then(function(snapshot) {
+                            snapshot.ref.getDownloadURL().then(function(downloadURL) {
+                                safeUpdateList('/gallery', gallery => {
+                                    gallery.push({ id: fileName, name: file.name, data: downloadURL });
+                                    return gallery;
+                                }).then(() => {
+                                    if(isDirectUpload && targetId) { let inputField = document.getElementById(targetId); if(inputField) { inputField.value = downloadURL; inputField.dispatchEvent(new Event('change')); } } 
+                                    else { alert("✅ تم رفع الصورة للسحابة بنجاح!"); renderGalleryGrid(); }
+                                });
+                            });
+                        }).catch(function(error) { alert("❌ فشل الرفع لفايربيس!"); if(uploadMsg) uploadMsg.value = ""; });
+                    }, 'image/jpeg', 0.85);
+                }
+                img.src = e.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+        window.deleteFromGallery = function(id) {
+            if(confirm("هل أنت متأكد من حذف هذه الصورة؟ (سيتم حذف الرابط فقط من الاستوديو)")) {
+                safeUpdateList('/gallery', gallery => gallery.filter(g => g.id !== id));
+            }
+        }
+
+        // ================= الإعدادات المبدئية عند فتح الصفحة =================
+
+        window.doAdminLogin = function() {
+         let email = document.getElementById("adminLoginEmail").value.trim();
+         let pass = document.getElementById("adminLoginPass").value;
+         let errBox = document.getElementById("adminLoginError");
+         let btn = document.getElementById("adminLoginSubmitBtn");
+           errBox.style.display = "none";
+         btn.disabled = true; btn.innerText = "جاري الدخول... ⏳";
+
+         firebase.auth().signInWithEmailAndPassword(email, pass)
+         .catch(error => {
+            errBox.innerText = "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
+            errBox.style.display = "block";
+            btn.disabled = false; btn.innerText = "دخول";
+         });
+        } 
+
+        document.addEventListener("DOMContentLoaded", () => {
+            let activeTab = localStorage.getItem("admin_active_tab") || "orders"; 
+            switchTab(activeTab); 
+        });
+
+        window.applyTranslations = function() { return false; };
+        document.documentElement.setAttribute("dir", "rtl");
+        document.documentElement.setAttribute("lang", "ar");
+
+        // 1. دالة إضافة مدير جديد (بذكاء بدون تسجيل خروج)
+        window.addNewAdmin = function(event) {
+            let email = document.getElementById("newAdminEmail").value.trim();
+            let pass = document.getElementById("newAdminPass").value;
+
+            if(!email || pass.length < 6) {
+                alert("يرجى كتابة بريد إلكتروني صحيح وكلمة مرور لا تقل عن 6 أحرف!");
+                return;
+            }
+
+            let btn = event.target;
+            btn.innerText = "جاري إضافة المدير للسحابة... ⏳";
+            btn.disabled = true;
+
+            // إنشاء تطبيق موازي لفايربيس لسحب الـ Config بتاعك أوتوماتيك
+            let secondaryApp = firebase.initializeApp(firebase.app().options, "SecondaryApp" + Date.now());
+
+            secondaryApp.auth().createUserWithEmailAndPassword(email, pass)
+                .then((userCredential) => {
+                    let newUid = userCredential.user.uid;
+                    
+                    // إعطاء الصلاحية في مسار admins
+                    db.ref('/admins/' + newUid).set(true).then(() => {
+                        // حفظ بيانات المدير عشان نعرضها في الجدول
+                        db.ref('/admin_details/' + newUid).set({ 
+                            email: email, 
+                            date: new Date().toLocaleDateString('en-GB') 
+                        });
+                        
+                        alert("تم إضافة المدير بنجاح واكتسب كل الصلاحيات! 🎉");
+                        document.getElementById("newAdminEmail").value = "";
+                        document.getElementById("newAdminPass").value = "";
+                        
+                        // قفل التطبيق الموازي عشان مياكلش من الذاكرة
+                        secondaryApp.auth().signOut();
+                        secondaryApp.delete();
+                        btn.innerText = "➕ إضافة المدير وفتح الصلاحيات";
+                        btn.disabled = false;
+                    });
+                })
+                .catch((error) => {
+                    alert("عفواً، حدث خطأ: " + error.message);
+                    secondaryApp.delete();
+                    btn.innerText = "➕ إضافة المدير وفتح الصلاحيات";
+                    btn.disabled = false;
+                });
+        };
+
+        // 2. دالة عرض المديرين الحاليين
+        window.loadAdminsList = function() {
+            if(!window.db) return;
+            db.ref('/admin_details').on('value', snap => {
+                let list = document.getElementById("adminListBody");
+                if(!list) return;
+                list.innerHTML = "";
+                let data = snap.val();
+                if(data) {
+                    Object.keys(data).forEach(uid => {
+                        let info = data[uid];
+                        list.innerHTML += `<tr>
+                            <td><strong>${info.email}</strong></td>
+                            <td>${info.date}</td>
+                            <td><button class="btn btn-red" onclick="removeAdmin('${uid}')">سحب الصلاحية ❌</button></td>
+                        </tr>`;
+                    });
+                } else {
+                    list.innerHTML = `<tr><td colspan="3" style="text-align:center; color:gray; padding:20px;">لا يوجد مديرين إضافيين حتى الآن.</td></tr>`;
+                }
+            });
+        };
+
+        // 3. دالة حذف مدير (سحب الصلاحية)
+        window.removeAdmin = function(uid) {
+            if(confirm("هل أنت متأكد من سحب صلاحيات الإدارة من هذا الحساب نهائياً؟")) {
+                db.ref('/admins/' + uid).remove();
+                db.ref('/admin_details/' + uid).remove();
+                alert("تم سحب الصلاحيات بنجاح!");
+            }
+        };
+
+        // ===== بوابة الدخول: تمنع فتح لوحة التحكم لغير المديرين المسجلين =====
+
+            let logoutBtn = document.getElementById("adminLogoutBtn");
+            if(logoutBtn) {
+                logoutBtn.addEventListener("click", function(e) {
+                    e.preventDefault();
+                    let btn = this;
+                    btn.innerText = "جاري الخروج... ⏳";
+                    firebase.auth().signOut().catch(error => {
+                        alert("عطل في الخروج: " + error.message);
+                        btn.innerText = "تسجيل خروج 🚪";
+                    });
+                });
+            }
+
+        // مراقب حالة الدخول: يتحكم فين تظهر شاشة الدخول وفين تظهر لوحة التحكم
+        firebase.auth().onAuthStateChanged(function(user) {
+    let loginScreen = document.getElementById("adminLoginModal");
+    let sidebar = document.getElementById("adminSidebarPanel");
+    let mainPanel = document.getElementById("adminMainPanel");
+
+    if (user) {
+        // تحقق إن الـ user ده فعلاً admin في قاعدة البيانات
+        db.ref('/admins/' + user.uid).once('value', function(snap) {
+            if (snap.val() === true) {
+                if(loginScreen) loginScreen.style.display = "none";
+                if(sidebar) sidebar.style.display = "flex";
+                if(mainPanel) mainPanel.style.display = "block";
+                if(typeof loadAdminsList === "function") loadAdminsList();
+            } else {
+                // مش admin → اطرده فوراً
+                firebase.auth().signOut();
+                if(loginScreen) loginScreen.style.display = "flex";
+                if(sidebar) sidebar.style.display = "none";
+                if(mainPanel) mainPanel.style.display = "none";
+                document.getElementById("adminLoginError").innerText = "ليس لديك صلاحية الدخول.";
+                document.getElementById("adminLoginError").style.display = "block";
+            }
+        });
+    } else {
+        if(loginScreen) loginScreen.style.display = "flex";
+        if(sidebar) sidebar.style.display = "none";
+        if(mainPanel) mainPanel.style.display = "none";
+    }
+});
+
+    </script>
+
+<script>
+    (function() {
+        console.log("🚀 جاري تشغيل محرك المزامنة الذكي للوحة التحكم...");
+        
+        const originalSetItem = localStorage.setItem;
+        
+        // 1. اعتراض أوامر الحفظ القديمة
+        localStorage.setItem = function(key, value) {
+            originalSetItem.apply(this, arguments); 
+            try {
+                if (!window.db) return;
+                let parsed = JSON.parse(value);
+                let obj = {};
+                switch(key) {
+                    case "eljory_products": parsed.forEach(p => { if(p && p.id) obj[p.id] = p; }); window.db.ref('/products').set(obj); break;
+                    case "eljory_categories": parsed.forEach(c => { if(c && c.id) obj[c.id] = c; }); window.db.ref('/categories').set(obj); break;
+                    case "eljory_orders": parsed.forEach(o => { if(o && o.id) obj[o.id] = o; }); window.db.ref('/orders').set(obj); break;
+                    case "eljory_users_db": parsed.forEach(u => { if(u && u.phone) obj[window.getShortPhone(u.phone)] = u; }); window.db.ref('/users').set(obj); break;
+                    case "eljory_regions": window.db.ref('/regions').set(parsed); break;
+                    case "eljory_banners": window.db.ref('/banners').set(parsed); break;
+                    case "eljory_promos": window.db.ref('/promos').set(parsed); break;
+                    case "eljory_rewards": window.db.ref('/rewards').set(parsed); break;
+                    case "eljory_gallery": window.db.ref('/gallery').set(parsed); break;
+                    case "eljory_loyalty_settings": window.db.ref('/settings').set(parsed); break;
+                }
+            } catch(e) {}
+        };
+
+        // 2. التحميل الفوري من الذاكرة (عشان الأوردرات تظهر في 0 ثانية)
+setTimeout(() => {
+            if(typeof loadAdminOrders === "function") loadAdminOrders();
+            if(typeof renderAdminProducts === "function") renderAdminProducts();
+            if(typeof renderAdminCustomers === "function") renderAdminCustomers();
+            if(typeof loadAdminCategories === "function") loadAdminCategories();
+            if(typeof loadAdminRegions === "function") loadAdminRegions();
+            if(typeof renderAdminPromos === "function") renderAdminPromos();
+            if(typeof renderAdminRewards === "function") renderAdminRewards();
+            if(typeof renderAdminBanners === "function") renderAdminBanners();
+            if(typeof renderGlobalPoints === "function") renderGlobalPoints();
+            if(typeof renderGalleryGrid === "function") renderGalleryGrid();
+            if(typeof loadAdminLoyalty === "function") loadAdminLoyalty();
+            if(typeof renderAdminSections === "function") renderAdminSections();
+            if(typeof renderAdminCustomLists === "function") renderAdminCustomLists();
+        }, 50);
+
+        // 3. الاستماع الحي للسحابة (بدون تأخير)
+        let startSync = function() {
+            if (!window.db) {
+                setTimeout(startSync, 200); 
+                return;
+            }
+            window.db.ref('/').on('value', snapshot => {
+                let data = snapshot.val() || {}; 
+                let safeSet = (key, val) => originalSetItem.call(localStorage, key, JSON.stringify(val));
+                let fbToArray = (obj) => obj ? (Array.isArray(obj) ? obj.filter(x=>x) : Object.values(obj).filter(x=>x)) : [];
+                
+                safeSet("eljory_products", fbToArray(data.products));
+                safeSet("eljory_categories", fbToArray(data.categories));
+                safeSet("eljory_orders", fbToArray(data.orders)); 
+                safeSet("eljory_users_db", fbToArray(data.users));
+                safeSet("eljory_regions", fbToArray(data.regions));
+                safeSet("eljory_banners", fbToArray(data.banners));
+                safeSet("eljory_promos", fbToArray(data.promos));
+                safeSet("eljory_rewards", fbToArray(data.rewards));
+                safeSet("eljory_gallery", fbToArray(data.gallery));
+                safeSet("eljory_loyalty_settings", data.settings || { system: "global", spent: 10, earn: 1 });
+                
+// تحديث الواجهة بهدوء في الخلفية
+                if(typeof loadAdminOrders === "function") loadAdminOrders();
+                if(typeof renderAdminProducts === "function") renderAdminProducts();
+                if(typeof renderAdminCustomers === "function") renderAdminCustomers();
+                if(typeof loadAdminCategories === "function") loadAdminCategories();
+                if(typeof loadAdminRegions === "function") loadAdminRegions();
+                if(typeof renderAdminPromos === "function") renderAdminPromos();
+                if(typeof renderAdminRewards === "function") renderAdminRewards();
+                if(typeof renderAdminBanners === "function") renderAdminBanners();
+                if(typeof renderGlobalPoints === "function") renderGlobalPoints();
+                if(typeof renderGalleryGrid === "function") renderGalleryGrid();
+                if(typeof loadAdminLoyalty === "function") loadAdminLoyalty();
+                if(typeof renderAdminSections === "function") renderAdminSections();
+                if(typeof renderAdminCustomLists === "function") renderAdminCustomLists();
+                safeSet("eljory_custom_lists", fbToArray(data.customLists));
+                safeSet("eljory_sections",     fbToArray(data.sections));
+            });
+        };
+        startSync();
+
+        })();
+    </script>
+    
+</body>
+</html>
