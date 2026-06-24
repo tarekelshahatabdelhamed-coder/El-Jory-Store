@@ -1281,10 +1281,6 @@ window.checkAndResetLoyaltyExpiry = function(user, phoneKey) {
     return user;
 }
 
-// ============================================================================
-// دوال تسجيل الدخول وإنشاء الحساب (Authentication)
-// ============================================================================
-
     window.doRegister = async function(event) {
     if (event) event.preventDefault();
 
@@ -1295,7 +1291,7 @@ window.checkAndResetLoyaltyExpiry = function(user, phoneKey) {
     let address = document.getElementById("regAddress").value.trim();
     let password = document.getElementById("regPassword").value;
 
-    let cleanPhone = window.getShortPhone(phone);
+    let cleanPhone = window.getShocd publicrtPhone(phone);
 
     if (!name || !cleanPhone || !password || !region || !address) {
         alert(currentLang === 'ar' ? "يرجى ملء جميع الحقول المطلوبة!" : "Please fill all required fields!");
