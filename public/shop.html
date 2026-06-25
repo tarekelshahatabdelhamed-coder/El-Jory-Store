@@ -14,48 +14,8 @@
     </style>
 </head>
 <body>
-<header>
-        <div class="logo"><img src="logo.png" alt="لوجو الجوري ستور"></div>
-        
-        <nav style="display: flex; align-items: center; gap: 20px;">
-            
-            <!-- صندوق البحث -->
-            <form onsubmit="performSearch(event)" style="display: flex; gap: 5px; align-items: center; margin: 0;">
-                <input type="text" id="searchInput" placeholder="ابحث عن منتج..." style="padding: 8px 12px; border-radius: 4px; border: 1px solid #ccc; outline: none; min-width: 200px;">
-                <button type="submit" id="searchBtn" style="background: #f38c18; color: #1d364a; border: none; padding: 8px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.3s;">بحث</button>
-            </form>
-
-            <ul>
-                <li><a href="index.html" id="navHome">الرئيسية</a></li>
-                <li class="dropdown">
-                    <a href="categories.html" id="navCategories">الأقسام</a>
-                    <!-- الجافا سكريبت هيرسم الأقسام هنا أوتوماتيك -->
-                    <div class="dropdown-content" id="dynamicNavCategories"></div>
-                </li>
-                
-                <!-- أيقونة السلة (بالـ SVG الأصلي بتاعك) مع بادج العداد -->
-                <li style="position: relative; display: inline-flex; align-items: center; margin: 0 5px;">
-                    <a href="cart.html" id="navCartIcon" title="السلة" style="color: inherit; display: flex; align-items: center; transition: 0.3s;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="9" cy="21" r="1"></circle>
-                            <circle cx="20" cy="21" r="1"></circle>
-                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-                        </svg>
-                    </a>
-                    <span id="cartBadge" class="cart-badge" style="display:none; position: absolute; top: -10px; right: -10px; background: red; color: white; border-radius: 50%; padding: 2px 6px; font-size: 12px;">0</span>
-                </li>
-                
-                <!-- زرار حسابي -->
-                <li><a href="account.html" id="navAccount">حسابي</a></li>
-            </ul>
-        </nav>
-
-        <!-- الجزء الخاص باسم المستخدم، تسجيل الدخول، وزرار تغيير اللغة -->
-        <div class="header-actions">
-            <div class="user-info" id="headerUserInfo"></div>
-            <div class="lang-switch"><button id="langBtn">English</button></div>
-        </div>
-    </header>
+<div id="site-header"></div>
+<script src="js/header-loader.js"></script>
         <section class="products-section">
         <!-- العنوان ده هيتغير حسب القسم -->
         <h2 id="screensPageTitle" style="color: #1d364a;">جاري التحميل...</h2> 

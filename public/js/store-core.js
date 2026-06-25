@@ -41,6 +41,34 @@ function initStoreData() {
         if (typeof renderCategoriesGrid      === 'function') renderCategoriesGrid();
         if (typeof renderStoreProducts       === 'function') renderStoreProducts();
         if (typeof renderDynamicNavbar       === 'function') renderDynamicNavbar();
+        // ── الميجا مينيو في الهيدر ──────────────────────────────────
+if (typeof joryRenderNavCategories === 'function') {
+    var navCats = fbToArray(data.categories).map(function(cat) {
+
+        // الأقسام الفرعية — جرب الاتنين عشان مش عارف الهيكل بالظبط
+        var subs = [];
+
+        // لو الفرعيات جوا الكاتيجوري نفسه (cat.subcategories أو cat.lists)
+        var rawSubs = cat.subcategories || cat.lists || cat.subCategories || [];
+        if (!Array.isArray(rawSubs)) rawSubs = Object.values(rawSubs);
+
+        subs = rawSubs.filter(function(s){ return s; }).map(function(s) {
+            return {
+                name: s.name || s.title,
+                link: 'shop.html?list=' + (s.id || s.slug || s.name)
+            };
+        });
+
+        return {
+            id:   cat.id   || cat.key,
+            name: cat.name || cat.title,
+            link: 'shop.html?cat=' + (cat.id || cat.key),
+            subs: subs
+        };
+    });
+
+    joryRenderNavCategories(navCats);
+}
         if (typeof renderLoyaltyBanner       === 'function') renderLoyaltyBanner();
         if (typeof renderBanners             === 'function') renderBanners();
         if (typeof renderStorefrontSections  === 'function') renderStorefrontSections(); // ← جديد
