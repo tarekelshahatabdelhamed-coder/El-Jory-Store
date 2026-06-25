@@ -42,26 +42,34 @@ function initStoreData() {
         if (typeof renderStoreProducts       === 'function') renderStoreProducts();
         if (typeof renderDynamicNavbar       === 'function') renderDynamicNavbar();
         if (typeof joryRenderNavCategories === 'function') {
-    var navCats = fbToArray(data.categories)
-        .filter(function(cat) { return cat && cat.isActive !== false; })
-        .map(function(cat) {
-            var rawSubs = cat.subcategories || cat.lists || cat.subCategories || cat.children || [];
-            if (!Array.isArray(rawSubs)) rawSubs = Object.values(rawSubs);
+    var allCats = fbToArray(data.categories)
+        .filter(function(c) { return c && c.isActive !== false; });
 
-            var subs = rawSubs.filter(function(s){ return s; }).map(function(s) {
+    // الأقسام الرئيسية — اللي مفيهاش parentId
+    var mainCats = allCats
+        .filter(function(c) { return !c.parentId; })
+        .sort(function(a, b) { return (a.priority || 0) - (b.priority || 0); });
+
+    // الأقسام الفرعية — اللي عندها parentId
+    var subCats = allCats.filter(function(c) { return c.parentId; });
+
+    var navCats = mainCats.map(function(cat) {
+        var subs = subCats
+            .filter(function(s) { return s.parentId === cat.id; })
+            .map(function(s) {
                 return {
-                    name: s.nameAr || s.name || s.title,
-                    link: 'shop.html?list=' + (s.id || s.slug)
+                    name: s.nameAr,
+                    link: 'shop.html?cat=' + s.id
                 };
             });
 
-            return {
-                id:   cat.id,
-                name: cat.nameAr,
-                link: 'shop.html?cat=' + cat.id,
-                subs: subs
-            };
-        });
+        return {
+            id:   cat.id,
+            name: cat.nameAr,
+            link: 'shop.html?cat=' + cat.id,
+            subs: subs
+        };
+    });
 
     joryRenderNavCategories(navCats);
 }
