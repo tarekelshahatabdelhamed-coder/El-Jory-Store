@@ -41,31 +41,27 @@ function initStoreData() {
         if (typeof renderCategoriesGrid      === 'function') renderCategoriesGrid();
         if (typeof renderStoreProducts       === 'function') renderStoreProducts();
         if (typeof renderDynamicNavbar       === 'function') renderDynamicNavbar();
-        // ── الميجا مينيو في الهيدر ──────────────────────────────────
-if (typeof joryRenderNavCategories === 'function') {
-    var navCats = fbToArray(data.categories).map(function(cat) {
+        if (typeof joryRenderNavCategories === 'function') {
+    var navCats = fbToArray(data.categories)
+        .filter(function(cat) { return cat && cat.isActive !== false; })
+        .map(function(cat) {
+            var rawSubs = cat.subcategories || cat.lists || cat.subCategories || cat.children || [];
+            if (!Array.isArray(rawSubs)) rawSubs = Object.values(rawSubs);
 
-        // الأقسام الفرعية — جرب الاتنين عشان مش عارف الهيكل بالظبط
-        var subs = [];
+            var subs = rawSubs.filter(function(s){ return s; }).map(function(s) {
+                return {
+                    name: s.nameAr || s.name || s.title,
+                    link: 'shop.html?list=' + (s.id || s.slug)
+                };
+            });
 
-        // لو الفرعيات جوا الكاتيجوري نفسه (cat.subcategories أو cat.lists)
-        var rawSubs = cat.subcategories || cat.lists || cat.subCategories || [];
-        if (!Array.isArray(rawSubs)) rawSubs = Object.values(rawSubs);
-
-        subs = rawSubs.filter(function(s){ return s; }).map(function(s) {
             return {
-                name: s.name || s.title,
-                link: 'shop.html?list=' + (s.id || s.slug || s.name)
+                id:   cat.id,
+                name: cat.nameAr,
+                link: 'shop.html?cat=' + cat.id,
+                subs: subs
             };
         });
-
-        return {
-            id:   cat.id   || cat.key,
-            name: cat.name || cat.title,
-            link: 'shop.html?cat=' + (cat.id || cat.key),
-            subs: subs
-        };
-    });
 
     joryRenderNavCategories(navCats);
 }
