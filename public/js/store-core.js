@@ -55,7 +55,7 @@ function initStoreData() {
 
     var navCats = mainCats.map(function(cat) {
         var subs = subCats
-            .filter(function(s) { return s.parentId === cat.id; })
+            .filter(function(s) { return String(s.parentId) === String(cat.id); })
             .map(function(s) {
                 return {
                     name: s.nameAr,
