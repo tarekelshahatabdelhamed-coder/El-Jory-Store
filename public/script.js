@@ -105,6 +105,7 @@ window.applyTranslations = function() {
     setText("navAccount", t.navAccount);
     
     setPlaceholder("searchInput", t.searchPlaceholder);
+    setPlaceholder("searchInputMobile", t.searchPlaceholder);
     setText("searchBtn", t.searchBtn);
 
     setText("catPageTitle", t.catPageTitle);
@@ -159,6 +160,14 @@ window.applyTranslations = function() {
     setText("thOrdStatus", currentLang === 'ar' ? "الحالة" : "Status");
 
     if(typeof renderDynamicNavbar === "function") renderDynamicNavbar();
+
+    // تحديث نصوص الموبايل
+    let setText2 = (id, text) => { let el = document.getElementById(id); if(el) el.innerText = text; };
+    setText2("headerSearchBtn", currentLang === 'ar' ? "بحث" : "Search");
+    setText2("botNavHome", currentLang === 'ar' ? "الرئيسية" : "Home");
+    setText2("botNavCats", currentLang === 'ar' ? "الأقسام" : "Categories");
+    setText2("botNavAcc", currentLang === 'ar' ? "حسابي" : "Account");
+    setText2("botNavCart", currentLang === 'ar' ? "السلة" : "Cart");
     if(typeof buildNavMegaMenu === "function") buildNavMegaMenu();
     if(typeof renderStoreProducts === "function") renderStoreProducts();
     if(typeof renderCategoriesGrid === "function") renderCategoriesGrid();
