@@ -153,7 +153,8 @@ var JORY_FACEBOOK = 'https://facebook.com/Elgorystore';
         '.jory-mega-cat.active-cat .jory-mega-cat-arrow { color: #f38c18; }',
 
         /* الجزء الأيمن — الأقسام الفرعية */
-        '.jory-mega-right { flex: 1; padding: 12px 16px; min-height: 160px; }',
+        '.jory-mega-right { flex: 1; padding: 12px 16px; min-height: 160px; display: none; }',
+        '.jory-mega-menu.sub-open .jory-mega-right { display: block; }',
         '.jory-mega-sublist { display: none; }',
         '.jory-mega-sublist.active-sub { display: block; }',
         '.jory-mega-sub-title {',
@@ -450,7 +451,7 @@ window.joryRenderNavCategories = function (categories) {
             : '<div class="jory-mega-empty">لا توجد أقسام فرعية</div>';
 
         rightHTML += ''
-        + '<div class="jory-mega-sublist' + (idx === 0 ? ' active-sub' : '') + '"'
+        + '<div class="jory-mega-sublist"'
         +      ' data-cat="' + catId + '">'
         +   '<div class="jory-mega-sub-title">' + cat.name + '</div>'
         +   subsHTML
@@ -495,7 +496,11 @@ window.joryRenderNavCategories = function (categories) {
                 s.classList.remove('active-sub');
             });
             var target = right.querySelector('.jory-mega-sublist[data-cat="' + catId + '"]');
-            if (target) target.classList.add('active-sub');
+            var megaMenu = document.getElementById('joryMegaMenu');
+            if (target) {
+                target.classList.add('active-sub');
+                if (megaMenu) megaMenu.classList.add('sub-open');
+            }
         });
     });
 
