@@ -521,6 +521,7 @@ window.updateCartBadge = function() {
     let currentCart = JSON.parse(localStorage.getItem("eljory_cart")) || [];
     let totalQty = currentCart.reduce((sum, item) => sum + item.qty, 0); 
     let badge = document.getElementById("cartBadge");
+    let badgeBot = document.getElementById("cartBadgeBot");
     
     if(badge) {
         if(totalQty > 0) {
@@ -528,6 +529,14 @@ window.updateCartBadge = function() {
             badge.style.display = "inline-block";
         } else {
             badge.style.display = "none";
+        }
+    }
+    if(badgeBot) {
+        if(totalQty > 0) {
+            badgeBot.innerText = totalQty;
+            badgeBot.style.display = "flex";
+        } else {
+            badgeBot.style.display = "none";
         }
     }
 };

@@ -278,6 +278,58 @@ var JORY_FACEBOOK = 'https://facebook.com/Elgorystore';
         '@media (max-width: 380px) {',
         '  .jory-header-inner { padding: 0 10px; }',
         '  .jory-logo img { height: 40px; }',
+        '}',
+
+        /* ── Bottom Mobile Nav ── */
+        '.jory-bottom-nav {',
+        '  display: none;',
+        '}',
+        '@media (max-width: 768px) {',
+        '  body { padding-bottom: 70px; }',
+        '  .jory-bottom-nav {',
+        '    display: flex;',
+        '    position: fixed; bottom: 0; left: 0; right: 0;',
+        '    height: 62px;',
+        '    background: #fff;',
+        '    border-top: 2px solid #f38c18;',
+        '    box-shadow: 0 -2px 12px rgba(0,0,0,.1);',
+        '    z-index: 2000;',
+        '    align-items: center;',
+        '    justify-content: space-around;',
+        '  }',
+        '  .jory-bottom-nav a {',
+        '    display: flex; flex-direction: column;',
+        '    align-items: center; justify-content: center;',
+        '    color: #1d364a; text-decoration: none;',
+        '    font-size: 10px; font-weight: 700;',
+        '    gap: 3px; flex: 1;',
+        '    transition: color .2s;',
+        '  }',
+        '  .jory-bottom-nav a:hover { color: #f38c18; }',
+        '  .jory-bottom-nav a svg { width: 22px; height: 22px; }',
+        '  .jory-bottom-nav-logo {',
+        '    width: 56px; height: 56px;',
+        '    background: #1d364a;',
+        '    border-radius: 50%;',
+        '    border: 3px solid #f38c18;',
+        '    display: flex; align-items: center; justify-content: center;',
+        '    margin-top: -20px;',
+        '    box-shadow: 0 4px 12px rgba(0,0,0,.2);',
+        '    flex-shrink: 0;',
+        '  }',
+        '  .jory-bottom-nav-logo img {',
+        '    width: 40px; height: 40px;',
+        '    object-fit: contain; border-radius: 50%;',
+        '  }',
+        '  .jory-bottom-cart-wrap { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; }',
+        '  .jory-bottom-cart-wrap .cart-badge-bot {',
+        '    position: absolute; top: -4px; right: 6px;',
+        '    background: #ef4444; color: #fff;',
+        '    border-radius: 50%; min-width: 16px; height: 16px;',
+        '    font-size: 10px; font-weight: 700;',
+        '    display: flex; align-items: center; justify-content: center;',
+        '  }',
+        '  .jory-float-btns { bottom: 80px; }',
         '}'
 
     ].join('\n');
@@ -366,6 +418,35 @@ var JORY_FACEBOOK = 'https://facebook.com/Elgorystore';
 // ══════════════════════════════════════════════════════
 //  زراير التواصل الطافية
 // ══════════════════════════════════════════════════════
+(function injectBottomNav() {
+    var html = ''
+    + '<nav class="jory-bottom-nav" id="joryBottomNav">'
+    +   '<a href="index.html">'
+    +     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>'
+    +     'الرئيسية'
+    +   '</a>'
+    +   '<a href="categories.html">'
+    +     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>'
+    +     'الأقسام'
+    +   '</a>'
+    +   '<a href="index.html" class="jory-bottom-nav-logo">'
+    +     '<img src="logo.png" alt="الجوري">'
+    +   '</a>'
+    +   '<a href="account.html">'
+    +     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>'
+    +     'حسابي'
+    +   '</a>'
+    +   '<div class="jory-bottom-cart-wrap">'
+    +     '<a href="cart.html">'
+    +       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>'
+    +       'السلة'
+    +     '</a>'
+    +     '<span class="cart-badge-bot" id="cartBadgeBot" style="display:none;">0</span>'
+    +   '</div>'
+    + '</nav>';
+    document.body.insertAdjacentHTML('beforeend', html);
+}());
+
 (function injectFloat() {
     var html = ''
     + '<div class="jory-float-btns">'
