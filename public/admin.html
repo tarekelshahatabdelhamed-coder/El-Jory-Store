@@ -155,36 +155,171 @@
             </table>
         </div>
 
-        <div id="products" class="section">
-            <h3>إضافة وتعديل المنتجات</h3>
-            <div style="display: flex; gap: 25px; flex-wrap: wrap; background: #f9f9f9; padding: 25px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #eee;">
-                <div style="flex: 1; min-width: 250px;">
-                    <div class="form-group"><label>كود المنتج</label><input type="text" id="newProdId" class="form-control"></div>
-                    <div class="form-group"><label>الاسم بالعربي</label><input type="text" id="newProdNameAr" class="form-control"></div>
-                    <div class="form-group"><label>الاسم بالإنجليزي</label><input type="text" id="newProdNameEn" class="form-control"></div>
-                    <div class="form-group"><label>السعر</label><input type="number" id="newProdPrice" class="form-control"></div>
-                </div>
-                <div style="flex: 1; min-width: 250px;">
-                    <div class="form-group"><label>القسم الرئيسي</label><select id="newProdCategory" class="form-control" onchange="updateSubCatsDropdown()"></select></div>
-                    <div class="form-group"><label>القسم الفرعي</label><select id="newProdSubCategory" class="form-control"><option value="">-- بدون --</option></select></div>
-                    <div class="form-group"><label>المخزون</label><input type="number" id="newProdStock" class="form-control"></div>
-                    <div class="form-group">
-                        <label>رابط الصورة</label>
-                        <input type="text" id="newProdImg" class="form-control" value="https://via.placeholder.com/200">
-                        <div style="display: flex; gap: 10px; margin-top: 10px; margin-bottom: 15px;">
-                            <button type="button" onclick="triggerDirectUpload('newProdImg')" class="btn btn-green" style="flex: 1;">📤 رفع صورة من الجهاز</button>
-                            <button type="button" onclick="openGalleryModal('newProdImg')" class="btn" style="background: #e68a10; flex: 1;">🖼️ اختيار من الاستوديو</button>
-                        </div>
-                    </div>
-                </div>
-                <div style="flex: 1; width: 100%; display: flex; gap: 20px;">
-                    <div class="form-group" style="flex: 1;"><label>وصف المنتج (عربي)</label><textarea id="newProdDescAr" class="form-control" rows="3"></textarea></div>
-                    <div class="form-group" style="flex: 1;"><label>وصف المنتج (إنجليزي)</label><textarea id="newProdDescEn" class="form-control" rows="3"></textarea></div>
-                </div>
-                <div style="width: 100%;">
-                    <button class="btn btn-green" id="btnSaveProd" onclick="saveProduct()" style="width: 100%; padding: 15px; font-size: 18px;">➕ حفظ المنتج</button>
+<div id="products" class="section">
+    <h3>إضافة وتعديل المنتجات</h3>
+
+    <!-- ===== تبويبات الفورم ===== -->
+    <div style="display:flex; gap:0; margin-bottom:0; border-bottom:3px solid #f38c18;">
+        <button id="tabBtnBasic" onclick="switchProductTab('basic')"
+            style="padding:12px 30px; background:#1d364a; color:white; border:none; border-radius:8px 8px 0 0; font-size:15px; font-weight:bold; cursor:pointer; margin-left:5px; transition:0.2s;">
+            📦 البيانات الأساسية
+        </button>
+        <button id="tabBtnBlog" onclick="switchProductTab('blog')"
+            style="padding:12px 30px; background:#eef2f5; color:#1d364a; border:none; border-radius:8px 8px 0 0; font-size:15px; font-weight:bold; cursor:pointer; transition:0.2s;">
+            ✏️ محتوى الصفحة (مدونة)
+        </button>
+    </div>
+
+    <!-- ===== التبويب الأول: البيانات الأساسية ===== -->
+    <div id="tabBasic" style="display: flex; gap: 25px; flex-wrap: wrap; background: #f9f9f9; padding: 25px; border-radius: 0 8px 8px 8px; margin-bottom: 20px; border: 1px solid #eee; border-top:none;">
+        <!-- محتوى الفورم القديم بالكامل بدون تغيير -->
+        <div style="flex: 1; min-width: 250px;">
+            <div class="form-group"><label>كود المنتج</label><input type="text" id="newProdId" class="form-control"></div>
+            <div class="form-group"><label>الاسم بالعربي</label><input type="text" id="newProdNameAr" class="form-control"></div>
+            <div class="form-group"><label>الاسم بالإنجليزي</label><input type="text" id="newProdNameEn" class="form-control"></div>
+            <div class="form-group"><label>السعر</label><input type="number" id="newProdPrice" class="form-control"></div>
+        </div>
+        <div style="flex: 1; min-width: 250px;">
+            <div class="form-group"><label>القسم الرئيسي</label><select id="newProdCategory" class="form-control" onchange="updateSubCatsDropdown()"></select></div>
+            <div class="form-group"><label>القسم الفرعي</label><select id="newProdSubCategory" class="form-control"><option value="">-- بدون --</option></select></div>
+            <div class="form-group"><label>المخزون</label><input type="number" id="newProdStock" class="form-control"></div>
+            <div class="form-group">
+                <label>رابط الصورة</label>
+                <input type="text" id="newProdImg" class="form-control" value="https://via.placeholder.com/200">
+                <div style="display: flex; gap: 10px; margin-top: 10px; margin-bottom: 15px;">
+                    <button type="button" onclick="triggerDirectUpload('newProdImg')" class="btn btn-green" style="flex: 1;">📤 رفع صورة من الجهاز</button>
+                    <button type="button" onclick="openGalleryModal('newProdImg')" class="btn" style="background: #e68a10; flex: 1;">🖼️ اختيار من الاستوديو</button>
                 </div>
             </div>
+        </div>
+        <div style="flex: 1; width: 100%; display: flex; gap: 20px;">
+            <div class="form-group" style="flex: 1;"><label>وصف المنتج (عربي)</label><textarea id="newProdDescAr" class="form-control" rows="3"></textarea></div>
+            <div class="form-group" style="flex: 1;"><label>وصف المنتج (إنجليزي)</label><textarea id="newProdDescEn" class="form-control" rows="3"></textarea></div>
+        </div>
+        <div style="width: 100%;">
+            <button class="btn btn-green" id="btnSaveProd" onclick="saveProduct()" style="width: 100%; padding: 15px; font-size: 18px;">➕ حفظ المنتج</button>
+        </div>
+    </div>
+
+    <!-- ===== التبويب الثاني: محرر المدونة ===== -->
+    <div id="tabBlog" style="display:none; background:#f9f9f9; border-radius:0 8px 8px 8px; margin-bottom:20px; border:1px solid #eee; border-top:none; overflow:hidden;">
+
+        <div style="background:#fdf5e6; padding:15px 25px; border-bottom:1px solid #eee; display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+            <span style="font-weight:bold; color:#1d364a; font-size:15px;">📝 تعديل محتوى صفحة المنتج:</span>
+            <span id="blogProdIdLabel" style="background:#1d364a; color:#f38c18; padding:5px 15px; border-radius:20px; font-size:13px; font-weight:bold;">لم يتم اختيار منتج بعد</span>
+            <span style="color:#888; font-size:13px;">— احفظ البيانات الأساسية أولاً ثم أضف المحتوى</span>
+        </div>
+
+        <!-- شريط أدوات المحرر -->
+        <div style="background:#1d364a; padding:12px 15px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+
+            <select onchange="blogExecCmd('formatBlock', this.value); this.value=''"
+                style="background:white; color:#1d364a; border:none; border-radius:5px; padding:6px 10px; font-family:inherit; cursor:pointer;">
+                <option value="">📝 نص</option>
+                <option value="H2">عنوان كبير</option>
+                <option value="H3">عنوان متوسط</option>
+                <option value="H4">عنوان صغير</option>
+                <option value="P">فقرة</option>
+                <option value="blockquote">اقتباس</option>
+            </select>
+
+            <select onchange="blogExecCmd('fontSize', this.value); this.value=''"
+                style="background:white; color:#1d364a; border:none; border-radius:5px; padding:6px 10px; font-family:inherit; cursor:pointer;">
+                <option value="">حجم الخط</option>
+                <option value="2">صغير</option>
+                <option value="3">عادي</option>
+                <option value="4">كبير</option>
+                <option value="5">أكبر</option>
+                <option value="6">ضخم</option>
+                <option value="7">ضخم جداً</option>
+            </select>
+
+            <div style="width:1px; background:rgba(255,255,255,0.2); height:28px; margin:0 4px;"></div>
+
+            <label style="color:rgba(255,255,255,0.7); font-size:12px;">لون:</label>
+            <input type="color" value="#333333" onchange="blogExecCmd('foreColor', this.value)"
+                style="width:36px; height:32px; border:none; border-radius:4px; cursor:pointer; padding:2px;">
+
+            <label style="color:rgba(255,255,255,0.7); font-size:12px;">تظليل:</label>
+            <input type="color" value="#ffffff" onchange="blogExecCmd('hiliteColor', this.value)"
+                style="width:36px; height:32px; border:none; border-radius:4px; cursor:pointer; padding:2px;">
+
+            <div style="width:1px; background:rgba(255,255,255,0.2); height:28px; margin:0 4px;"></div>
+
+            <button onclick="blogExecCmd('bold')"
+                style="background:rgba(255,255,255,0.12); color:white; border:1px solid rgba(255,255,255,0.2); border-radius:5px; padding:6px 12px; cursor:pointer; font-weight:900; transition:0.2s;"
+                onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">B</button>
+            <button onclick="blogExecCmd('italic')"
+                style="background:rgba(255,255,255,0.12); color:white; border:1px solid rgba(255,255,255,0.2); border-radius:5px; padding:6px 12px; cursor:pointer; font-style:italic; transition:0.2s;"
+                onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">I</button>
+            <button onclick="blogExecCmd('underline')"
+                style="background:rgba(255,255,255,0.12); color:white; border:1px solid rgba(255,255,255,0.2); border-radius:5px; padding:6px 12px; cursor:pointer; text-decoration:underline; transition:0.2s;"
+                onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">U</button>
+
+            <div style="width:1px; background:rgba(255,255,255,0.2); height:28px; margin:0 4px;"></div>
+
+            <button onclick="blogExecCmd('justifyRight')"
+                style="background:rgba(255,255,255,0.12); color:white; border:1px solid rgba(255,255,255,0.2); border-radius:5px; padding:6px 10px; cursor:pointer; transition:0.2s;"
+                onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">⬅️</button>
+            <button onclick="blogExecCmd('justifyCenter')"
+                style="background:rgba(255,255,255,0.12); color:white; border:1px solid rgba(255,255,255,0.2); border-radius:5px; padding:6px 10px; cursor:pointer; transition:0.2s;"
+                onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">↔️</button>
+            <button onclick="blogExecCmd('justifyLeft')"
+                style="background:rgba(255,255,255,0.12); color:white; border:1px solid rgba(255,255,255,0.2); border-radius:5px; padding:6px 10px; cursor:pointer; transition:0.2s;"
+                onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">➡️</button>
+
+            <div style="width:1px; background:rgba(255,255,255,0.2); height:28px; margin:0 4px;"></div>
+
+            <button onclick="blogExecCmd('insertUnorderedList')"
+                style="background:rgba(255,255,255,0.12); color:white; border:1px solid rgba(255,255,255,0.2); border-radius:5px; padding:6px 10px; cursor:pointer; font-size:13px; transition:0.2s;"
+                onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">• قائمة</button>
+            <button onclick="blogExecCmd('insertOrderedList')"
+                style="background:rgba(255,255,255,0.12); color:white; border:1px solid rgba(255,255,255,0.2); border-radius:5px; padding:6px 10px; cursor:pointer; font-size:13px; transition:0.2s;"
+                onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">1. مرقمة</button>
+
+            <div style="width:1px; background:rgba(255,255,255,0.2); height:28px; margin:0 4px;"></div>
+
+            <button onclick="openAdminBlogModal('img')"
+                style="background:rgba(255,255,255,0.12); color:white; border:1px solid rgba(255,255,255,0.2); border-radius:5px; padding:6px 10px; cursor:pointer; font-size:13px; transition:0.2s;"
+                onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">🖼️ صورة</button>
+            <button onclick="openAdminBlogModal('video')"
+                style="background:rgba(255,255,255,0.12); color:white; border:1px solid rgba(255,255,255,0.2); border-radius:5px; padding:6px 10px; cursor:pointer; font-size:13px; transition:0.2s;"
+                onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">🎬 فيديو</button>
+            <button onclick="openAdminBlogModal('link')"
+                style="background:rgba(255,255,255,0.12); color:white; border:1px solid rgba(255,255,255,0.2); border-radius:5px; padding:6px 10px; cursor:pointer; font-size:13px; transition:0.2s;"
+                onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">🔗 رابط</button>
+            <button onclick="blogInsertDivider()"
+                style="background:rgba(255,255,255,0.12); color:white; border:1px solid rgba(255,255,255,0.2); border-radius:5px; padding:6px 10px; cursor:pointer; font-size:13px; transition:0.2s;"
+                onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">— فاصل</button>
+
+            <div style="width:1px; background:rgba(255,255,255,0.2); height:28px; margin:0 4px;"></div>
+
+            <button onclick="blogExecCmd('removeFormat')"
+                style="background:rgba(255,255,255,0.12); color:white; border:1px solid rgba(255,255,255,0.2); border-radius:5px; padding:6px 10px; cursor:pointer; font-size:13px; transition:0.2s;"
+                onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">🧹 مسح تنسيق</button>
+        </div>
+
+        <!-- منطقة الكتابة -->
+        <div id="adminBlogEditor" contenteditable="true" dir="rtl"
+            style="min-height:400px; padding:25px; outline:none; font-size:16px; line-height:1.9; background:#fff; color:#333; border-top:1px solid #eee;">
+            <p style="color:#aaa;">اختر منتجاً من جدول المنتجات أو احفظ المنتج الجديد أولاً، ثم ابدأ الكتابة هنا...</p>
+        </div>
+
+        <!-- أزرار الحفظ -->
+        <div style="padding:15px 25px; background:#f9f9f9; border-top:1px solid #eee; display:flex; gap:12px; flex-wrap:wrap;">
+            <button onclick="saveAdminBlogContent()"
+                style="background:#28a745; color:white; border:none; padding:12px 30px; border-radius:8px; font-size:15px; font-weight:bold; cursor:pointer; flex:1;">
+                💾 حفظ محتوى الصفحة
+            </button>
+            <button onclick="clearAdminBlogContent()"
+                style="background:#d9534f; color:white; border:none; padding:12px 20px; border-radius:8px; font-size:15px; font-weight:bold; cursor:pointer;">
+                🗑️ مسح المحتوى
+            </button>
+            <button onclick="previewAdminBlog()"
+                style="background:#17a2b8; color:white; border:none; padding:12px 20px; border-radius:8px; font-size:15px; font-weight:bold; cursor:pointer;">
+                👁️ معاينة
+            </button>
+        </div>
 
             <div style="background:#eef2f5; padding:20px; border-radius:8px; margin-bottom:20px; border:1px solid #dee2e6;">
     <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
@@ -2702,8 +2837,267 @@ setTimeout(() => {
         };
         startSync();
 
+       // ================================================================
+// ===== نظام تبويبات المنتج + محرر المدونة في الأدمن =====
+// ================================================================
+
+let adminBlogCurrentProductId = null;
+let adminBlogSavedRange = null;
+
+// التبديل بين تبويب البيانات الأساسية ومحرر المدونة
+window.switchProductTab = function(tab) {
+    let tabBasic   = document.getElementById('tabBasic');
+    let tabBlog    = document.getElementById('tabBlog');
+    let btnBasic   = document.getElementById('tabBtnBasic');
+    let btnBlog    = document.getElementById('tabBtnBlog');
+
+    if (tab === 'basic') {
+        tabBasic.style.display = 'flex';
+        tabBlog.style.display  = 'none';
+        btnBasic.style.background = '#1d364a';
+        btnBasic.style.color      = 'white';
+        btnBlog.style.background  = '#eef2f5';
+        btnBlog.style.color       = '#1d364a';
+    } else {
+        tabBasic.style.display = 'none';
+        tabBlog.style.display  = 'block';
+        btnBasic.style.background = '#eef2f5';
+        btnBasic.style.color      = '#1d364a';
+        btnBlog.style.background  = '#1d364a';
+        btnBlog.style.color       = 'white';
+
+        // جلب كود المنتج الحالي
+        let prodId = document.getElementById('newProdId').value.trim();
+        if (prodId) {
+            adminBlogCurrentProductId = prodId;
+            document.getElementById('blogProdIdLabel').innerText = 'المنتج: ' + prodId;
+            loadAdminBlogContent(prodId);
+        } else {
+            document.getElementById('blogProdIdLabel').innerText = 'لم يتم اختيار منتج بعد';
+        }
+    }
+};
+
+// تحميل المحتوى المحفوظ للمنتج
+function loadAdminBlogContent(productId) {
+    let editor = document.getElementById('adminBlogEditor');
+    db.ref('/productBlogs/' + productId).once('value', function(snap) {
+        let content = snap.val();
+        if (content) {
+            editor.innerHTML = content;
+        } else {
+            editor.innerHTML = '<p style="color:#aaa;">لا يوجد محتوى محفوظ لهذا المنتج. ابدأ الكتابة هنا...</p>';
+        }
+    });
+}
+
+// حفظ محتوى المدونة
+window.saveAdminBlogContent = function() {
+    let prodId = document.getElementById('newProdId').value.trim();
+    if (!prodId) return alert('يرجى تحديد كود المنتج أولاً!');
+    let content = document.getElementById('adminBlogEditor').innerHTML;
+    db.ref('/productBlogs/' + prodId).set(content).then(() => {
+        alert('✅ تم حفظ محتوى الصفحة بنجاح!');
+    }).catch(() => alert('❌ خطأ في الحفظ!'));
+};
+
+// مسح المحتوى
+window.clearAdminBlogContent = function() {
+    let prodId = document.getElementById('newProdId').value.trim();
+    if (!confirm('هل أنت متأكد من مسح كل المحتوى؟')) return;
+    document.getElementById('adminBlogEditor').innerHTML = '<p style="color:#aaa;">ابدأ الكتابة هنا...</p>';
+    if (prodId) db.ref('/productBlogs/' + prodId).remove();
+};
+
+// معاينة في تاب جديد
+window.previewAdminBlog = function() {
+    let prodId = document.getElementById('newProdId').value.trim();
+    if (!prodId) return alert('يرجى تحديد كود المنتج أولاً!');
+    window.open('product.html?id=' + prodId, '_blank');
+};
+
+// أوامر المحرر
+window.blogExecCmd = function(cmd, val) {
+    document.getElementById('adminBlogEditor').focus();
+    document.execCommand(cmd, false, val || null);
+};
+
+window.blogInsertDivider = function() {
+    document.getElementById('adminBlogEditor').focus();
+    document.execCommand('insertHTML', false,
+        '<hr style="border:none;border-top:2px solid #f38c18;margin:25px 0;">');
+};
+
+// حفظ موضع الكيرسور
+function saveAdminBlogRange() {
+    let sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) adminBlogSavedRange = sel.getRangeAt(0).cloneRange();
+}
+
+function restoreAdminBlogRange() {
+    document.getElementById('adminBlogEditor').focus();
+    if (adminBlogSavedRange) {
+        let sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(adminBlogSavedRange);
+    }
+}
+
+// ===== Modals الإدراج =====
+window.openAdminBlogModal = function(type) {
+    saveAdminBlogRange();
+    if (type === 'img')   document.getElementById('adminModalImg').style.display   = 'flex';
+    if (type === 'video') document.getElementById('adminModalVideo').style.display = 'flex';
+    if (type === 'link')  document.getElementById('adminModalLink').style.display  = 'flex';
+};
+
+window.closeAdminBlogModal = function(id) {
+    document.getElementById(id).style.display = 'none';
+};
+
+// إدراج صورة
+window.adminInsertImage = function() {
+    let url   = document.getElementById('adminImgUrl').value.trim();
+    let align = document.getElementById('adminImgAlign').value;
+    if (!url) return alert('يرجى إدخال رابط الصورة!');
+
+    let style = '';
+    if (align === 'center') style = 'display:block;margin:15px auto;max-width:100%;border-radius:10px;';
+    else if (align === 'right') style = 'float:right;margin:0 0 10px 15px;max-width:50%;border-radius:10px;';
+    else if (align === 'left')  style = 'float:left;margin:0 15px 10px 0;max-width:50%;border-radius:10px;';
+    else style = 'display:block;width:100%;border-radius:10px;margin:15px 0;';
+
+    restoreAdminBlogRange();
+    document.execCommand('insertHTML', false,
+        `<img src="${url}" style="${style}"><div style="clear:both;"></div>`);
+    document.getElementById('adminImgUrl').value = '';
+    closeAdminBlogModal('adminModalImg');
+};
+
+// رفع صورة من الجهاز للمحرر
+window.adminBlogHandleUpload = function(event) {
+    let file = event.target.files[0];
+    if (!file || !window.storage) return;
+    let prodId = document.getElementById('newProdId').value.trim() || 'general';
+    let ref = storage.ref('productBlog/' + prodId + '_' + Date.now() + '.jpg');
+    let btn = document.querySelector('#adminModalImg .btn-insert-confirm');
+    if (btn) { btn.innerText = '⏳ جاري الرفع...'; btn.disabled = true; }
+
+    ref.put(file).then(snap => snap.ref.getDownloadURL()).then(url => {
+        document.getElementById('adminImgUrl').value = url;
+        if (btn) { btn.innerText = 'إدراج الصورة'; btn.disabled = false; }
+    }).catch(() => {
+        alert('❌ فشل الرفع!');
+        if (btn) { btn.innerText = 'إدراج الصورة'; btn.disabled = false; }
+    });
+};
+
+// إدراج فيديو
+window.adminInsertVideo = function() {
+    let url = document.getElementById('adminVideoUrl').value.trim();
+    if (!url) return alert('يرجى إدخال رابط الفيديو!');
+
+    let embedHtml = '';
+    let ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+    if (ytMatch) {
+        embedHtml = `<div style="position:relative;padding-bottom:56.25%;height:0;margin:20px 0;border-radius:10px;overflow:hidden;">
+            <iframe src="https://www.youtube.com/embed/${ytMatch[1]}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;" allowfullscreen></iframe>
+        </div>`;
+    } else if (url.includes('facebook.com')) {
+        let encoded = encodeURIComponent(url);
+        embedHtml = `<div style="position:relative;padding-bottom:56.25%;height:0;margin:20px 0;border-radius:10px;overflow:hidden;">
+            <iframe src="https://www.facebook.com/plugins/video.php?href=${encoded}&show_text=0" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;" allowfullscreen></iframe>
+        </div>`;
+    } else if (url.match(/\.(mp4|webm|ogg)(\?.*)?$/i)) {
+        embedHtml = `<video controls style="width:100%;max-width:720px;border-radius:10px;margin:15px 0;">
+            <source src="${url}" type="video/mp4">
+        </video>`;
+    } else {
+        embedHtml = `<div style="position:relative;padding-bottom:56.25%;height:0;margin:20px 0;border-radius:10px;overflow:hidden;">
+            <iframe src="${url}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;" allowfullscreen></iframe>
+        </div>`;
+    }
+
+    restoreAdminBlogRange();
+    document.execCommand('insertHTML', false, embedHtml);
+    document.getElementById('adminVideoUrl').value = '';
+    closeAdminBlogModal('adminModalVideo');
+};
+
+// إدراج رابط
+window.adminInsertLink = function() {
+    let text = document.getElementById('adminLinkText').value.trim();
+    let url  = document.getElementById('adminLinkUrl').value.trim();
+    if (!url) return alert('يرجى إدخال الرابط!');
+    if (!text) text = url;
+
+    restoreAdminBlogRange();
+    document.execCommand('insertHTML', false,
+        `<a href="${url}" target="_blank" style="color:#f38c18;font-weight:bold;text-decoration:underline;">${text}</a>`);
+    document.getElementById('adminLinkText').value = '';
+    document.getElementById('adminLinkUrl').value  = '';
+    closeAdminBlogModal('adminModalLink');
+};
+
+// تحميل المحتوى تلقائياً عند الضغط على تعديل منتج
+let _origEditProduct = window.editProduct;
+window.editProduct = function(id) {
+    if (_origEditProduct) _origEditProduct(id);
+    adminBlogCurrentProductId = id;
+    document.getElementById('blogProdIdLabel').innerText = 'المنتج: ' + id;
+};
+
         })();
     </script>
+
+<!-- ===== Modals محرر المدونة في الأدمن ===== -->
+<div id="adminModalImg" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:5000; justify-content:center; align-items:center;">
+    <div style="background:white; border-radius:12px; padding:30px; width:460px; max-width:92%; box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+        <h3 style="color:#1d364a; margin-top:0; border-bottom:2px solid #f38c18; padding-bottom:10px;">🖼️ إضافة صورة</h3>
+        <div class="form-group"><label>رابط الصورة (URL)</label><input type="text" id="adminImgUrl" class="form-control" placeholder="https://..."></div>
+        <div class="form-group">
+            <label>أو ارفع من جهازك</label>
+            <input type="file" id="adminImgFile" accept="image/*" class="form-control" onchange="adminBlogHandleUpload(event)">
+        </div>
+        <div class="form-group">
+            <label>محاذاة الصورة</label>
+            <select id="adminImgAlign" class="form-control">
+                <option value="center">وسط</option>
+                <option value="right">يمين</option>
+                <option value="left">يسار</option>
+                <option value="full">عرض كامل</option>
+            </select>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button class="btn btn-green btn-insert-confirm" onclick="adminInsertImage()" style="flex:1; padding:10px;">إدراج الصورة</button>
+            <button class="btn" style="flex:1; padding:10px; background:#e0e0e0; color:#333;" onclick="closeAdminBlogModal('adminModalImg')">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<div id="adminModalVideo" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:5000; justify-content:center; align-items:center;">
+    <div style="background:white; border-radius:12px; padding:30px; width:460px; max-width:92%; box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+        <h3 style="color:#1d364a; margin-top:0; border-bottom:2px solid #f38c18; padding-bottom:10px;">🎬 إضافة فيديو</h3>
+        <div class="form-group"><label>رابط يوتيوب أو Facebook أو mp4 مباشر</label><input type="text" id="adminVideoUrl" class="form-control" placeholder="https://www.youtube.com/watch?v=..."></div>
+        <p style="font-size:12px; color:#888; margin:0 0 15px 0;">يدعم: YouTube, Facebook Video, روابط mp4</p>
+        <div style="display:flex; gap:10px;">
+            <button class="btn btn-green" onclick="adminInsertVideo()" style="flex:1; padding:10px;">إدراج الفيديو</button>
+            <button class="btn" style="flex:1; padding:10px; background:#e0e0e0; color:#333;" onclick="closeAdminBlogModal('adminModalVideo')">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<div id="adminModalLink" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:5000; justify-content:center; align-items:center;">
+    <div style="background:white; border-radius:12px; padding:30px; width:460px; max-width:92%; box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+        <h3 style="color:#1d364a; margin-top:0; border-bottom:2px solid #f38c18; padding-bottom:10px;">🔗 إضافة رابط</h3>
+        <div class="form-group"><label>نص الرابط</label><input type="text" id="adminLinkText" class="form-control" placeholder="اضغط هنا"></div>
+        <div class="form-group"><label>الرابط (URL)</label><input type="text" id="adminLinkUrl" class="form-control" placeholder="https://..."></div>
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button class="btn btn-green" onclick="adminInsertLink()" style="flex:1; padding:10px;">إدراج الرابط</button>
+            <button class="btn" style="flex:1; padding:10px; background:#e0e0e0; color:#333;" onclick="closeAdminBlogModal('adminModalLink')">إلغاء</button>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>

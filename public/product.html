@@ -6,226 +6,699 @@
     <title>تفاصيل المنتج | الجوري ستور</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* تصميم صفحة المنتج */
-        .product-details-container { max-width: 1200px; margin: 50px auto; padding: 30px; display: flex; gap: 40px; flex-wrap: wrap; background: #fff; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
+        /* ===== صفحة المنتج الرئيسية ===== */
+        .product-details-container {
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 30px;
+            display: flex;
+            gap: 40px;
+            flex-wrap: wrap;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        }
         .product-image-box { flex: 1; min-width: 300px; text-align: center; }
-        .product-image-box img { max-width: 100%; max-height: 500px; object-fit: contain; border-radius: 10px; padding: 10px; border: 1px solid #eef2f5; }
-        
-        .product-info-box { flex: 1.5; min-width: 300px; display: flex; flex-direction: column; justify-content: center; }
+        .product-image-box img {
+            max-width: 100%; max-height: 500px; object-fit: contain;
+            border-radius: 10px; padding: 10px; border: 1px solid #eef2f5;
+        }
+        .product-info-box {
+            flex: 1.5; min-width: 300px;
+            display: flex; flex-direction: column; justify-content: center;
+        }
         .product-title { color: #1d364a; font-size: 32px; margin-top: 0; margin-bottom: 15px; }
         .product-price { color: #f38c18; font-size: 28px; font-weight: bold; margin-bottom: 20px; }
-        
         .btn-add-large:hover { opacity: 0.9; transform: translateY(-2px); }
         .btn-add-large:disabled { background: #ccc !important; color: #666 !important; cursor: not-allowed !important; transform: none; }
+
+        /* ===== قسم المدونة ===== */
+        #productBlogSection {
+            max-width: 1200px;
+            margin: 0 auto 60px auto;
+            padding: 0 30px;
+        }
+        #productBlogContent {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            padding: 40px;
+            line-height: 1.9;
+            font-size: 16px;
+            color: #333;
+        }
+        #productBlogContent img {
+            max-width: 100%;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+        #productBlogContent iframe {
+            width: 100%;
+            max-width: 720px;
+            height: 405px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border: none;
+        }
+        #productBlogContent h2 { color: #1d364a; border-bottom: 3px solid #f38c18; padding-bottom: 8px; }
+        #productBlogContent h3 { color: #1d364a; }
+        #productBlogContent blockquote {
+            border-right: 5px solid #f38c18;
+            background: #fdf5e6;
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 20px 0;
+            font-style: italic;
+            color: #555;
+        }
+
+        /* ===== محرر المدونة (للأدمن فقط) ===== */
+        #blogEditorWrapper {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 30px;
+            display: none;
+        }
+        #blogEditorWrapper.show { display: block; }
+
+        .editor-toolbar {
+            background: #1d364a;
+            border-radius: 10px 10px 0 0;
+            padding: 12px 15px;
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .editor-toolbar button, .editor-toolbar select, .editor-toolbar input[type="color"] {
+            background: rgba(255,255,255,0.12);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 5px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 13px;
+            font-family: inherit;
+            transition: 0.2s;
+        }
+        .editor-toolbar button:hover { background: #f38c18; border-color: #f38c18; color: #1d364a; }
+        .editor-toolbar .sep { width: 1px; background: rgba(255,255,255,0.2); height: 28px; margin: 0 4px; }
+        .editor-toolbar select { color: #1d364a; background: white; }
+        .editor-toolbar input[type="color"] { padding: 3px 6px; width: 40px; height: 34px; }
+        .editor-toolbar label { color: rgba(255,255,255,0.7); font-size: 12px; }
+
+        #blogEditor {
+            min-height: 400px;
+            border: 2px solid #1d364a;
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            padding: 25px;
+            outline: none;
+            font-size: 16px;
+            line-height: 1.9;
+            background: #fff;
+            color: #333;
+        }
+        #blogEditor:focus { border-color: #f38c18; }
+        #blogEditor img { max-width: 100%; border-radius: 8px; }
+        #blogEditor iframe { width: 100%; height: 360px; border: none; border-radius: 8px; }
+        #blogEditor blockquote {
+            border-right: 5px solid #f38c18;
+            background: #fdf5e6;
+            padding: 12px 18px;
+            border-radius: 0 8px 8px 0;
+            margin: 15px 0;
+            color: #555;
+        }
+
+        .editor-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        .editor-actions button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-save-blog { background: #28a745; color: white; }
+        .btn-save-blog:hover { background: #218838; }
+        .btn-toggle-preview { background: #17a2b8; color: white; }
+        .btn-toggle-preview:hover { background: #138496; }
+        .btn-clear-blog { background: #d9534f; color: white; }
+        .btn-clear-blog:hover { background: #c0392b; }
+
+        /* Insert modals */
+        .insert-modal-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 9000;
+            justify-content: center;
+            align-items: center;
+        }
+        .insert-modal-overlay.show { display: flex; }
+        .insert-modal-box {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            width: 480px;
+            max-width: 92%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        .insert-modal-box h3 { color: #1d364a; margin-top: 0; border-bottom: 2px solid #f38c18; padding-bottom: 10px; }
+        .insert-modal-box input, .insert-modal-box select, .insert-modal-box textarea {
+            width: 100%; padding: 10px; border: 1px solid #ddd;
+            border-radius: 6px; font-family: inherit; font-size: 14px;
+            margin-bottom: 12px; box-sizing: border-box;
+        }
+        .insert-modal-box .modal-btns { display: flex; gap: 10px; margin-top: 5px; }
+        .insert-modal-box .modal-btns button {
+            flex: 1; padding: 10px; border: none; border-radius: 6px;
+            font-size: 14px; font-weight: bold; cursor: pointer;
+        }
+        .btn-insert-confirm { background: #1d364a; color: white; }
+        .btn-insert-cancel { background: #e0e0e0; color: #333; }
+
+        /* شريط الأدمن */
+        #adminBlogBar {
+            display: none;
+            max-width: 1200px;
+            margin: 20px auto 0 auto;
+            padding: 0 30px;
+        }
+        #adminBlogBar.show { display: block; }
+        #adminBlogBar .bar-inner {
+            background: linear-gradient(135deg, #1d364a, #2a4d69);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        #adminBlogBar .bar-inner span { font-size: 14px; font-weight: bold; }
+        #adminBlogBar .bar-inner button {
+            background: #f38c18; color: #1d364a;
+            border: none; padding: 8px 18px;
+            border-radius: 6px; font-weight: bold;
+            cursor: pointer; font-size: 14px;
+        }
     </style>
 </head>
 <body>
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تسجيل الدخول | الجوري ستور</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-<div id="site-header"></div>
-<script src="js/header-loader.js"></script>
 
-    <div class="auth-container" style="max-width: 500px; margin: 50px auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-        
-        <div id="loginFormBox">
-            <h2 id="loginTitle" style="text-align: center; color: #1d364a; margin-bottom: 20px;">تسجيل الدخول</h2>
-            <form onsubmit="doLogin(event)">
-                <div class="form-group">
-                    <label id="labelLoginPhone">رقم التليفون</label>
-                    <input type="tel" class="form-control" id="loginPhone" required>
-                </div>
-                <div class="form-group">
-                    <label id="labelLoginPassword">كلمة المرور</label>
-                    <input type="password" class="form-control" id="loginPassword" required>
-                </div>
-                <button type="submit" class="btn-auth" id="btnLoginSubmit" style="width: 100%; padding: 12px; background: #1d364a; color: white; border: none; border-radius: 5px; font-weight: bold; font-size: 16px; cursor: pointer;">دخول</button>
-            </form>
-            <div class="auth-switch" style="text-align: center; margin-top: 15px;">
-                <span id="noAccountText">ليس لديك حساب؟</span> 
-                <a onclick="toggleAuth('register')" id="linkToRegister" style="color: #f38c18; cursor: pointer; font-weight: bold;">إنشاء حساب جديد</a>
-            </div>
-            <div style="text-align: center; margin-top: 10px;">
-                <a onclick="toggleAuth('forgot')" style="color: #999; cursor: pointer; font-size: 14px;">نسيت كلمة المرور؟</a>
-            </div>
+    <!-- ===== الهيدر ===== -->
+    <div id="site-header"></div>
+    <script src="js/header-loader.js"></script>
+
+    <!-- ===== شريط الأدمن ===== -->
+    <div id="adminBlogBar">
+        <div class="bar-inner">
+            <span>🛠️ وضع التحرير - أنت تعدل صفحة هذا المنتج</span>
+            <button onclick="toggleBlogEditor()">✏️ تحرير محتوى الصفحة</button>
         </div>
-
-        <div id="registerFormBox" style="display:none;">
-            <h2 id="registerTitle" style="text-align: center; color: #1d364a; margin-bottom: 20px;">إنشاء حساب جديد</h2>
-            <form onsubmit="doRegister(event)">
-                <div class="form-group">
-                    <label id="labelFullName">الاسم بالكامل</label>
-                    <input type="text" class="form-control" id="regName" required>
-                </div>
-                <div class="form-group">
-                    <label>رقم التليفون (للدخول)</label>
-                    <input type="tel" class="form-control" id="regPhone" required>
-                </div>
-                <div class="form-group">
-                    <label>البريد الإلكتروني (لاسترجاع الحساب)</label>
-                    <input type="email" class="form-control" id="regEmail" required>
-                </div>
-                <div class="form-group">
-                    <label>المنطقة / المحافظة</label>
-                    <select class="form-control" id="regRegion" required>
-                        <option value="">-- اختر المنطقة --</option>
-                        </select>
-                </div>
-                <div class="form-group">
-                    <label>العنوان بالتفصيل</label>
-                    <input type="text" class="form-control" id="regAddress" required>
-                </div>
-                <div class="form-group">
-                    <label id="labelRegPassword">كلمة المرور</label>
-                    <input type="password" class="form-control" id="regPassword" required>
-                </div>
-                
-                <button type="submit" class="btn-auth" style="width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 5px; font-weight: bold; font-size: 16px; cursor: pointer;">إنشاء الحساب</button>
-            </form>
-            <div class="auth-switch" style="text-align: center; margin-top: 15px;">
-                <span id="hasAccountText">لديك حساب بالفعل؟</span> 
-                <a onclick="toggleAuth('login')" style="color: #1d364a; cursor: pointer; font-weight: bold;">تسجيل الدخول</a>
-            </div>
-        </div>
-
-        <div id="forgotFormBox" style="display:none;">
-            <h2 style="text-align: center; color: #1d364a; margin-bottom: 20px;">استرجاع كلمة المرور</h2>
-            <p style="text-align: center; color: #666; font-size: 14px; margin-bottom: 20px;">أدخل بريدك الإلكتروني وسنرسل لك كلمة مرور جديدة.</p>
-            <form onsubmit="doForgotPassword(event)">
-                <div class="form-group">
-                    <label>البريد الإلكتروني</label>
-                    <input type="email" class="form-control" id="forgotEmail" required>
-                </div>
-                <button type="submit" class="btn-auth" style="width: 100%; padding: 12px; background: #f38c18; color: #1d364a; border: none; border-radius: 5px; font-weight: bold; font-size: 16px; cursor: pointer;">إرسال كلمة المرور</button>
-            </form>
-            <div class="auth-switch" style="text-align: center; margin-top: 15px;">
-                <a onclick="toggleAuth('login')" style="color: #1d364a; cursor: pointer; font-weight: bold;">العودة لتسجيل الدخول</a>
-            </div>
-        </div>
-
     </div>
 
-<!-- 1. مكتبات فايربيس الأساسية (بما فيها الـ Storage عشان الإيرور يختفي) -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
-
-    <!-- 2. ملفات متجرك -->
-    <script src="js/firebase-init.js"></script>
-    <script src="js/store-core.js"></script>
-    <script src="script.js"></script>
-</body>
-</html>
+    <!-- ===== تفاصيل المنتج ===== -->
     <div id="singleProductContainer" class="product-details-container">
         <h2 style="text-align:center; width:100%; color:#1d364a;">جاري تحميل تفاصيل المنتج...</h2>
     </div>
 
+    <!-- ===== محرر المدونة ===== -->
+    <div id="blogEditorWrapper">
+        <h3 style="color:#1d364a; border-bottom: 2px solid #f38c18; padding-bottom: 10px;">✏️ محرر محتوى الصفحة</h3>
+
+        <!-- شريط الأدوات -->
+        <div class="editor-toolbar">
+            <!-- النص -->
+            <select onchange="execCmd('formatBlock', this.value); this.value=''">
+                <option value="">📝 نص عادي</option>
+                <option value="H2">عنوان كبير</option>
+                <option value="H3">عنوان متوسط</option>
+                <option value="H4">عنوان صغير</option>
+                <option value="P">فقرة</option>
+                <option value="blockquote">اقتباس</option>
+            </select>
+
+            <div class="sep"></div>
+
+            <!-- حجم الخط -->
+            <select onchange="execCmd('fontSize', this.value); this.value=''">
+                <option value="">حجم الخط</option>
+                <option value="2">صغير</option>
+                <option value="3">عادي</option>
+                <option value="4">كبير</option>
+                <option value="5">أكبر</option>
+                <option value="6">ضخم</option>
+                <option value="7">ضخم جداً</option>
+            </select>
+
+            <!-- لون الخط -->
+            <label>لون:</label>
+            <input type="color" value="#333333" onchange="execCmd('foreColor', this.value)" title="لون النص">
+
+            <!-- لون الخلفية -->
+            <label>تظليل:</label>
+            <input type="color" value="#ffffff" onchange="execCmd('hiliteColor', this.value)" title="تظليل النص">
+
+            <div class="sep"></div>
+
+            <!-- تنسيق -->
+            <button onclick="execCmd('bold')" title="عريض"><strong>B</strong></button>
+            <button onclick="execCmd('italic')" title="مائل"><em>I</em></button>
+            <button onclick="execCmd('underline')" title="تسطير"><u>U</u></button>
+            <button onclick="execCmd('strikeThrough')" title="يتوسطه خط"><s>S</s></button>
+
+            <div class="sep"></div>
+
+            <!-- محاذاة -->
+            <button onclick="execCmd('justifyRight')" title="يمين">⬅️</button>
+            <button onclick="execCmd('justifyCenter')" title="وسط">↔️</button>
+            <button onclick="execCmd('justifyLeft')" title="يسار">➡️</button>
+
+            <div class="sep"></div>
+
+            <!-- قوائم -->
+            <button onclick="execCmd('insertUnorderedList')" title="قائمة نقطية">• قائمة</button>
+            <button onclick="execCmd('insertOrderedList')" title="قائمة مرقمة">1. مرقمة</button>
+
+            <div class="sep"></div>
+
+            <!-- إدراج -->
+            <button onclick="openInsertModal('img')" title="إضافة صورة">🖼️ صورة</button>
+            <button onclick="openInsertModal('video')" title="إضافة فيديو يوتيوب">🎬 فيديو</button>
+            <button onclick="openInsertModal('link')" title="إضافة رابط">🔗 رابط</button>
+            <button onclick="insertDivider()" title="فاصل">— فاصل</button>
+
+            <div class="sep"></div>
+
+            <!-- مسح -->
+            <button onclick="execCmd('removeFormat')" title="مسح التنسيق">🧹 مسح تنسيق</button>
+        </div>
+
+        <!-- منطقة الكتابة -->
+        <div id="blogEditor" contenteditable="true" dir="rtl">
+            <p>ابدأ الكتابة هنا... أضف وصفاً تفصيلياً، صور، فيديوهات، آراء العملاء، وكل ما تريد.</p>
+        </div>
+
+        <!-- أزرار الحفظ -->
+        <div class="editor-actions">
+            <button class="btn-save-blog" onclick="saveBlogContent()">💾 حفظ المحتوى</button>
+            <button class="btn-toggle-preview" onclick="togglePreviewMode()">👁️ معاينة</button>
+            <button class="btn-clear-blog" onclick="clearBlogContent()">🗑️ مسح المحتوى</button>
+        </div>
+    </div>
+
+    <!-- ===== عرض المحتوى المحفوظ ===== -->
+    <div id="productBlogSection" style="display:none;">
+        <div id="productBlogContent"></div>
+    </div>
+
+    <!-- ===== Modal إدراج صورة ===== -->
+    <div id="modalImg" class="insert-modal-overlay">
+        <div class="insert-modal-box">
+            <h3>🖼️ إضافة صورة</h3>
+            <label>رابط الصورة (URL)</label>
+            <input type="text" id="imgUrlInput" placeholder="https://...">
+            <label>أو ارفع من جهازك</label>
+            <input type="file" id="imgFileInput" accept="image/*" onchange="handleImgUpload(event)">
+            <label>محاذاة الصورة</label>
+            <select id="imgAlignSelect">
+                <option value="center">وسط</option>
+                <option value="right">يمين</option>
+                <option value="left">يسار</option>
+                <option value="full">عرض كامل</option>
+            </select>
+            <div class="modal-btns">
+                <button class="btn-insert-confirm" onclick="insertImage()">إدراج الصورة</button>
+                <button class="btn-insert-cancel" onclick="closeInsertModal('modalImg')">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Modal إدراج فيديو ===== -->
+    <div id="modalVideo" class="insert-modal-overlay">
+        <div class="insert-modal-box">
+            <h3>🎬 إضافة فيديو</h3>
+            <label>رابط يوتيوب أو Facebook أو رابط فيديو مباشر</label>
+            <input type="text" id="videoUrlInput" placeholder="https://www.youtube.com/watch?v=...">
+            <p style="font-size:12px; color:#888; margin:0 0 10px 0;">يدعم: YouTube, Facebook Video, روابط mp4 مباشرة</p>
+            <div class="modal-btns">
+                <button class="btn-insert-confirm" onclick="insertVideo()">إدراج الفيديو</button>
+                <button class="btn-insert-cancel" onclick="closeInsertModal('modalVideo')">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Modal إدراج رابط ===== -->
+    <div id="modalLink" class="insert-modal-overlay">
+        <div class="insert-modal-box">
+            <h3>🔗 إضافة رابط</h3>
+            <label>نص الرابط</label>
+            <input type="text" id="linkTextInput" placeholder="اضغط هنا">
+            <label>الرابط (URL)</label>
+            <input type="text" id="linkUrlInput" placeholder="https://...">
+            <div class="modal-btns">
+                <button class="btn-insert-confirm" onclick="insertLink()">إدراج الرابط</button>
+                <button class="btn-insert-cancel" onclick="closeInsertModal('modalLink')">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Firebase + Scripts ===== -->
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
-    
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
     <script src="js/firebase-init.js"></script>
     <script src="js/store-core.js"></script>
     <script src="script.js"></script>
 
     <script>
-        window.renderSingleProduct = function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const productId = urlParams.get('id');
-            const container = document.getElementById("singleProductContainer");
+    // ================================================================
+    // ===== عرض تفاصيل المنتج =====
+    // ================================================================
+    let currentProductId = null;
+    let savedSelection = null;
 
-            if(!productId) {
-                container.innerHTML = "<h2 style='text-align:center; width:100%; color:#d9534f;'>المنتج غير موجود! تأكد من الرابط.</h2>";
-                return;
-            }
+    window.renderSingleProduct = function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        currentProductId = urlParams.get('id');
+        const container = document.getElementById("singleProductContainer");
 
-            let products = JSON.parse(localStorage.getItem("eljory_products")) || [];
-            let p = products.find(item => item.id === productId);
-
-            // لو المنتج لسه محملش من فايربيس، هنجرب تاني بعد ثانية واحدة أوتوماتيك
-            if(!p) {
-                setTimeout(() => {
-                    products = JSON.parse(localStorage.getItem("eljory_products")) || [];
-                    p = products.find(item => item.id === productId);
-                    if(!p) {
-                        container.innerHTML = "<h2 style='text-align:center; width:100%; color:#d9534f;'>عذراً، هذا المنتج غير متوفر حالياً.</h2>";
-                    } else {
-                        drawProductDetails(p, container);
-                    }
-                }, 1000);
-                return;
-            }
-            
-            drawProductDetails(p, container);
+        if (!currentProductId) {
+            container.innerHTML = "<h2 style='text-align:center;width:100%;color:#d9534f;'>المنتج غير موجود! تأكد من الرابط.</h2>";
+            return;
         }
 
-        function drawProductDetails(p, container) {
-            let pName = currentLang === 'ar' ? p.titleAr : (p.titleEn || p.titleAr);
-            let pDesc = currentLang === 'ar' ? (p.descAr || "لا يوجد وصف متاح لهذا المنتج.") : (p.descEn || p.descAr || "No description available.");
-            let curr = currentLang === 'ar' ? 'ج.م' : 'EGP';
-            let btnTxt = currentLang === 'ar' ? 'أضف للسلة' : 'Add to Cart';
-            
-            let pointsTxt = "";
-            if (p.points > 0) {
-                pointsTxt = currentLang === 'ar' ? 
-                `<p style="color:#28a745; font-weight:bold; font-size: 16px;">🎁 ستحصل على ${p.points} نقطة عند الشراء</p>` : 
-                `<p style="color:#28a745; font-weight:bold; font-size: 16px;">🎁 You will get ${p.points} points</p>`;
-            }
+        let products = JSON.parse(localStorage.getItem("eljory_products")) || [];
+        let p = products.find(item => item.id === currentProductId);
 
-            let stockStatus = "";
-            let btnDisabled = "";
-            
-            if(p.stock <= 0) {
-                stockStatus = `<span style="color:#d9534f; font-weight:bold; font-size:18px;">${currentLang === 'ar' ? 'نفدت الكمية ❌' : 'Out of Stock ❌'}</span>`;
-                btnDisabled = "disabled";
-            } else {
-                stockStatus = `<span style="color:#28a745; font-weight:bold; font-size:16px;">${currentLang === 'ar' ? 'متوفر في المخزون ✅' : 'In Stock ✅'}</span>`;
-            }
+        if (!p) {
+            setTimeout(() => {
+                products = JSON.parse(localStorage.getItem("eljory_products")) || [];
+                p = products.find(item => item.id === currentProductId);
+                if (!p) {
+                    container.innerHTML = "<h2 style='text-align:center;width:100%;color:#d9534f;'>عذراً، هذا المنتج غير متوفر حالياً.</h2>";
+                } else {
+                    drawProductDetails(p, container);
+                    loadBlogContent();
+                    checkAdminAccess();
+                }
+            }, 1000);
+            return;
+        }
 
-            if (typeof fbq === 'function') {
-                fbq('track', 'ViewContent', {
-                    content_ids: [p.id],
-                    content_type: 'product',
-                    value: p.price,
-                    currency: 'EGP'
-                });
-            }
+        drawProductDetails(p, container);
+        loadBlogContent();
+        checkAdminAccess();
+    };
 
-            container.innerHTML = `
-                <div class="product-image-box">
-                    <img src="${p.img}" alt="${pName}">
-                </div>
-                <div class="product-info-box">
-                    <h1 class="product-title">${pName}</h1>
-                    <p class="product-price">${p.price} ${curr}</p>
-                    ${pointsTxt}
-                    <p style="margin-bottom: 20px;">${stockStatus}</p>
-                    <p style="line-height: 1.8; color: #555; font-size: 16px; margin-bottom: 30px;">${pDesc}</p>
-                    
-                    <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;">
-                        <div class="qty-container" style="margin: 0; display: flex; align-items: center;">
-                            <button class="qty-btn" onclick="increaseQty('prodQty', '${p.id}')" ${btnDisabled}>+</button>
-                            <input type="text" id="prodQty" class="qty-input" value="1" readonly style="width: 50px; height: 40px; font-size: 18px; text-align: center; border: 1px solid #ccc;">
-                            <button class="qty-btn" onclick="decreaseQty('prodQty')" ${btnDisabled}>-</button>
-                        </div>
-                        <button class="btn-add-large" onclick="addToCart('${p.id}', ${p.price}, 'prodQty')" ${btnDisabled} style="flex: 1; padding: 15px; background: #f38c18; color: #1d364a; font-weight: bold; font-size: 18px; border: none; border-radius: 8px; cursor: pointer; transition: 0.3s;">
-                            🛒 ${btnTxt}
-                        </button>
+    function drawProductDetails(p, container) {
+        let pName = (typeof currentLang !== 'undefined' && currentLang === 'en') ? (p.titleEn || p.titleAr) : p.titleAr;
+        let pDesc = (typeof currentLang !== 'undefined' && currentLang === 'en') ? (p.descEn || p.descAr || "No description available.") : (p.descAr || "لا يوجد وصف متاح.");
+        let curr = (typeof currentLang !== 'undefined' && currentLang === 'en') ? 'EGP' : 'ج.م';
+        let btnTxt = (typeof currentLang !== 'undefined' && currentLang === 'en') ? 'Add to Cart' : 'أضف للسلة';
+
+        let pointsTxt = "";
+        if (p.points > 0) {
+            pointsTxt = `<p style="color:#28a745;font-weight:bold;font-size:16px;">🎁 ستحصل على ${p.points} نقطة عند الشراء</p>`;
+        }
+
+        let stockStatus = "", btnDisabled = "";
+        if (p.stock <= 0) {
+            stockStatus = `<span style="color:#d9534f;font-weight:bold;font-size:18px;">نفدت الكمية ❌</span>`;
+            btnDisabled = "disabled";
+        } else {
+            stockStatus = `<span style="color:#28a745;font-weight:bold;font-size:16px;">متوفر في المخزون ✅</span>`;
+        }
+
+        if (typeof fbq === 'function') {
+            fbq('track', 'ViewContent', { content_ids: [p.id], content_type: 'product', value: p.price, currency: 'EGP' });
+        }
+
+        // تحويل النص العادي لـ HTML بفواصل السطر
+        let descHtml = pDesc.replace(/\n/g, '<br>');
+
+        container.innerHTML = `
+            <div class="product-image-box">
+                <img src="${p.img}" alt="${pName}">
+            </div>
+            <div class="product-info-box">
+                <h1 class="product-title">${pName}</h1>
+                <p class="product-price">${p.price} ${curr}</p>
+                ${pointsTxt}
+                <p style="margin-bottom:20px;">${stockStatus}</p>
+                <p style="line-height:1.9;color:#555;font-size:16px;margin-bottom:30px;">${descHtml}</p>
+                <div style="display:flex;gap:15px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
+                    <div class="qty-container" style="margin:0;display:flex;align-items:center;">
+                        <button class="qty-btn" onclick="increaseQty('prodQty','${p.id}')" ${btnDisabled}>+</button>
+                        <input type="text" id="prodQty" class="qty-input" value="1" readonly style="width:50px;height:40px;font-size:18px;text-align:center;border:1px solid #ccc;">
+                        <button class="qty-btn" onclick="decreaseQty('prodQty')" ${btnDisabled}>-</button>
                     </div>
+                    <button class="btn-add-large" onclick="addToCart('${p.id}',${p.price},'prodQty')" ${btnDisabled}
+                        style="flex:1;padding:15px;background:#f38c18;color:#1d364a;font-weight:bold;font-size:18px;border:none;border-radius:8px;cursor:pointer;transition:0.3s;">
+                        🛒 ${btnTxt}
+                    </button>
                 </div>
-            `;
-            
-            document.title = pName + " | الجوري ستور";
+            </div>
+        `;
+
+        document.title = pName + " | الجوري ستور";
+    }
+
+    // ================================================================
+    // ===== نظام التحقق من الأدمن =====
+    // ================================================================
+    function checkAdminAccess() {
+        if (!window.firebase || !firebase.auth) return;
+        firebase.auth().onAuthStateChanged(function(user) {
+            if (!user) return;
+            db.ref('/admins/' + user.uid).once('value', function(snap) {
+                if (snap.val() === true) {
+                    document.getElementById('adminBlogBar').classList.add('show');
+                }
+            });
+        });
+    }
+
+    // ================================================================
+    // ===== محرر المدونة =====
+    // ================================================================
+    window.toggleBlogEditor = function() {
+        let wrapper = document.getElementById('blogEditorWrapper');
+        wrapper.classList.toggle('show');
+        if (wrapper.classList.contains('show')) {
+            // تحميل المحتوى الحالي في المحرر
+            let saved = localStorage.getItem('blog_' + currentProductId) || '';
+            document.getElementById('blogEditor').innerHTML = saved || '<p>ابدأ الكتابة هنا...</p>';
+            document.getElementById('blogEditor').focus();
+        }
+    };
+
+    // حفظ محتوى المدونة في Firebase
+    window.saveBlogContent = function() {
+        if (!currentProductId) return;
+        let content = document.getElementById('blogEditor').innerHTML;
+        db.ref('/productBlogs/' + currentProductId).set(content).then(() => {
+            localStorage.setItem('blog_' + currentProductId, content);
+            alert('✅ تم حفظ المحتوى بنجاح!');
+            loadBlogContent();
+        }).catch(() => alert('❌ خطأ في الحفظ!'));
+    };
+
+    // تحميل المحتوى المحفوظ
+    function loadBlogContent() {
+        if (!currentProductId) return;
+
+        // حاول من localStorage أولاً للسرعة
+        let cached = localStorage.getItem('blog_' + currentProductId);
+        if (cached) showBlogContent(cached);
+
+        // ثم تحديث من Firebase
+        db.ref('/productBlogs/' + currentProductId).once('value', function(snap) {
+            let content = snap.val();
+            if (content) {
+                localStorage.setItem('blog_' + currentProductId, content);
+                showBlogContent(content);
+            }
+        });
+    }
+
+    function showBlogContent(content) {
+        if (!content || content.trim() === '' || content === '<p>ابدأ الكتابة هنا...</p>') return;
+        let section = document.getElementById('productBlogSection');
+        let blogDiv = document.getElementById('productBlogContent');
+        blogDiv.innerHTML = content;
+        section.style.display = 'block';
+    }
+
+    window.togglePreviewMode = function() {
+        let editor = document.getElementById('blogEditor');
+        let isEditable = editor.contentEditable === 'true';
+        editor.contentEditable = isEditable ? 'false' : 'true';
+        document.querySelector('.btn-toggle-preview').innerText = isEditable ? '✏️ تحرير' : '👁️ معاينة';
+    };
+
+    window.clearBlogContent = function() {
+        if (!confirm('هل أنت متأكد من مسح كل المحتوى؟')) return;
+        document.getElementById('blogEditor').innerHTML = '<p>ابدأ الكتابة هنا...</p>';
+        if (currentProductId) {
+            db.ref('/productBlogs/' + currentProductId).remove();
+            localStorage.removeItem('blog_' + currentProductId);
+            document.getElementById('productBlogSection').style.display = 'none';
+        }
+    };
+
+    // ================================================================
+    // ===== أوامر المحرر =====
+    // ================================================================
+    window.execCmd = function(cmd, val) {
+        document.getElementById('blogEditor').focus();
+        document.execCommand(cmd, false, val || null);
+    };
+
+    window.insertDivider = function() {
+        document.getElementById('blogEditor').focus();
+        document.execCommand('insertHTML', false, '<hr style="border:none;border-top:2px solid #f38c18;margin:25px 0;">');
+    };
+
+    // ================================================================
+    // ===== Modals الإدراج =====
+    // ================================================================
+    let savedRange = null;
+
+    window.openInsertModal = function(type) {
+        // حفظ موضع الكيرسور قبل فتح الـ modal
+        let sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) savedRange = sel.getRangeAt(0).cloneRange();
+
+        if (type === 'img') document.getElementById('modalImg').classList.add('show');
+        else if (type === 'video') document.getElementById('modalVideo').classList.add('show');
+        else if (type === 'link') document.getElementById('modalLink').classList.add('show');
+    };
+
+    window.closeInsertModal = function(id) {
+        document.getElementById(id).classList.remove('show');
+    };
+
+    function restoreSelection() {
+        let editor = document.getElementById('blogEditor');
+        editor.focus();
+        if (savedRange) {
+            let sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(savedRange);
+        }
+    }
+
+    // إدراج صورة
+    window.insertImage = function() {
+        let url = document.getElementById('imgUrlInput').value.trim();
+        let align = document.getElementById('imgAlignSelect').value;
+        if (!url) return alert('يرجى إدخال رابط الصورة أو رفعها!');
+
+        let style = '';
+        if (align === 'center') style = 'display:block;margin:15px auto;max-width:100%;border-radius:10px;';
+        else if (align === 'right') style = 'float:right;margin:0 0 10px 15px;max-width:50%;border-radius:10px;';
+        else if (align === 'left') style = 'float:left;margin:0 15px 10px 0;max-width:50%;border-radius:10px;';
+        else style = 'display:block;width:100%;border-radius:10px;margin:15px 0;';
+
+        restoreSelection();
+        document.execCommand('insertHTML', false, `<img src="${url}" style="${style}"><div style="clear:both;"></div>`);
+        document.getElementById('imgUrlInput').value = '';
+        closeInsertModal('modalImg');
+    };
+
+    // رفع صورة من الجهاز
+    window.handleImgUpload = function(event) {
+        let file = event.target.files[0];
+        if (!file || !window.storage) return;
+        let ref = storage.ref('productBlog/' + currentProductId + '_' + Date.now() + '.jpg');
+        let btn = document.querySelector('#modalImg .btn-insert-confirm');
+        btn.innerText = '⏳ جاري الرفع...';
+        btn.disabled = true;
+        ref.put(file).then(snap => snap.ref.getDownloadURL()).then(url => {
+            document.getElementById('imgUrlInput').value = url;
+            btn.innerText = 'إدراج الصورة';
+            btn.disabled = false;
+        }).catch(() => {
+            alert('❌ فشل الرفع!');
+            btn.innerText = 'إدراج الصورة';
+            btn.disabled = false;
+        });
+    };
+
+    // إدراج فيديو
+    window.insertVideo = function() {
+        let url = document.getElementById('videoUrlInput').value.trim();
+        if (!url) return alert('يرجى إدخال رابط الفيديو!');
+
+        let embedHtml = '';
+
+        // YouTube
+        let ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+        if (ytMatch) {
+            embedHtml = `<div style="position:relative;padding-bottom:56.25%;height:0;margin:20px 0;border-radius:10px;overflow:hidden;">
+                <iframe src="https://www.youtube.com/embed/${ytMatch[1]}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;" allowfullscreen></iframe>
+            </div>`;
+        }
+        // Facebook Video
+        else if (url.includes('facebook.com')) {
+            let encoded = encodeURIComponent(url);
+            embedHtml = `<div style="position:relative;padding-bottom:56.25%;height:0;margin:20px 0;border-radius:10px;overflow:hidden;">
+                <iframe src="https://www.facebook.com/plugins/video.php?href=${encoded}&show_text=0" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;" allowfullscreen></iframe>
+            </div>`;
+        }
+        // فيديو مباشر mp4
+        else if (url.match(/\.(mp4|webm|ogg)(\?.*)?$/i)) {
+            embedHtml = `<video controls style="width:100%;max-width:720px;border-radius:10px;margin:15px 0;">
+                <source src="${url}" type="video/mp4">
+            </video>`;
+        }
+        else {
+            // محاولة كـ iframe عام
+            embedHtml = `<div style="position:relative;padding-bottom:56.25%;height:0;margin:20px 0;border-radius:10px;overflow:hidden;">
+                <iframe src="${url}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;" allowfullscreen></iframe>
+            </div>`;
         }
 
-        document.addEventListener("DOMContentLoaded", () => {
-            renderSingleProduct();
-        });
+        restoreSelection();
+        document.execCommand('insertHTML', false, embedHtml);
+        document.getElementById('videoUrlInput').value = '';
+        closeInsertModal('modalVideo');
+    };
+
+    // إدراج رابط
+    window.insertLink = function() {
+        let text = document.getElementById('linkTextInput').value.trim();
+        let url = document.getElementById('linkUrlInput').value.trim();
+        if (!url) return alert('يرجى إدخال الرابط!');
+        if (!text) text = url;
+
+        restoreSelection();
+        document.execCommand('insertHTML', false,
+            `<a href="${url}" target="_blank" style="color:#f38c18;font-weight:bold;text-decoration:underline;">${text}</a>`);
+        document.getElementById('linkTextInput').value = '';
+        document.getElementById('linkUrlInput').value = '';
+        closeInsertModal('modalLink');
+    };
+
+    // ================================================================
+    // ===== تهيئة الصفحة =====
+    // ================================================================
+    document.addEventListener("DOMContentLoaded", () => {
+        renderSingleProduct();
+    });
     </script>
+
 </body>
 </html>
