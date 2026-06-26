@@ -1705,52 +1705,52 @@
             let url = URL.createObjectURL(blob); let link = document.createElement("a"); link.setAttribute("href", url); link.setAttribute("download", `ElJory_Products.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
 
-window.importProductsCSV = function(event) {
+       window.importProductsCSV = function(event) {
     const file = event.target.files[0]; if(!file) return;
     const reader = new FileReader();
     reader.onload = function(e) {
         let text = e.target.result;
-        // إزالة BOM لو موجود
+        // إزالة BOM
         if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
-        
-        const lines = text.split(/\r?\n/).filter(line => line.trim() !== "" && !line.startsWith("sep="));
-        if(lines.length <= 1) return alert("الملف فارغ أو فيه سطر واحد بس (هيدر).");
 
-        // كشف الفاصل من أول سطر بيانات (مش الهيدر)
-        const sampleLine = lines[1] || lines[0];
-        let delimiter = ";";
-        if ((sampleLine.match(/,/g) || []).length > (sampleLine.match(/;/g) || []).length) {
-            delimiter = ",";
-        }
-        if ((sampleLine.match(/\t/g) || []).length > (sampleLine.match(/;/g) || []).length) {
-            delimiter = "\t";
-        }
+        // كشف الفاصل
+        const firstLine = text.split('\n')[0];
+        const delimiter = (firstLine.match(/;/g)||[]).length >= (firstLine.match(/,/g)||[]).length ? ';' : ',';
 
-        const clean = (str) => str ? str.replace(/^"|"$/g, "").replace(/""/g, '"').trim() : "";
-
-        // دالة split آمنة تتعامل مع الـ quotes صح
-        const safeSplit = (line, sep) => {
-            let result = [], current = "", inQuotes = false;
-            for (let i = 0; i < line.length; i++) {
-                const ch = line[i];
-                if (ch === '"') {
-                    if (inQuotes && line[i+1] === '"') { current += '"'; i++; }
-                    else inQuotes = !inQuotes;
-                } else if (ch === sep && !inQuotes) {
-                    result.push(current); current = "";
+        // parse صح مع multiline support
+        const parseCSV = (str, sep) => {
+            const rows = [];
+            let cur = [], field = '', inQ = false;
+            for (let i = 0; i < str.length; i++) {
+                const ch = str[i];
+                if (inQ) {
+                    if (ch === '"' && str[i+1] === '"') { field += '"'; i++; }
+                    else if (ch === '"') { inQ = false; }
+                    else { field += ch; }
                 } else {
-                    current += ch;
+                    if (ch === '"') { inQ = true; }
+                    else if (ch === sep) { cur.push(field); field = ''; }
+                    else if (ch === '\n') {
+                        cur.push(field); field = '';
+                        rows.push(cur); cur = [];
+                    } else if (ch === '\r') { /* skip */ }
+                    else { field += ch; }
                 }
             }
-            result.push(current);
-            return result;
+            if (field || cur.length) { cur.push(field); rows.push(cur); }
+            return rows;
         };
+
+        const rows = parseCSV(text, delimiter);
+        if (rows.length <= 1) return alert("الملف فارغ.");
+
+        const clean = (str) => str ? str.replace(/^"|"$/g, '').replace(/""/g, '"').trim() : '';
 
         let newProds = [], skipped = 0;
 
-        for(let i = 1; i < lines.length; i++) {
-            const cols = safeSplit(lines[i], delimiter);
-            if(cols.length < 7) { skipped++; continue; }
+        for (let i = 1; i < rows.length; i++) {
+            const cols = rows[i];
+            if (!cols || cols.length < 7) { skipped++; continue; }
 
             const id      = clean(cols[0]);
             const titleAr = clean(cols[1]);
@@ -1760,38 +1760,39 @@ window.importProductsCSV = function(event) {
             const img     = clean(cols[5]);
             const stock   = parseInt(clean(cols[6])) || 0;
             const price   = parseFloat(clean(cols[7])) || 0;
-            const points  = parseFloat(clean(cols[8] || "0")) || 0;
-            const descAr  = clean(cols[9]  || "");
-            const descEn  = cols.length > 10 ? clean(cols[10]) : "";
+            const points  = parseFloat(clean(cols[8] || '')) || 0;
+            const descAr  = clean(cols[9]  || '');
+            const descEn  = clean(cols[10] || '');
 
-            if(!id || !titleAr) { skipped++; continue; }
+            if (!id || !titleAr) { skipped++; continue; }
 
             newProds.push({ id, titleAr, titleEn, category: cat, subCategory: subCat, img, stock, price, points, descAr, descEn, isActive: true });
         }
 
-        if(newProds.length === 0) return alert(`مفيش منتجات صالحة في الملف!\n\nتأكد إن:\n- الشيت فيه أكتر من سطر (سطر الهيدر + بيانات)\n- الأعمدة 8 على الأقل\n- عمود الكود والاسم مش فاضيين\n- الفاصل بين الأعمدة ; أو , أو Tab`);
+        if (newProds.length === 0) return alert(`مفيش منتجات صالحة!\nتأكد إن الأعمدة 8 على الأقل والكود والاسم مش فاضيين.`);
 
         db.ref('/products').once('value').then(snapshot => {
             let existing = {};
-            if(snapshot.exists()) snapshot.forEach(child => { existing[child.key] = child.val(); });
+            if (snapshot.exists()) snapshot.forEach(child => { existing[child.key] = child.val(); });
 
             newProds.forEach(p => {
-                existing[p.id] = existing[p.id] 
+                existing[p.id] = existing[p.id]
                     ? { ...existing[p.id], ...p, isActive: existing[p.id].isActive }
                     : p;
             });
 
             db.ref('/products').set(existing).then(() => {
-                alert(`✅ تم الاستيراد بنجاح!\nتم معالجة ${newProds.length} منتج.${skipped > 0 ? `\nتم تخطي ${skipped} صف غير صالح.` : ''}`);
-                event.target.value = "";
+                alert(`✅ تم الاستيراد بنجاح!\nتم معالجة ${newProds.length} منتج.${skipped > 0 ? `\nتم تخطي ${skipped} صف.` : ''}`);
+                event.target.value = '';
             }).catch(err => {
-                console.error("خطأ في الحفظ:", err);
+                console.error(err);
                 alert("❌ حدث خطأ أثناء الحفظ في Firebase!");
             });
         });
     };
     reader.readAsText(file, 'UTF-8');
 }
+
         // ================= المناطق (Regions) =================
         window.loadAdminRegions = function() {
             let regions = JSON.parse(localStorage.getItem("eljory_regions")) || [];
