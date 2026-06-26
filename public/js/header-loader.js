@@ -440,7 +440,7 @@ window.joryRenderNavCategories = function (categories) {
         +    ' data-cat="' + catId + '"'
         +    ' href="' + (cat.link || 'categories.html') + '">'
         +   cat.name
-        +   (hasSubs ? '<span class="jory-mega-cat-arrow">&#8249;</span>' : '')
+        +   (hasSubs ? '<span class="jory-mega-cat-arrow">&#8250;</span>' : '')
         + '</a>';
 
         // الأقسام الفرعية (يمين الميجا)
@@ -481,6 +481,20 @@ window.joryRenderNavCategories = function (categories) {
     left.innerHTML  = leftHTML;
     right.innerHTML = rightHTML;
     if (mobile) mobile.innerHTML = mobileHTML;
+
+    // ── إخفاء الفرعية لما الماوس يمشي من القائمة كلها
+    var megaMenuEl = document.getElementById('joryMegaMenu');
+    if (megaMenuEl) {
+        megaMenuEl.addEventListener('mouseleave', function () {
+            right.querySelectorAll('.jory-mega-sublist').forEach(function(s) {
+                s.classList.remove('active-sub');
+            });
+            left.querySelectorAll('.jory-mega-cat').forEach(function(c) {
+                c.classList.remove('active-cat');
+            });
+            megaMenuEl.classList.remove('sub-open');
+        });
+    }
 
     // ── Hover على الأقسام الرئيسية → إظهار الفرعية
     left.querySelectorAll('.jory-mega-cat').forEach(function (el) {
