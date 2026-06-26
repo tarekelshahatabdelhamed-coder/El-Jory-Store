@@ -159,6 +159,7 @@ window.applyTranslations = function() {
     setText("thOrdStatus", currentLang === 'ar' ? "الحالة" : "Status");
 
     if(typeof renderDynamicNavbar === "function") renderDynamicNavbar();
+    if(typeof buildNavMegaMenu === "function") buildNavMegaMenu();
     if(typeof renderStoreProducts === "function") renderStoreProducts();
     if(typeof renderCategoriesGrid === "function") renderCategoriesGrid();
     if(typeof updateHeaderAuth === "function") updateHeaderAuth();
@@ -181,6 +182,33 @@ window.initData = function() {
 window.renderDynamicNavbar = function() {
     return;
 }
+
+window.buildNavMegaMenu = function() {
+    let cats = JSON.parse(localStorage.getItem("eljory_categories")) || [];
+    let mainCats = cats.filter(c => !c.parentId && c.isActive !== false);
+    mainCats.sort((a, b) => (parseInt(a.priority) || 0) - (parseInt(b.priority) || 0));
+
+    let menuData = mainCats.map(function(cat) {
+        let subs = cats.filter(c => 
+            String(c.parentId) === String(cat.id) && c.isActive !== false
+        );
+        return {
+            id: cat.id,
+            name: (currentLang === 'en' && cat.nameEn) ? cat.nameEn : cat.nameAr,
+            link: 'shop.html?cat=' + cat.id,
+            subs: subs.map(function(sc) {
+                return {
+                    name: (currentLang === 'en' && sc.nameEn) ? sc.nameEn : sc.nameAr,
+                    link: 'shop.html?cat=' + cat.id + '&sub=' + sc.id
+                };
+            })
+        };
+    });
+
+    if (typeof joryRenderNavCategories === 'function') {
+        joryRenderNavCategories(menuData);
+    }
+};
 // ==============================================
 
 window.increaseQty = function(qtyId, productId) { 
@@ -1194,8 +1222,9 @@ window.onload = () => {
     }
 
     initData(); 
-    applyTranslations(); 
-    renderCart(); 
+    applyTranslations();  
+    if(typeof buildNavMegaMenu === "function") buildNavMegaMenu();
+    renderCart();
     renderLoyaltyBanner(); 
 
     if(document.getElementById("ordersTableBody")) renderOrders();
