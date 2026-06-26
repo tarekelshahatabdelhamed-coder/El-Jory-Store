@@ -311,12 +311,11 @@ var JORY_FACEBOOK = 'https://facebook.com/Elgorystore';
 
     // الميجا مينيو
     +         '<div class="jory-mega-menu" id="joryMegaMenu">'
+    +           '<div class="jory-mega-left" id="joryMegaLeft"></div>'
     +           '<div class="jory-mega-right" id="joryMegaRight">'
     +             '<div class="jory-mega-empty">اختر قسماً من القائمة</div>'
     +           '</div>'
-    +           '<div class="jory-mega-left" id="joryMegaLeft"></div>'
     +         '</div>'
-
     // fallback قايمة بسيطة (تُستخدم لو لم يتم استدعاء joryRenderNavCategories)
     +         '<div class="jory-dropdown-menu" id="dynamicNavCategories"></div>'
     +       '</div>'
