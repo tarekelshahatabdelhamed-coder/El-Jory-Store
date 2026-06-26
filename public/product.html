@@ -465,7 +465,8 @@
         let address  = document.getElementById("qoAddress").value.trim();
         let qty      = parseInt(document.getElementById("qoQty").value) || 1;
 
-        if (!name || !phone || !password || !region || !address) {
+        let isLoggedIn = localStorage.getItem("eljory_auth") === "true";
+        if (!name || !phone || (!password && !isLoggedIn) || !region || !address) {
             showQoMsg("❗ يرجى ملء جميع الحقول!", false); return;
         }
 
@@ -479,10 +480,18 @@
         btn.innerText = "جاري المعالجة...";
 
         try {
+            let isAlreadyLoggedIn = localStorage.getItem("eljory_auth") === "true";
             let snap = await db.ref('/users/' + cleanPhone).once('value');
             let user;
 
-            if (!snap.exists()) {
+            if (isAlreadyLoggedIn && snap.exists()) {
+                // العميل متسجل — مفيش حاجة نتحقق منها
+                user = snap.val();
+                if (user.isBlocked) {
+                    showQoMsg("❗ هذا الحساب محظور. تواصل مع الإدارة.", false);
+                    btn.disabled = false; btn.innerText = "✅ تأكيد الطلب"; return;
+                }
+            } else if (!snap.exists()) {
                 // إنشاء حساب جديد
                 let salt = window.generateSalt();
                 let passwordHash = await window.hashPassword(password, salt);
