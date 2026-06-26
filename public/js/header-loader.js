@@ -436,7 +436,7 @@ window.joryRenderNavCategories = function (categories) {
 
         // الأقسام الرئيسية (يسار الميجا)
         leftHTML += ''
-        + '<a class="jory-mega-cat' + (idx === 0 ? ' active-cat' : '') + '"'
+        + '<a class="jory-mega-cat"'
         +    ' data-cat="' + catId + '"'
         +    ' href="' + (cat.link || 'categories.html') + '">'
         +   cat.name
