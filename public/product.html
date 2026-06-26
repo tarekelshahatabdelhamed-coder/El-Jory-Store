@@ -330,8 +330,30 @@
     }
 
     // ================================================================
-    // ===== محرر المدونة =====
+    // ===== عرض محتوى المدونة (قراءة فقط) =====
     // ================================================================
+    function loadBlogContent() {
+        if (!currentProductId) return;
+
+        let cached = localStorage.getItem('blog_' + currentProductId);
+        if (cached) showBlogContent(cached);
+
+        db.ref('/productBlogs/' + currentProductId).once('value', function(snap) {
+            let content = snap.val();
+            if (content) {
+                localStorage.setItem('blog_' + currentProductId, content);
+                showBlogContent(content);
+            }
+        });
+    }
+
+    function showBlogContent(content) {
+        if (!content || content.trim() === '') return;
+        let section = document.getElementById('productBlogSection');
+        let blogDiv = document.getElementById('productBlogContent');
+        blogDiv.innerHTML = content;
+        section.style.display = 'block';
+    }
 
     // ================================================================
     // ===== تهيئة الصفحة =====
