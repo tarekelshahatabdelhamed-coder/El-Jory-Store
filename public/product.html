@@ -272,6 +272,19 @@
                     <input type="text" id="qoAddress" placeholder="الشارع، رقم البيت، أقرب علامة مميزة..." style="width:100%; padding:12px; border:1.5px solid #ddd; border-radius:8px; font-family:inherit; font-size:15px; box-sizing:border-box;">
                 </div>
 
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; color:#1d364a; font-weight:bold; margin-bottom:6px;">كود الخصم <span style="color:gray; font-size:12px; font-weight:normal;">(اختياري)</span></label>
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" id="qoPromo" placeholder="أدخل الكود هنا..." 
+                            style="flex:1; padding:12px; border:1.5px solid #ddd; border-radius:8px; font-family:inherit; font-size:15px; box-sizing:border-box;">
+                        <button onclick="applyQoPromo()" 
+                            style="padding:12px 18px; background:#1d364a; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; white-space:nowrap;">
+                            تطبيق
+                        </button>
+                    </div>
+                    <div id="qoPromoMsg" style="display:none; margin-top:6px; font-size:13px; font-weight:bold;"></div>
+                </div>
+
                 <div style="margin-bottom:20px;">
                     <label style="display:block; color:#1d364a; font-weight:bold; margin-bottom:6px;">الكمية</label>
                     <div style="display:flex; align-items:center; gap:10px;">
@@ -352,10 +365,45 @@
             fee = parseFloat(sel.options[sel.selectedIndex].dataset.fee) || 0;
             shipText = fee === 0 ? "مجاني 🎉" : fee + " ج.م";
         }
-        let total = subtotal + fee;
+
+        let discount = 0;
+        let discountMsg = "";
+        if (qoAppliedPromo) {
+            if (qoAppliedPromo.type === "percent") {
+                discount = subtotal * (qoAppliedPromo.value / 100);
+                discountMsg = `خصم ${qoAppliedPromo.value}%: -${discount.toFixed(0)} ج.م`;
+            } else if (qoAppliedPromo.type === "fixed") {
+                discount = Math.min(qoAppliedPromo.value, subtotal);
+                discountMsg = `خصم: -${discount} ج.م`;
+            } else if (qoAppliedPromo.type === "shipping") {
+                fee = 0;
+                shipText = "مجاني 🎉 (بروموكود)";
+                discountMsg = "شحن مجاني بالكوبون!";
+            }
+        }
+
+        let total = subtotal - discount + fee;
+
         document.getElementById("qoSubtotalText").innerText = subtotal + " ج.م";
         document.getElementById("qoShippingText").innerText = shipText;
-        document.getElementById("qoTotalText").innerText = total + " ج.م";
+        document.getElementById("qoTotalText").innerText = total.toFixed(0) + " ج.م";
+
+        // سطر الخصم
+        let discountRow = document.getElementById("qoDiscountRow");
+        if (!discountRow) {
+            let summary = document.getElementById("qoSummary");
+            let row = document.createElement("div");
+            row.id = "qoDiscountRow";
+            row.style.cssText = "display:flex; justify-content:space-between; margin-bottom:6px; color:#28a745; font-weight:bold;";
+            summary.insertBefore(row, summary.lastElementChild);
+            discountRow = row;
+        }
+        if (discountMsg) {
+            discountRow.innerHTML = `<span>الخصم:</span><span>${discountMsg}</span>`;
+            discountRow.style.display = "flex";
+        } else {
+            discountRow.style.display = "none";
+        }
     }
 
     window.qoIncreaseQty = function() {
@@ -370,6 +418,34 @@
         let input = document.getElementById("qoQty");
         let val = parseInt(input.value);
         if (val > 1) { input.value = val - 1; updateQoSummary(); }
+    };
+
+    let qoAppliedPromo = null;
+
+    window.applyQoPromo = function() {
+        let code = document.getElementById("qoPromo").value.trim().toUpperCase();
+        let msgEl = document.getElementById("qoPromoMsg");
+        let promos = JSON.parse(localStorage.getItem("eljory_promos")) || [];
+        let now = new Date();
+
+        let valid = promos.find(p => 
+            p.code === code && 
+            now >= new Date(p.start) && 
+            now <= new Date(p.end)
+        );
+
+        if (valid) {
+            qoAppliedPromo = valid;
+            msgEl.innerText = "✅ تم تطبيق الكوبون!";
+            msgEl.style.color = "green";
+            msgEl.style.display = "block";
+        } else {
+            qoAppliedPromo = null;
+            msgEl.innerText = "❌ الكود غير صحيح أو منتهي الصلاحية";
+            msgEl.style.color = "#d9534f";
+            msgEl.style.display = "block";
+        }
+        updateQoSummary();
     };
 
     function showQoMsg(text, isSuccess) {
@@ -465,10 +541,25 @@
             let products = JSON.parse(localStorage.getItem("eljory_products")) || [];
             let prod = products.find(p => p.id === currentProductId);
 
+            // حساب الخصم
+            let discount = 0;
+            if (qoAppliedPromo) {
+                if (qoAppliedPromo.type === "percent") {
+                    discount = subtotal * (qoAppliedPromo.value / 100);
+                } else if (qoAppliedPromo.type === "fixed") {
+                    discount = Math.min(qoAppliedPromo.value, subtotal);
+                } else if (qoAppliedPromo.type === "shipping") {
+                    shippingFee = 0;
+                }
+            }
+            total = subtotal - discount + shippingFee;
+
             let newOrder = {
                 id: newOrderId,
                 date: new Date().toLocaleDateString('en-GB'),
                 subTotal: subtotal,
+                discount: discount,
+                promoCode: qoAppliedPromo ? qoAppliedPromo.code : null,
                 shippingFee: shippingFee,
                 total: total,
                 status: "Pending",
