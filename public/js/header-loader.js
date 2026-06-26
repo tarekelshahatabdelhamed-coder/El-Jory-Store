@@ -118,17 +118,18 @@ var JORY_FACEBOOK = 'https://facebook.com/Elgorystore';
         '  top: 100%; right: 0; left: 0; height: 12px;',
         '}',
 
-        '.jory-mega-menu {',
+'.jory-mega-menu {',
         '  display: none;',
         '  position: absolute; top: calc(100% + 12px); right: 0;',
         '  background: #fff;',
         '  border: 1px solid #e2e8f0;',
         '  border-radius: 14px;',
         '  box-shadow: 0 10px 32px rgba(0,0,0,.12);',
-        '  min-width: 520px;',
+        '  min-width: 200px;',
         '  overflow: hidden;',
         '  z-index: 300;',
         '}',
+        '.jory-mega-menu.sub-open { min-width: 520px; }',
         '.jory-dropdown:hover .jory-mega-menu { display: flex; }',
 
         /* الجزء الأيسر — الأقسام الرئيسية */
