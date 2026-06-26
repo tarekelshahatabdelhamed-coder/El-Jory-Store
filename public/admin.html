@@ -208,6 +208,16 @@
             <button class="btn" style="background:#6c757d; padding:10px 18px;" onclick="resetProductFilters()">↺ مسح الفلاتر</button>
         </div>
     </div>
+    <div style="display:flex; gap:25px; margin-top:12px; flex-wrap:wrap; align-items:center;">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:14px; font-weight:bold; color:#d9534f;">
+            <input type="checkbox" id="filterOutOfStock" style="width:17px; height:17px; cursor:pointer;" onchange="renderAdminProducts()">
+            منتجات نفد مخزونها فقط
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:14px; font-weight:bold; color:#6c757d;">
+            <input type="checkbox" id="filterInactive" style="width:17px; height:17px; cursor:pointer;" onchange="renderAdminProducts()">
+            منتجات مخفية (inactive) فقط
+        </label>
+    </div>
     <div id="filterProdCount" style="margin-top:10px; font-size:13px; color:#555; font-weight:bold;"></div>
 </div>
 
@@ -1363,6 +1373,8 @@
             let s = document.getElementById("filterProdSearch"); if(s) s.value = "";
             let m = document.getElementById("filterProdMainCat"); if(m) m.value = "";
             let sub = document.getElementById("filterProdSubCat"); if(sub) sub.innerHTML = '<option value="">الكل</option>';
+            let oos = document.getElementById("filterOutOfStock"); if(oos) oos.checked = false;
+            let inc = document.getElementById("filterInactive"); if(inc) inc.checked = false;
             renderAdminProducts();
         };
 
@@ -1599,20 +1611,27 @@
             let mainCatVal = (document.getElementById("filterProdMainCat") ? document.getElementById("filterProdMainCat").value : "");
             let subCatVal  = (document.getElementById("filterProdSubCat")  ? document.getElementById("filterProdSubCat").value  : "");
 
+            // قراءة الشيك بوكسات
+            let filterOOS      = document.getElementById("filterOutOfStock") ? document.getElementById("filterOutOfStock").checked : false;
+            let filterInactive = document.getElementById("filterInactive")   ? document.getElementById("filterInactive").checked   : false;
+
             // تطبيق الفلاتر
             let filtered = products.filter(p => {
-                let matchSearch = !searchVal || p.titleAr.toLowerCase().includes(searchVal) || (p.titleEn || "").toLowerCase().includes(searchVal) || p.id.toLowerCase().includes(searchVal);
-                let matchMain   = !mainCatVal || p.category === mainCatVal;
-                let matchSub    = !subCatVal  || p.subCategory === subCatVal;
-                return matchSearch && matchMain && matchSub;
+                let matchSearch   = !searchVal      || p.titleAr.toLowerCase().includes(searchVal) || (p.titleEn || "").toLowerCase().includes(searchVal) || p.id.toLowerCase().includes(searchVal);
+                let matchMain     = !mainCatVal     || p.category === mainCatVal;
+                let matchSub      = !subCatVal      || p.subCategory === subCatVal;
+                let matchOOS      = !filterOOS      || p.stock <= 0;
+                let matchInactive = !filterInactive || p.isActive === false;
+                return matchSearch && matchMain && matchSub && matchOOS && matchInactive;
             });
 
             // تحديث عداد النتائج
             let countEl = document.getElementById("filterProdCount");
             if(countEl) countEl.innerText = `📦 يظهر ${filtered.length} من أصل ${products.length} منتج`;
 
-            // تحديث قوائم الفلاتر بالأقسام
-            populateProductFilterCats();
+            // تحديث قوائم الفلاتر بالأقسام (بس لو فاضية عشان منعملش reset للقيمة المختارة)
+            let mainSelect = document.getElementById("filterProdMainCat");
+            if(mainSelect && mainSelect.options.length <= 1) populateProductFilterCats();
 
             if(!filtered.length) {
                 tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:gray; padding:25px;">لا توجد منتجات مطابقة للبحث.</td></tr>';
