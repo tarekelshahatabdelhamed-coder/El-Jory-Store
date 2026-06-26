@@ -216,12 +216,55 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (standardPromo) {
             const now = new Date();
+
+            // فحص التواريخ
             if (now < new Date(standardPromo.start) || now > new Date(standardPromo.end)) {
                 msgEl.style.backgroundColor = "#ffeaea"; msgEl.style.color = "#d9534f";
                 msgEl.innerText = currentLang === 'ar'
                     ? "الكود منتهي الصلاحية أو لم يبدأ بعد!"
                     : "Code expired or not active yet!";
                 return;
+            }
+
+            // فحص الحد الأقصى الكلي
+            if (standardPromo.maxTotal && (standardPromo.usageCount || 0) >= standardPromo.maxTotal) {
+                msgEl.style.backgroundColor = "#ffeaea"; msgEl.style.color = "#d9534f";
+                msgEl.innerText = currentLang === 'ar'
+                    ? "عذراً، تم استنفاد هذا الكود بالكامل!"
+                    : "Sorry, this code has been fully used!";
+                return;
+            }
+
+            // فحص حد الاستخدام لكل عميل
+            const currentUser = getCurrentUser();
+            if (currentUser && standardPromo.maxPerUser) {
+                const phoneKey = getShortPhone(currentUser.phone);
+                const userUsage = standardPromo.usedBy ? (standardPromo.usedBy[phoneKey] || 0) : 0;
+                if (userUsage >= standardPromo.maxPerUser) {
+                    msgEl.style.backgroundColor = "#ffeaea"; msgEl.style.color = "#d9534f";
+                    msgEl.innerText = currentLang === 'ar'
+                        ? `لقد استخدمت هذا الكود بالفعل ${userUsage} ${userUsage === 1 ? 'مرة' : 'مرات'}. الحد المسموح ${standardPromo.maxPerUser}.`
+                        : `You have already used this code ${userUsage} time(s). Max allowed: ${standardPromo.maxPerUser}.`;
+                    return;
+                }
+            }
+
+            // فحص شرط العملاء الجدد
+            if (standardPromo.newUsersOnly && currentUser) {
+                const phoneKey = getShortPhone(currentUser.phone);
+                // بنجيب أوردرات العميل من localStorage (المحدّث من Firebase)
+                const allOrders = JSON.parse(localStorage.getItem("eljory_orders") || "[]");
+                const userOrders = allOrders.filter(o =>
+                    o.customer && getShortPhone(o.customer.phone) === phoneKey &&
+                    o.status !== "Cancelled"
+                );
+                if (userOrders.length > 0) {
+                    msgEl.style.backgroundColor = "#ffeaea"; msgEl.style.color = "#d9534f";
+                    msgEl.innerText = currentLang === 'ar'
+                        ? "هذا الكود للعملاء الجدد فقط!"
+                        : "This code is for new customers only!";
+                    return;
+                }
             }
 
             window.appliedPromoObj = standardPromo;

@@ -729,6 +729,26 @@ if(btnCheckout) {
                         });
                     }
 
+                    // تسجيل استخدام البروموكود العادي في Firebase
+                    if (window.appliedPromoObj && window.appliedPromoObj.code && !window.appliedPromoObj.rewardName) {
+                        const promoCode = window.appliedPromoObj.code;
+                        const userPhoneKey = getShortPhone(user.phone);
+                        db.ref('/promos').once('value').then(snapP => {
+                            let allPromos = [];
+                            if(snapP.exists()) {
+                                let pd = snapP.val();
+                                allPromos = Array.isArray(pd) ? pd.filter(x=>x) : Object.values(pd).filter(x=>x);
+                            }
+                            let pi = allPromos.findIndex(p => p.code === promoCode);
+                            if(pi > -1) {
+                                allPromos[pi].usageCount = (allPromos[pi].usageCount || 0) + 1;
+                                if(!allPromos[pi].usedBy) allPromos[pi].usedBy = {};
+                                allPromos[pi].usedBy[userPhoneKey] = (allPromos[pi].usedBy[userPhoneKey] || 0) + 1;
+                                db.ref('/promos').set(allPromos);
+                            }
+                        });
+                    }
+
                     // معالجة كوبون الهدية لو موجود
                     let usedLoyaltyCoupon = JSON.parse(localStorage.getItem("eljory_applied_loyalty_coupon"));
                     if (usedLoyaltyCoupon) {
