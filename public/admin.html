@@ -1713,7 +1713,7 @@
                 const lines = text.split(/\r?\n/).filter(line => line.trim() !== "" && !line.startsWith("sep="));
                 if(lines.length <= 1) return alert("الملف فارغ.");
 
-                let delimiter = lines[0].includes(";") ? ";" : ",";
+                let delimiter = lines[0].includes(";") ? ";" : (lines[0].includes("\t") ? "\t" : ",");
                 let splitRegex = new RegExp(delimiter + "(?=(?:(?:[^\"]*\"){2})*[^\"]*$)");
                 let clean = (str) => str ? str.replace(/^"|"$/g, "").replace(/""/g, '"').trim() : "";
 
