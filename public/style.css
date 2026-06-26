@@ -130,5 +130,28 @@ html[dir="ltr"] .cart-badge { right: auto; left: -10px; }
     header { flex-direction: column; padding: 10px 15px; gap: 10px; }
     nav ul { gap: 10px; flex-wrap: wrap; justify-content: center; }
     #searchInput { min-width: unset; width: 100%; }
-    .product-card { width: calc(50% - 15px); min-width: 140px; }
+
+    /* المنتجات */
+    .products-grid { gap: 10px; padding: 0 10px; }
+    .product-card { width: calc(50% - 10px); min-width: 0; padding: 10px; }
+    .product-card img { height: 130px; object-fit: cover; }
+    .product-card h3 { font-size: 13px; margin: 8px 0 5px; }
+    .product-card .price { font-size: 15px; margin-bottom: 8px; }
+    .qty-btn { width: 28px; height: 28px; font-size: 16px; }
+    .qty-input { width: 35px; font-size: 13px; }
+    .product-card .btn-add { font-size: 13px; padding: 8px; }
+
+    /* الأقسام */
+    .categories-grid { gap: 15px; padding: 0 10px; }
+    .category-card { width: calc(50% - 10px); }
+    .category-card img { height: 130px; }
+    .category-card h3 { font-size: 15px; margin: 10px 0 5px; }
+    .category-card p { font-size: 12px; padding: 0 10px; margin-bottom: 15px; }
+    .btn-browse { padding: 8px 15px; font-size: 13px; }
+
+    /* السيكشنز العامة */
+    .products-section { padding: 20px 10px; }
+    .products-section h2 { font-size: 20px; }
+    .categories-section { padding: 20px 10px; }
+    .categories-section h2 { font-size: 20px; }
 }
