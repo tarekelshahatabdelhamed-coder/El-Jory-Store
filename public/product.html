@@ -229,6 +229,86 @@
         <div id="productBlogContent"></div>
     </div>
 
+    <!-- ===== فورم الطلب السريع ===== -->
+    <div id="quickOrderSection" style="max-width:600px; margin:30px auto 60px; padding:0 20px;">
+        <div style="background:#fff; border-radius:12px; box-shadow:0 5px 20px rgba(0,0,0,0.08); overflow:hidden;">
+            
+            <!-- هيدر الفورم -->
+            <div style="background:#1d364a; padding:20px 25px;">
+                <h2 style="color:#f38c18; margin:0; font-size:22px;">🛒 اطلب دلوقتي</h2>
+                <p style="color:rgba(255,255,255,0.7); margin:5px 0 0; font-size:14px;">املي بياناتك وهنوصلك في أسرع وقت</p>
+            </div>
+
+            <!-- بودي الفورم -->
+            <div style="padding:25px;">
+
+                <!-- رسالة النتيجة -->
+                <div id="quickOrderMsg" style="display:none; padding:12px 15px; border-radius:8px; margin-bottom:15px; font-weight:bold; text-align:center;"></div>
+
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; color:#1d364a; font-weight:bold; margin-bottom:6px;">الاسم بالكامل *</label>
+                    <input type="text" id="qoName" placeholder="اسمك هنا..." style="width:100%; padding:12px; border:1.5px solid #ddd; border-radius:8px; font-family:inherit; font-size:15px; box-sizing:border-box;">
+                </div>
+
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; color:#1d364a; font-weight:bold; margin-bottom:6px;">رقم التليفون *</label>
+                    <input type="tel" id="qoPhone" placeholder="01xxxxxxxxx" style="width:100%; padding:12px; border:1.5px solid #ddd; border-radius:8px; font-family:inherit; font-size:15px; box-sizing:border-box;">
+                </div>
+
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; color:#1d364a; font-weight:bold; margin-bottom:6px;">كلمة المرور * <span style="color:gray; font-size:12px; font-weight:normal;">(هتستخدمها لتتبع طلباتك)</span></label>
+                    <input type="password" id="qoPassword" placeholder="كلمة مرور سهلة تتذكرها..." style="width:100%; padding:12px; border:1.5px solid #ddd; border-radius:8px; font-family:inherit; font-size:15px; box-sizing:border-box;">
+                </div>
+
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; color:#1d364a; font-weight:bold; margin-bottom:6px;">المحافظة *</label>
+                    <select id="qoRegion" style="width:100%; padding:12px; border:1.5px solid #ddd; border-radius:8px; font-family:inherit; font-size:15px; box-sizing:border-box; background:#fff;">
+                        <option value="">-- اختر المحافظة --</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; color:#1d364a; font-weight:bold; margin-bottom:6px;">العنوان بالتفصيل *</label>
+                    <input type="text" id="qoAddress" placeholder="الشارع، رقم البيت، أقرب علامة مميزة..." style="width:100%; padding:12px; border:1.5px solid #ddd; border-radius:8px; font-family:inherit; font-size:15px; box-sizing:border-box;">
+                </div>
+
+                <div style="margin-bottom:20px;">
+                    <label style="display:block; color:#1d364a; font-weight:bold; margin-bottom:6px;">الكمية</label>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <button onclick="qoDecreaseQty()" style="width:38px; height:38px; background:#f0f8ff; border:1.5px solid #1d364a; border-radius:6px; font-size:20px; font-weight:bold; cursor:pointer;">-</button>
+                        <input type="text" id="qoQty" value="1" readonly style="width:50px; text-align:center; padding:8px; border:1.5px solid #ddd; border-radius:6px; font-size:16px; font-weight:bold;">
+                        <button onclick="qoIncreaseQty()" style="width:38px; height:38px; background:#f0f8ff; border:1.5px solid #1d364a; border-radius:6px; font-size:20px; font-weight:bold; cursor:pointer;">+</button>
+                    </div>
+                </div>
+
+                <!-- ملخص السعر -->
+                <div id="qoSummary" style="background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:8px; padding:15px; margin-bottom:20px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:6px; color:#555;">
+                        <span>سعر المنتج:</span>
+                        <span id="qoSubtotalText">0 ج.م</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:6px; color:#555;">
+                        <span>مصاريف الشحن:</span>
+                        <span id="qoShippingText">اختر المحافظة</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:18px; color:#1d364a; border-top:1px solid #ddd; padding-top:10px; margin-top:6px;">
+                        <span>الإجمالي:</span>
+                        <span id="qoTotalText" style="color:#f38c18;">0 ج.م</span>
+                    </div>
+                </div>
+
+                <button onclick="submitQuickOrder()" id="qoSubmitBtn"
+                    style="width:100%; padding:16px; background:#f38c18; color:#1d364a; border:none; border-radius:10px; font-size:18px; font-weight:bold; cursor:pointer; transition:0.3s;">
+                    ✅ تأكيد الطلب
+                </button>
+
+                <p style="text-align:center; color:gray; font-size:13px; margin-top:12px;">
+                    عندك حساب بالفعل؟ <a href="login.html" style="color:#f38c18; font-weight:bold;">سجل دخول</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
     <!-- ===== Firebase + Scripts ===== -->
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
@@ -239,6 +319,196 @@
     <script src="script.js"></script>
 
     <script>
+    // ================================================================
+    // ===== فورم الطلب السريع =====
+    // ================================================================
+    let qoProductPrice = 0;
+    let qoProductStock = 0;
+
+    // تحميل المحافظات في الفورم
+    function loadQoRegions() {
+        let regions = JSON.parse(localStorage.getItem("eljory_regions")) || [];
+        let sel = document.getElementById("qoRegion");
+        if (!sel) return;
+        regions.forEach(r => {
+            if (r.isActive !== false) {
+                let opt = document.createElement("option");
+                opt.value = r.name;
+                opt.dataset.fee = r.fee || 0;
+                opt.innerText = r.name + (r.fee > 0 ? ` (${r.fee} ج.م)` : " (مجاني)");
+                sel.appendChild(opt);
+            }
+        });
+        sel.addEventListener("change", updateQoSummary);
+    }
+
+    function updateQoSummary() {
+        let qty = parseInt(document.getElementById("qoQty").value) || 1;
+        let subtotal = qoProductPrice * qty;
+        let sel = document.getElementById("qoRegion");
+        let fee = 0;
+        let shipText = "اختر المحافظة";
+        if (sel && sel.value) {
+            fee = parseFloat(sel.options[sel.selectedIndex].dataset.fee) || 0;
+            shipText = fee === 0 ? "مجاني 🎉" : fee + " ج.م";
+        }
+        let total = subtotal + fee;
+        document.getElementById("qoSubtotalText").innerText = subtotal + " ج.م";
+        document.getElementById("qoShippingText").innerText = shipText;
+        document.getElementById("qoTotalText").innerText = total + " ج.م";
+    }
+
+    window.qoIncreaseQty = function() {
+        let input = document.getElementById("qoQty");
+        let val = parseInt(input.value);
+        if (val >= qoProductStock) { alert("عذراً، المتاح في المخزون " + qoProductStock + " قطع فقط!"); return; }
+        input.value = val + 1;
+        updateQoSummary();
+    };
+
+    window.qoDecreaseQty = function() {
+        let input = document.getElementById("qoQty");
+        let val = parseInt(input.value);
+        if (val > 1) { input.value = val - 1; updateQoSummary(); }
+    };
+
+    function showQoMsg(text, isSuccess) {
+        let msg = document.getElementById("quickOrderMsg");
+        msg.innerText = text;
+        msg.style.background = isSuccess ? "#d4edda" : "#f8d7da";
+        msg.style.color = isSuccess ? "#155724" : "#721c24";
+        msg.style.display = "block";
+        msg.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    window.submitQuickOrder = async function() {
+        let name     = document.getElementById("qoName").value.trim();
+        let phone    = document.getElementById("qoPhone").value.trim();
+        let password = document.getElementById("qoPassword").value;
+        let region   = document.getElementById("qoRegion").value;
+        let address  = document.getElementById("qoAddress").value.trim();
+        let qty      = parseInt(document.getElementById("qoQty").value) || 1;
+
+        if (!name || !phone || !password || !region || !address) {
+            showQoMsg("❗ يرجى ملء جميع الحقول!", false); return;
+        }
+
+        let cleanPhone = window.getShortPhone(phone);
+        if (cleanPhone.length < 10) {
+            showQoMsg("❗ رقم التليفون غير صحيح!", false); return;
+        }
+
+        let btn = document.getElementById("qoSubmitBtn");
+        btn.disabled = true;
+        btn.innerText = "جاري المعالجة...";
+
+        try {
+            let snap = await db.ref('/users/' + cleanPhone).once('value');
+            let user;
+
+            if (!snap.exists()) {
+                // إنشاء حساب جديد
+                let salt = window.generateSalt();
+                let passwordHash = await window.hashPassword(password, salt);
+                let fullAddress = address + " - " + region;
+                user = {
+                    name: name,
+                    phone: cleanPhone,
+                    email: "",
+                    passwordHash: passwordHash,
+                    passwordSalt: salt,
+                    region: region,
+                    address: fullAddress,
+                    addresses: [{ id: Date.now(), text: fullAddress, isPrimary: true }],
+                    points: 0,
+                    joinDate: new Date().toLocaleDateString('en-GB'),
+                    isBlocked: false
+                };
+                await db.ref('/users/' + cleanPhone).set(user);
+            } else {
+                // حساب موجود — تحقق من كلمة المرور
+                user = snap.val();
+                if (user.isBlocked) {
+                    showQoMsg("❗ هذا الحساب محظور. تواصل مع الإدارة.", false);
+                    btn.disabled = false; btn.innerText = "✅ تأكيد الطلب"; return;
+                }
+                let isValid = false;
+                if (user.passwordHash && user.passwordSalt) {
+                    let hash = await window.hashPassword(password, user.passwordSalt);
+                    isValid = hash === user.passwordHash;
+                } else if (user.password) {
+                    isValid = password === user.password;
+                }
+                if (!isValid) {
+                    showQoMsg("❗ الرقم مسجل بالفعل وكلمة المرور غلط! جرب تسجل دخول.", false);
+                    btn.disabled = false; btn.innerText = "✅ تأكيد الطلب"; return;
+                }
+            }
+
+            // تسجيل دخول أوتوماتيك
+            localStorage.setItem("eljory_auth", "true");
+            localStorage.setItem("eljory_active_phone", cleanPhone);
+            localStorage.setItem("eljory_active_user", JSON.stringify(user));
+
+            // حساب الشحن
+            let sel = document.getElementById("qoRegion");
+            let shippingFee = parseFloat(sel.options[sel.selectedIndex].dataset.fee) || 0;
+            let subtotal = qoProductPrice * qty;
+            let total = subtotal + shippingFee;
+            let primaryAddr = address + " - " + region;
+
+            // رفع الأوردر بالـ transaction
+            let counterSnap = await db.ref('/metadata/lastOrderId').transaction(v => (v || 1000) + 1);
+            let newOrderId = "ORD-" + counterSnap.snapshot.val();
+
+            let products = JSON.parse(localStorage.getItem("eljory_products")) || [];
+            let prod = products.find(p => p.id === currentProductId);
+
+            let newOrder = {
+                id: newOrderId,
+                date: new Date().toLocaleDateString('en-GB'),
+                subTotal: subtotal,
+                shippingFee: shippingFee,
+                total: total,
+                status: "Pending",
+                earnedPoints: 0,
+                customer: { name: user.name, phone: user.phone, address: primaryAddr },
+                items: [{ id: currentProductId, price: qoProductPrice, qty: qty }],
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            };
+
+            await db.ref('/orders/' + newOrderId).set(newOrder);
+
+            // خصم المخزون
+            await db.ref('/products/' + currentProductId + '/stock').transaction(
+                s => Math.max(0, (s || 0) - qty)
+            );
+
+            // Facebook Pixel
+            if (typeof fbq === 'function') {
+                fbq('track', 'Purchase', {
+                    content_ids: [currentProductId],
+                    value: total, currency: 'EGP', num_items: qty
+                });
+            }
+
+            showQoMsg("✅ تم استلام طلبك بنجاح! رقم طلبك: " + newOrderId, true);
+            btn.innerText = "✅ تم الطلب";
+            document.getElementById("qoName").value = "";
+            document.getElementById("qoPhone").value = "";
+            document.getElementById("qoPassword").value = "";
+            document.getElementById("qoAddress").value = "";
+            document.getElementById("qoRegion").value = "";
+            document.getElementById("qoQty").value = "1";
+
+        } catch (err) {
+            console.error(err);
+            showQoMsg("❗ حدث خطأ، حاول مرة تانية.", false);
+            btn.disabled = false;
+            btn.innerText = "✅ تأكيد الطلب";
+        }
+    };
+
     // ================================================================
     // ===== عرض تفاصيل المنتج =====
     // ================================================================
@@ -274,6 +544,10 @@
 
         drawProductDetails(p, container);
         loadBlogContent();
+        qoProductPrice = p.price;
+        qoProductStock = p.stock;
+        updateQoSummary();
+        document.getElementById("quickOrderSection").style.display = p.stock > 0 ? "block" : "none";
     };
 
     function drawProductDetails(p, container) {
