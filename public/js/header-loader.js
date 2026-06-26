@@ -268,7 +268,7 @@ var JORY_FACEBOOK = 'https://facebook.com/Elgorystore';
         '@media (max-width: 768px) {',
         '  .jory-header-inner { height: 62px; padding: 0 14px; gap: 12px; }',
         '  .jory-logo { display: none; }',
-        '  .jory-search { display: flex; max-width: 100%; margin: 0; }',
+        '  .jory-search { display: flex; max-width: 100%; margin: 0 10px; }',
         '  .jory-nav-actions { display: none; }',
         '  .jory-hamburger { display: none; }',
         '  .jory-mobile-menu { display: none !important; }',
