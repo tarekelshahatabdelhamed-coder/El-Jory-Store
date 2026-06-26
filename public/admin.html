@@ -1724,15 +1724,15 @@
                     let cols = lines[i].split(splitRegex);
                     if(cols.length < 8) { skipped++; continue; }
 
-                    let id      = clean(cols[0]);
-                    let titleAr = clean(cols[1]);
-                    let titleEn = clean(cols[2]);
-                    let cat     = clean(cols[3]);
-                    let subCat  = clean(cols[4]);
-                    let img     = clean(cols[5]);
-                    let stock   = parseInt(clean(cols[6]))   || 0;
-                    let price   = parseFloat(clean(cols[7])) || 0;
-                    let points  = parseFloat(clean(cols[8])) || 0;
+                    let id      = clean(cols[0]  || "");
+                    let titleAr = clean(cols[1]  || "");
+                    let titleEn = clean(cols[2]  || "");
+                    let cat     = clean(cols[3]  || "");
+                    let subCat  = clean(cols[4]  || "");
+                    let img     = clean(cols[5]  || "");
+                    let stock   = parseInt(clean(cols[6]  || "0")) || 0;
+                    let price   = parseFloat(clean(cols[7] || "0")) || 0;
+                    let points  = parseFloat(clean(cols[8] || "0")) || 0;
                     let descAr  = clean(cols[9]  || "");
                     let descEn  = clean(cols[10] || "");
 
