@@ -632,9 +632,65 @@
     // ================================================================
     // ===== تهيئة الصفحة =====
     // ================================================================
-    document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", () => {
+        loadQoRegions();
         renderSingleProduct();
+        prefillQuickOrder();
     });
+
+    function prefillQuickOrder() {
+        let isAuth = localStorage.getItem("eljory_auth") === "true";
+        let user = window.getCurrentUser ? window.getCurrentUser() : null;
+        if (!isAuth || !user) return;
+
+        // تعبئة البيانات
+        let nameInput = document.getElementById("qoName");
+        let phoneInput = document.getElementById("qoPhone");
+        let addressInput = document.getElementById("qoAddress");
+        let regionSelect = document.getElementById("qoRegion");
+        let passInput = document.getElementById("qoPassword");
+
+        if (nameInput) nameInput.value = user.name || "";
+        if (phoneInput) phoneInput.value = user.phone || "";
+
+        // العنوان والمحافظة من الأدرس الأساسي
+        if (user.addresses && user.addresses.length > 0) {
+            let primary = user.addresses.find(a => a.isPrimary) || user.addresses[0];
+            let parts = primary.text.split(" - ");
+            let region = parts.length > 1 ? parts[parts.length - 1].trim() : "";
+            let address = parts.slice(0, parts.length - 1).join(" - ").trim();
+
+            if (addressInput) addressInput.value = address;
+
+            // انتظر لحد ما الـ regions تتحمل وبعدين اختار
+            setTimeout(() => {
+                if (regionSelect && region) {
+                    for (let opt of regionSelect.options) {
+                        if (opt.value === region) {
+                            regionSelect.value = region;
+                            regionSelect.dispatchEvent(new Event("change"));
+                            break;
+                        }
+                    }
+                }
+            }, 500);
+        }
+
+        // تغيير placeholder كلمة المرور
+        if (passInput) {
+            passInput.placeholder = "أدخل كلمة مرورك للتأكيد...";
+        }
+
+        // رسالة ترحيب
+        let msg = document.getElementById("quickOrderMsg");
+        if (msg) {
+            msg.innerText = "👋 أهلاً " + user.name + "! بياناتك اتملت أوتوماتيك.";
+            msg.style.background = "#d4edda";
+            msg.style.color = "#155724";
+            msg.style.display = "block";
+        }
+    }
+    
     </script>
 
 </body>

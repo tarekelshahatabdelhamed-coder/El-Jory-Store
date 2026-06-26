@@ -915,6 +915,17 @@ window.updateHeaderAuth = function() {
     
     if (isAuth && user) { userInfoElem.innerHTML = `<span>${t.welcomeHeader}${user.name}</span> <button class="btn-logout-header" onclick="doLogout()">${t.btnLogoutHeader}</button>`; } 
     else { userInfoElem.innerHTML = `<span>${t.guestLabel}</span> <a href="login.html" class="btn-login-header">${t.btnLoginHeader}</a>`; }
+
+    // زرار الخروج في صفحة الحساب على الموبايل
+    let mobileLogout = document.getElementById("mobileLogoutBtn");
+    if (mobileLogout) {
+        if (isAuth && user) {
+            mobileLogout.style.display = "block";
+            mobileLogout.innerText = "🚪 " + t.btnLogoutHeader;
+        } else {
+            mobileLogout.style.display = "none";
+        }
+    }
 }
 
 window.renderOrders = function() {
