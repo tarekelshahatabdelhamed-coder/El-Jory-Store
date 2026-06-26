@@ -1591,6 +1591,36 @@
             });
         }
 
+        window.duplicateProduct = function(id) {
+            db.ref('/products/' + id).once('value').then(snapshot => {
+                if(!snapshot.exists()) return alert("المنتج مش موجود!");
+                let original = snapshot.val();
+
+                // توليد كود جديد متسلسل بناءً على كود الأصل
+                db.ref('/products').once('value').then(allSnap => {
+                    let allProducts = [];
+                    allSnap.forEach(child => { allProducts.push(child.key); });
+
+                    // ابحث عن أعلى رقم تسلسلي مرتبط بنفس الكود الأصلي
+                    let baseId = original.id.replace(/_COPY_\d+$/, '');
+                    let existingCopies = allProducts.filter(k => k === baseId || k.startsWith(baseId + '_COPY_'));
+                    let newIndex = existingCopies.length;
+                    let newId = baseId + '_COPY_' + newIndex;
+
+                    let newProd = {
+                        ...original,
+                        id: newId,
+                        titleAr: original.titleAr + ' (نسخة)',
+                        isActive: false
+                    };
+
+                    db.ref('/products/' + newId).set(newProd).then(() => {
+                        alert(`✅ تم نسخ المنتج!\nالكود الجديد: ${newId}\nتم إخفاؤه تلقائياً، عدّل البيانات وفعّله لما تخلص.`);
+                    });
+                });
+            });
+        };
+
         window.deleteProduct = function(id) {
             if(confirm("هل أنت متأكد من حذف هذا المنتج نهائياً من الموقع؟")) {
                 db.ref('/products/' + id).remove().then(() => {
@@ -1656,6 +1686,7 @@
                     <td>${activeBtn}</td>
                     <td>
                         <button class="btn" style="background:#f38c18; margin-bottom:5px;" onclick="editProduct('${p.id}')">تعديل</button>
+                        <button class="btn" style="background:#17a2b8; margin-bottom:5px;" onclick="duplicateProduct('${p.id}')">📋 نسخ</button>
                         <button class="btn btn-red" onclick="deleteProduct('${p.id}')">حذف</button>
                     </td>
                 </tr>`;
