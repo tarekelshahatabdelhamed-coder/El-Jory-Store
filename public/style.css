@@ -131,6 +131,56 @@ html[dir="ltr"] .cart-badge { right: auto; left: -10px; }
     nav ul { gap: 10px; flex-wrap: wrap; justify-content: center; }
     #searchInput { min-width: unset; width: 100%; }
 
+    /* صفحة الحساب */
+    .account-container { 
+        flex-direction: column; 
+        padding: 15px; 
+        gap: 15px; 
+    }
+    .account-sidebar { 
+        width: 100%; 
+        padding: 15px;
+    }
+    .account-sidebar ul {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-around;
+        gap: 5px;
+    }
+    .account-sidebar ul li {
+        margin: 0;
+        flex: 1;
+        text-align: center;
+    }
+    .account-sidebar ul li a {
+        display: block;
+        background: #f0f8ff;
+        padding: 10px 5px;
+        border-radius: 8px;
+        font-size: 13px;
+    }
+    .account-sidebar ul li a:hover,
+    .account-sidebar ul li a.active {
+        background: #f38c18;
+        color: white;
+    }
+    .account-content { 
+        padding: 15px; 
+        width: 100%;
+    }
+    .account-sidebar h3 {
+        text-align: center;
+        margin-bottom: 15px;
+    }
+
+    /* جدول الطلبات */
+    .orders-table { font-size: 12px; }
+    .orders-table th, .orders-table td { padding: 8px 5px; }
+
+    /* نقاط الولاء */
+    .gifts-grid { gap: 10px; }
+    .gift-card { width: calc(50% - 10px); padding: 12px; }
+
     /* المنتجات */
     .products-grid { gap: 10px; padding: 0 10px; }
     .product-card { width: calc(50% - 10px); min-width: 0; padding: 10px; }
