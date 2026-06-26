@@ -412,6 +412,7 @@
                 let passwordHash = await window.hashPassword(password, salt);
                 let fullAddress = address + " - " + region;
                 user = {
+                    id: 'USR-' + cleanPhone,
                     name: name,
                     phone: cleanPhone,
                     email: "",

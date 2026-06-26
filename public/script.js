@@ -1098,7 +1098,7 @@ window.renderAdminCustomers = function() {
 
         tbody.innerHTML += `
             <tr style="${u.isBlocked ? 'background-color: #ffeaea;' : ''}">
-                <td><strong>${u.id || 'قديم'}</strong></td>
+                <td><strong>${u.id || u.phone || 'غير محدد'}</strong></td>
                 <td><strong>${u.name}</strong><br><small>📞 ${u.phone}</small><br><small style="color:gray;">✉️ ${u.email}</small></td>
                 <td><small>${primaryAddr}</small></td>
                 <td><small>${u.joinDate || 'غير مسجل'}</small></td>
@@ -1336,6 +1336,7 @@ window.doRegister = async function(event) {
             let passwordHash = await window.hashPassword(password, salt);
 
             let newUser = {
+                id: 'USR-' + cleanPhone,
                 name: name,
                 phone: cleanPhone,
                 email: email,
