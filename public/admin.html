@@ -1706,26 +1706,69 @@
         }
 
         window.importProductsCSV = function(event) {
-            const file = event.target.files[0]; if(!file) return; const reader = new FileReader();
+            const file = event.target.files[0]; if(!file) return;
+            const reader = new FileReader();
             reader.onload = function(e) {
-                const text = e.target.result; const lines = text.split(/\r?\n/).filter(line => line.trim() !== "" && !line.startsWith("sep="));
+                const text = e.target.result;
+                const lines = text.split(/\r?\n/).filter(line => line.trim() !== "" && !line.startsWith("sep="));
                 if(lines.length <= 1) return alert("الملف فارغ.");
-                let delimiter = lines[0].includes(";") ? ";" : ","; let splitRegex = new RegExp(delimiter + "(?=(?:(?:[^\"]*\"){2})*[^\"]*$)");
-                let updates = {};
+
+                let delimiter = lines[0].includes(";") ? ";" : ",";
+                let splitRegex = new RegExp(delimiter + "(?=(?:(?:[^\"]*\"){2})*[^\"]*$)");
+                let clean = (str) => str ? str.replace(/^"|"$/g, "").replace(/""/g, '"').trim() : "";
+
+                let newProds = [];
+                let skipped = 0;
 
                 for(let i = 1; i < lines.length; i++) {
-                    let cols = lines[i].split(splitRegex); if(cols.length < 8) continue;
-                    let clean = (str) => str ? str.replace(/^"|"$/g, "").replace(/""/g, '"').trim() : "";
-                    let id = clean(cols[0]); let titleAr = clean(cols[1]); let titleEn = clean(cols[2]); let cat = clean(cols[3]); let subCat = clean(cols[4]); let img = clean(cols[5]);
-                    let stock = parseInt(clean(cols[6])) || 0; let price = parseFloat(clean(cols[7])) || 0; let points = parseFloat(clean(cols[8])) || 0; let descAr = clean(cols[9]); let descEn = clean(cols[10]);
-                    if(!id || !titleAr) continue;
-                    updates[id] = { id, titleAr, titleEn, category: cat, subCategory: subCat, img, stock, price, points, descAr, descEn, isActive: true };
+                    let cols = lines[i].split(splitRegex);
+                    if(cols.length < 8) { skipped++; continue; }
+
+                    let id      = clean(cols[0]);
+                    let titleAr = clean(cols[1]);
+                    let titleEn = clean(cols[2]);
+                    let cat     = clean(cols[3]);
+                    let subCat  = clean(cols[4]);
+                    let img     = clean(cols[5]);
+                    let stock   = parseInt(clean(cols[6]))   || 0;
+                    let price   = parseFloat(clean(cols[7])) || 0;
+                    let points  = parseFloat(clean(cols[8])) || 0;
+                    let descAr  = clean(cols[9]  || "");
+                    let descEn  = clean(cols[10] || "");
+
+                    if(!id || !titleAr) { skipped++; continue; }
+
+                    newProds.push({ id, titleAr, titleEn, category: cat, subCategory: subCat, img, stock, price, points, descAr, descEn, isActive: true });
                 }
-                
-                db.ref('/products').update(updates).then(() => {
-                    alert(`تم استيراد المنتجات بنجاح!`); event.target.value = ""; 
+
+                if(newProds.length === 0) return alert("مفيش منتجات صالحة في الملف! تأكد من الفورمات.");
+
+                // بنجيب المنتجات الحالية من Firebase ونعمل merge عليها
+                db.ref('/products').once('value').then(snapshot => {
+                    let existing = {};
+                    if(snapshot.exists()) {
+                        snapshot.forEach(child => { existing[child.key] = child.val(); });
+                    }
+
+                    newProds.forEach(p => {
+                        // لو المنتج موجود: بنحدث بياناته بس بنحافظ على isActive القديمة
+                        if(existing[p.id]) {
+                            existing[p.id] = { ...existing[p.id], ...p, isActive: existing[p.id].isActive };
+                        } else {
+                            existing[p.id] = p;
+                        }
+                    });
+
+                    db.ref('/products').set(existing).then(() => {
+                        alert(`✅ تم الاستيراد بنجاح!\nتم معالجة ${newProds.length} منتج.\n${skipped > 0 ? `تم تخطي ${skipped} صف غير صالح.` : ''}`);
+                        event.target.value = "";
+                    }).catch(err => {
+                        console.error("خطأ في الحفظ:", err);
+                        alert("❌ حدث خطأ أثناء الحفظ في Firebase! افتح الـ Console لمزيد من التفاصيل.");
+                    });
                 });
-            }; reader.readAsText(file);
+            };
+            reader.readAsText(file, 'UTF-8');
         }
 
         // ================= المناطق (Regions) =================
