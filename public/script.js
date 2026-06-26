@@ -173,80 +173,13 @@ window.initData = function() {
     }
 }
 
-// === الدالة المتطورة لقائمة الأقسام المتفرعة ===
+// === قائمة الأقسام ===
+// تم نقل منطق بناء قائمة الأقسام بالكامل لـ header-loader.js
+// عبر دالة joryRenderNavCategories — لا تحذف هذه الدالة عشان
+// applyTranslations وأماكن تانية بتستدعيها، بس خليناها فاضية
+// عشان منتعارضش مع الـ mega menu الجديد
 window.renderDynamicNavbar = function() {
-    let cats = JSON.parse(localStorage.getItem("eljory_categories")) || [];
-    cats.sort((a, b) => (parseInt(a.priority) || 0) - (parseInt(b.priority) || 0));
-
-    let dropContents = document.querySelectorAll("#dynamicNavCategories, .dropdown-content");
-    
-    let isAr = currentLang === 'ar';
-    let alignSide = isAr ? 'right' : 'left';
-    let arrow = isAr ? '◀' : '▶';
-
-    if (!document.getElementById("nestedDropdownStyles")) {
-        let style = document.createElement('style');
-        style.id = "nestedDropdownStyles";
-        style.innerHTML = `
-            .main-menu-item { position: relative; }
-            .sub-menu-container { 
-                display: none; 
-                position: absolute; 
-                top: 0; 
-                ${isAr ? 'right: 100%;' : 'left: 100%;'} 
-                min-width: 220px; 
-                background: #ffffff; 
-                box-shadow: 0px 5px 15px rgba(0,0,0,0.15); 
-                border-radius: 5px;
-                border: 1px solid #eee;
-                z-index: 10000;
-            }
-            .main-menu-item:hover .sub-menu-container { display: block; animation: fadeInSub 0.3s ease; }
-            @keyframes fadeInSub { from { opacity: 0; transform: translateX(${isAr ? '10px' : '-10px'}); } to { opacity: 1; transform: translateX(0); } }
-            .nav-link-item {
-                display: block !important; padding: 12px 20px !important; text-align: ${alignSide} !important; 
-                text-decoration: none !important; border-bottom: 1px solid #f4f6f9 !important; 
-                font-weight: bold !important; font-size: 15px !important; transition: all 0.3s ease !important; 
-                color: #1d364a !important; background: #fff !important; cursor: pointer;
-            }
-            .nav-link-item:hover { color: #f38c18 !important; background: #fdf5e6 !important; padding-${isAr ? 'right' : 'left'}: 28px !important; }
-            .main-cat-link { color: #f38c18 !important; }
-            .sub-cat-link { color: #1d364a !important; font-size: 14px !important; font-weight: normal !important; }
-        `;
-        document.head.appendChild(style);
-    }
-
-    dropContents.forEach(nav => {
-        nav.innerHTML = `<a href="shop.html" class="nav-link-item">🌟 ${translations[currentLang].allProductsTitle}</a>`;
-        
-        let mainCats = cats.filter(c => !c.parentId && c.isActive !== false);
-        
-        mainCats.forEach(mc => {
-            let catName = isAr ? mc.nameAr : (mc.nameEn || mc.nameAr);
-            let subCats = cats.filter(c => c.parentId === mc.id && c.isActive !== false);
-            
-            if (subCats.length > 0) {
-                let subHtml = `<div class="sub-menu-container">`;
-                subCats.forEach(sc => {
-                    let subCatName = isAr ? sc.nameAr : (sc.nameEn || sc.nameAr);
-                    subHtml += `<a href="shop.html?cat=${mc.id}&sub=${sc.id}" class="nav-link-item sub-cat-link">- ${subCatName}</a>`;
-                });
-                subHtml += `</div>`;
-                
-                nav.innerHTML += `
-                    <div class="main-menu-item">
-                        <a href="shop.html?cat=${mc.id}" class="nav-link-item main-cat-link" style="display: flex !important; justify-content: space-between !important; align-items: center !important;">
-                            <span>📁 ${catName}</span>
-                            <span style="font-size:12px; color:#999; margin-${isAr ? 'right' : 'left'}: 10px;">${arrow}</span>
-                        </a>
-                        ${subHtml}
-                    </div>
-                `;
-            } else {
-                nav.innerHTML += `<a href="shop.html?cat=${mc.id}" class="nav-link-item main-cat-link">📁 ${catName}</a>`;
-            }
-        });
-    });
+    return;
 }
 // ==============================================
 
