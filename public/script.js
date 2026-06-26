@@ -532,7 +532,6 @@ function renderCart() {
     
     let shipText = "";
     if (!hasShipping) {
-        // خلينا الرسالة أذكى لو هو مسجل فعلاً بس عنوانه ناقص
         let loginMsg = currentLang === 'ar' ? '<span style="color:gray; font-size:14px;">(سجل الدخول لمعرفة الشحن)</span>' : '<span style="color:gray; font-size:14px;">(Login to see shipping)</span>';
         let noAddrMsg = currentLang === 'ar' ? '<span style="color:red; font-size:14px;">(يرجى إضافة المحافظة في إعدادات الحساب)</span>' : '<span style="color:red; font-size:14px;">(Please add region in account)</span>';
         shipText = user ? noAddrMsg : loginMsg;
@@ -590,7 +589,7 @@ window.loadUserProfile = function() {
     
     let pointsElem = document.getElementById("loyaltyPointsDisplay");
     let settings = JSON.parse(localStorage.getItem("eljory_loyalty_settings")) || {};
-    let points = user ? (user.points || 0) : 0; // سحب النقاط من أوبجكت العميل مباشرة
+    let points = user ? (user.points || 0) : 0;
     
     if(pointsElem) {
         let now = new Date();
@@ -704,7 +703,7 @@ if(btnCheckout) {
             });
         }
         
-let shipping = 0;
+        let shipping = 0;
         let regions = JSON.parse(localStorage.getItem("eljory_regions")) || [];
         if (user.addresses && user.addresses.length > 0) {
             let primaryAddress = user.addresses.find(a => a.isPrimary) || user.addresses[0];
@@ -734,7 +733,7 @@ let shipping = 0;
         let primaryAddr = user.addresses && user.addresses.find(a => a.isPrimary) ? user.addresses.find(a => a.isPrimary).text : noAddr;
         let checkoutCustomerData = { name: user.name, phone: user.phone, address: primaryAddr };
 
-        // رفع الطلب لفايربيس باستخدام Transaction للرقم التسلسلي والمخزون
+        // رفع الطلب لفايربيس باستخدام Transaction للرقم التسلسلي
         const counterRef = db.ref('/metadata/lastOrderId');
         counterRef.transaction((currentValue) => {
             return (currentValue || 1000) + 1;
@@ -748,10 +747,8 @@ let shipping = 0;
                 };
                 
                 db.ref('/orders/' + newOrderId).set(newOrder).then(() => {
-                    cart.forEach(item => { 
-                        db.ref('/products/' + item.id + '/stock').transaction(currentStock => Math.max(0, (currentStock || 0) - item.qty));
-                    });
 
+                    // Facebook Pixel - Purchase
                     if (typeof fbq === 'function') {
                         fbq('track', 'Purchase', {
                             content_ids: cart.map(item => item.id),
@@ -762,7 +759,7 @@ let shipping = 0;
                         });
                     }
 
-                    // لو كان فيه كوبون هدية متطبق، نعلّمه "مستخدم" في فايربيس نفسها بعد نجاح الطلب فعلاً
+                    // معالجة كوبون الهدية لو موجود
                     let usedLoyaltyCoupon = JSON.parse(localStorage.getItem("eljory_applied_loyalty_coupon"));
                     if (usedLoyaltyCoupon) {
                         let userPhoneKey = getShortPhone(user.phone);
@@ -777,9 +774,32 @@ let shipping = 0;
                         localStorage.removeItem("eljory_applied_loyalty_coupon");
                     }
 
-                    cart = []; saveCart(); appliedPromoObj = null; 
+                    // ✅ الإصلاح: ننتظر كل transactions المخزون تخلص فعلاً قبل الـ redirect
+                    let stockTransactions = cart.map(item =>
+                        db.ref('/products/' + item.id + '/stock').transaction(
+                            currentStock => Math.max(0, (currentStock || 0) - item.qty)
+                        )
+                    );
+                    return Promise.all(stockTransactions);
+
+                }).then(() => {
+                    // ✅ دلوقتي بعد خصم المخزون فعلاً، نفرّغ السلة ونعمل redirect
+                    cart = []; 
+                    saveCart(); 
+                    appliedPromoObj = null; 
                     alert(translations[currentLang].checkoutSuccess + "\nرقم طلبك هو: " + newOrderId); 
-                    localStorage.setItem("eljory_active_acc_tab", "orders"); window.location.href = "account.html";
+                    localStorage.setItem("eljory_active_acc_tab", "orders"); 
+                    window.location.href = "account.html";
+
+                }).catch(error => {
+                    console.error("خطأ في خصم المخزون:", error);
+                    // الطلب اتحفظ بنجاح حتى لو المخزون اتأخر
+                    cart = []; 
+                    saveCart(); 
+                    appliedPromoObj = null;
+                    alert(translations[currentLang].checkoutSuccess + "\nرقم طلبك هو: " + newOrderId);
+                    localStorage.setItem("eljory_active_acc_tab", "orders"); 
+                    window.location.href = "account.html";
                 });
             }
         });
@@ -911,14 +931,13 @@ window.renderOrders = function() {
         return; 
     }
 
-    // --- التعديل السحري: سحب الأوردرات من السحابة مباشرة وفلترتها برقم العميل ---
+    // سحب الأوردرات من السحابة مباشرة وفلترتها برقم العميل
     db.ref('/orders').on('value', snapshot => {
         let myOrders = [];
         if (snapshot.exists()) {
             snapshot.forEach(child => {
                 let ord = child.val();
                 if (ord && ord.customer && ord.customer.phone) {
-                    // توحيد صيغة الرقم عشان المطابقة تكون دقيقة 100%
                     let ordPhone = String(ord.customer.phone).replace(/\D/g, '').slice(-10);
                     let userPhone = String(user.phone).replace(/\D/g, '').slice(-10);
                     
@@ -934,7 +953,7 @@ window.renderOrders = function() {
             return; 
         }
         
-        tbody.innerHTML = ""; // تفريغ الجدول قبل الرص
+        tbody.innerHTML = "";
         myOrders.reverse().forEach((order) => {
             let statusText = ""; let statusClass = ""; let actionBtn = "";
             
@@ -1281,7 +1300,7 @@ window.checkAndResetLoyaltyExpiry = function(user, phoneKey) {
     return user;
 }
 
-    window.doRegister = async function(event) {
+window.doRegister = async function(event) {
     if (event) event.preventDefault();
 
     let name = document.getElementById("regName").value.trim();
