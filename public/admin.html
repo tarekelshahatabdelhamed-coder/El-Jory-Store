@@ -1750,7 +1750,7 @@ window.importProductsCSV = function(event) {
 
         for(let i = 1; i < lines.length; i++) {
             const cols = safeSplit(lines[i], delimiter);
-            if(cols.length < 8) { skipped++; continue; }
+            if(cols.length < 7) { skipped++; continue; }
 
             const id      = clean(cols[0]);
             const titleAr = clean(cols[1]);
@@ -1762,7 +1762,7 @@ window.importProductsCSV = function(event) {
             const price   = parseFloat(clean(cols[7])) || 0;
             const points  = parseFloat(clean(cols[8] || "0")) || 0;
             const descAr  = clean(cols[9]  || "");
-            const descEn  = clean(cols[10] || "");
+            const descEn  = cols.length > 10 ? clean(cols[10]) : "";
 
             if(!id || !titleAr) { skipped++; continue; }
 
