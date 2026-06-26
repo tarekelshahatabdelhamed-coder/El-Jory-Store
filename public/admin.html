@@ -904,7 +904,7 @@
         </div>
     </div>
 
-    <div id="galleryModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 2000; direction: rtl; font-family: 'Segoe UI', Tahoma, Arial, sans-serif;">
+    <div id="galleryModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 6000; direction: rtl; font-family: 'Segoe UI', Tahoma, Arial, sans-serif;">
         <div style="background: white; width: 90%; max-width: 1000px; border-radius: 8px; padding: 20px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">
                 <h2 style="color: #1d364a; margin: 0;">🖼️ استوديو الصور (El Jory Gallery)</h2>
@@ -3057,8 +3057,12 @@ window.editProduct = function(id) {
         <h3 style="color:#1d364a; margin-top:0; border-bottom:2px solid #f38c18; padding-bottom:10px;">🖼️ إضافة صورة</h3>
         <div class="form-group"><label>رابط الصورة (URL)</label><input type="text" id="adminImgUrl" class="form-control" placeholder="https://..."></div>
         <div class="form-group">
-            <label>أو ارفع من جهازك</label>
-            <input type="file" id="adminImgFile" accept="image/*" class="form-control" onchange="adminBlogHandleUpload(event)">
+            <label>أو اختر من جهازك أو الاستوديو</label>
+            <div style="display:flex; gap:10px;">
+                <button type="button" onclick="document.getElementById('adminImgFile').click()" class="btn btn-green" style="flex:1; padding:10px;">📤 رفع من الجهاز</button>
+                <button type="button" onclick="openGalleryModal('adminImgUrl')" class="btn" style="background:#e68a10; flex:1; padding:10px;">🖼️ من الاستوديو</button>
+            </div>
+            <input type="file" id="adminImgFile" accept="image/*" style="display:none;" onchange="adminBlogHandleUpload(event)">
         </div>
         <div class="form-group">
             <label>محاذاة الصورة</label>
