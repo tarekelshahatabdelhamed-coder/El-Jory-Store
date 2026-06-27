@@ -7,41 +7,104 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>سلة التسوق | الجوري ستور</title>
     <link rel="stylesheet" href="style.css">
-    <style>
-        .cart-table-wrapper { overflow-x: auto; margin-top: 20px; }
-        table { width: 100%; border-collapse: collapse; min-width: 600px; }
-        th, td { padding: 15px; border-bottom: 1px solid #ddd; text-align: center; }
-        th { background-color: #1d364a; color: white; }
-        
-        .cart-summary-wrapper {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            flex-wrap: wrap;
-            margin-top: 30px;
-            gap: 25px;
-        }
+<style>
+    .cart-table-wrapper { overflow-x: auto; margin-top: 20px; }
+    table { width: 100%; border-collapse: collapse; min-width: 600px; }
+    th, td { padding: 15px; border-bottom: 1px solid #ddd; text-align: center; }
+    th { background-color: #1d364a; color: white; }
+    
+    .cart-summary-wrapper {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        margin-top: 30px;
+        gap: 25px;
+    }
 
-        .promo-box {
-            flex: 1;
-            min-width: 300px;
-            max-width: 450px;
-            background: #fdfdfd;
-            padding: 20px;
-            border-radius: 10px;
-            border: 1px dashed #ccc;
-        }
+    .promo-box {
+        flex: 1;
+        min-width: 300px;
+        max-width: 450px;
+        background: #fdfdfd;
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px dashed #ccc;
+    }
 
-        .summary-box {
+    .summary-box {
+        background: #fff;
+        padding: 30px 25px;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        min-width: 300px;
+        text-align: center;
+        border: 1px solid #eee;
+    }
+
+    /* ── موبايل كارت ── */
+    @media (max-width: 768px) {
+        .cart-section { padding: 16px 12px !important; }
+        .cart-section h2 { font-size: 18px; margin-bottom: 12px; }
+
+        /* إخفاء الجدول واستبداله بكروت */
+        .cart-table-wrapper table thead { display: none; }
+        .cart-table-wrapper table,
+        .cart-table-wrapper table tbody,
+        .cart-table-wrapper table tr,
+        .cart-table-wrapper table td { display: block; width: 100%; min-width: unset; }
+        .cart-table-wrapper table tr {
             background: #fff;
-            padding: 30px 25px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            min-width: 300px;
-            text-align: center;
-            border: 1px solid #eee;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.07);
+            margin-bottom: 12px;
+            padding: 12px;
+            position: relative;
         }
-    </style>
+        .cart-table-wrapper table td {
+            padding: 5px 8px;
+            border: none;
+            text-align: right;
+            font-size: 13px;
+        }
+        .cart-table-wrapper table td::before {
+            content: attr(data-label);
+            font-weight: 700;
+            color: #1d364a;
+            margin-left: 6px;
+            font-size: 12px;
+        }
+        /* صورة المنتج تبقى أكبر شوية */
+        .cart-table-wrapper table td img {
+            width: 60px !important;
+            height: 60px !important;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        /* السمري والبرومو */
+        .cart-summary-wrapper {
+            flex-direction: column;
+            gap: 14px;
+            margin-top: 16px;
+        }
+        .promo-box {
+            min-width: unset;
+            max-width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+        }
+        .promo-box p { font-size: 13px; margin-bottom: 10px; }
+        .summary-box {
+            min-width: unset;
+            width: 100%;
+            padding: 16px;
+            border-radius: 12px;
+        }
+        #cartTotal { font-size: 18px !important; margin-bottom: 14px !important; }
+        #btnCheckout { font-size: 15px !important; padding: 12px !important; }
+    }
+</style>
 </head>
 <body>
 <div id="site-header"></div>
@@ -57,8 +120,8 @@
                     <th id="thCartProd">المنتج</th>
                     <th id="thCartPrice">السعر</th>
                     <th id="thCartQty">الكمية</th>
-                    <th id="thCartSub">الإجمالي الفرعي</th>
-                    <th id="thCartAction">إجراء</th>
+                    <th id="thCartSub">الإجمالي</th>
+                    <th id="thCartAction">حذف</th>
                 </tr>
             </thead>
             <tbody></tbody>

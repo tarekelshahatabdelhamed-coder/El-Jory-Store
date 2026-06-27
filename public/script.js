@@ -444,7 +444,17 @@ function renderCart() {
         let subtotal = item.price * item.qty; grandTotal += subtotal;
         let pData = allProducts.find(p => p.id === item.id); 
         let productName = pData ? (currentLang === 'ar' ? pData.titleAr : (pData.titleEn || pData.titleAr)) : item.id;
-        tbody.innerHTML += `<tr><td>${productName}</td><td>${item.price} ${currency}</td><td><strong>${item.qty}</strong></td><td>${subtotal} ${currency}</td><td><button onclick="removeFromCart(${index})" style="background: #d9534f; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; font-weight: bold;">${translations[currentLang].btnDelete}</button></td></tr>`;
+        let lbl1 = currentLang === 'ar' ? 'المنتج' : 'Product';
+let lbl2 = currentLang === 'ar' ? 'السعر' : 'Price';
+let lbl3 = currentLang === 'ar' ? 'الكمية' : 'Qty';
+let lbl4 = currentLang === 'ar' ? 'الإجمالي' : 'Subtotal';
+tbody.innerHTML += `<tr>
+  <td data-label="${lbl1}">${productName}</td>
+  <td data-label="${lbl2}">${item.price} ${currency}</td>
+  <td data-label="${lbl3}"><strong>${item.qty}</strong></td>
+  <td data-label="${lbl4}">${subtotal} ${currency}</td>
+  <td><button onclick="removeFromCart(${index})" style="background:#d9534f; color:white; border:none; padding:6px 14px; cursor:pointer; border-radius:6px; font-weight:bold; width:100%;">${translations[currentLang].btnDelete}</button></td>
+</tr>`;
     });
 
     let finalTotal = grandTotal;
