@@ -1,5 +1,14 @@
 {
   "hosting": {
+  "public": "public",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "ignore": [
+    "firebase.json",
+    "**/.*",
+    "**/node_modules/**"
+  ]
+}
     "site": "el-jory-store",
     "public": "public",
     "ignore": [
