@@ -39,6 +39,53 @@
         .sidebar-menu li a { display: block; padding: 12px 15px; border-radius: 5px; margin-bottom: 8px; text-decoration: none; transition: 0.3s; }
         .sidebar-menu li a:hover, .sidebar-menu li a.active-link { background: #eef2f5; color: #f38c18 !important; border-right: 4px solid #f38c18; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* ── موبايل - سجل النقاط ── */
+        @media (max-width: 768px) {
+        .history-table thead { display: none; }
+        .history-table, .history-table tbody, .history-table tr, .history-table td { display: block; width: 100%; }
+        .history-table tr {
+        background: #fff;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        padding: 10px 12px;
+        border: 1px solid #eee;
+        box-shadow: 0 2px 6px rgba(0,0,0,.05);
+        }
+        .history-table td {
+        padding: 4px 6px;
+        font-size: 13px;
+        border: none;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        }
+        .history-table td::before {
+        content: attr(data-label);
+        font-weight: 700;
+        color: #1d364a;
+        min-width: 70px;
+        font-size: 12px;
+        }
+
+        /* الكوبونات */
+        #myCouponsList > div {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px;
+        }
+
+        /* متجر المكافآت */
+         #rewardsGrid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+       .reward-card { padding: 12px; }
+       .reward-icon { font-size: 36px; }
+       .reward-title { font-size: 14px; }
+       .reward-cost { font-size: 16px; }
+       .btn-redeem { font-size: 13px; padding: 8px; }
+
+       /* رصيد النقاط */
+       #tab-rewards > div { padding: 16px !important; }
+       #loyaltyPointsDisplay { font-size: 26px !important; }
+     }
     </style>
 </head>
 <body>
@@ -393,7 +440,16 @@ function renderPointsHistory(dbUser) {
                 let sign = isAdd ? '+' : '-';
                 let textColor = isAdd ? '#28a745' : '#d9534f';
                 
-                html += `<tr><td>${h.date}</td><td>${typeBadge}</td><td style="font-weight:bold; color:${textColor};">${sign}${h.amount}</td><td>${h.reason}</td></tr>`;
+                let l1 = currentLang === 'ar' ? 'التاريخ' : 'Date';
+                let l2 = currentLang === 'ar' ? 'النوع' : 'Type';
+                let l3 = currentLang === 'ar' ? 'النقاط' : 'Points';
+                let l4 = currentLang === 'ar' ? 'السبب' : 'Reason';
+                html += `<tr>
+                <td data-label="${l1}">${h.date}</td>
+                <td data-label="${l2}">${typeBadge}</td>
+                <td data-label="${l3}" style="font-weight:bold; color:${textColor};">${sign}${h.amount}</td>
+                <td data-label="${l4}">${h.reason}</td>
+                 </tr>`;
             });
             html += `</tbody></table>`;
             container.innerHTML = html;
