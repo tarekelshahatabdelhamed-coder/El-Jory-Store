@@ -658,7 +658,8 @@
         let btnTxt = (typeof currentLang !== 'undefined' && currentLang === 'en') ? 'Add to Cart' : 'أضف للسلة';
 
         let pointsTxt = "";
-        if (p.points > 0) {
+        let loyaltySettings = JSON.parse(localStorage.getItem("eljory_loyalty_settings")) || { system: "global" };
+        if (loyaltySettings.system === "product" && p.points > 0) {
             pointsTxt = `<p style="color:#28a745;font-weight:bold;font-size:16px;">🎁 ستحصل على ${p.points} نقطة عند الشراء</p>`;
         }
 
