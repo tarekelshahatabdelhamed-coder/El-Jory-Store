@@ -1260,8 +1260,10 @@ window.renderCategoriesGrid = function() {
 
         container.innerHTML += `
             <div class="category-card">
+                <a href="shop.html?cat=${cat.id}" style="text-decoration:none; color:inherit; display:block;">
                 <img src="${catImg}" alt="${catName}">
                 <h3>${catName}</h3>
+                </a>
                 <p>${defaultDesc}</p>
                 <a href="shop.html?cat=${cat.id}" class="btn-browse">${btnText}</a>
             </div>
