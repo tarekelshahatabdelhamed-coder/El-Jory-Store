@@ -1177,16 +1177,18 @@ window.renderLoyaltyBanner = function() {
 }
 
 window.loadAdminLoyalty = function() {
-    let settings = JSON.parse(localStorage.getItem("eljory_loyalty_settings")) || { system: "global", spent: 10, earn: 1, expiry: "" };
-    if(document.getElementById("loyaltySysGlobal")) {
-        document.getElementById("loyaltySysGlobal").checked = settings.system === "global";
+    let settings = JSON.parse(localStorage.getItem("eljory_loyalty_settings")) || { system: "global", spent: 10, earn: 1, expiryPeriods: [] };
+    if (document.getElementById("loyaltySysGlobal")) {
+        document.getElementById("loyaltySysGlobal").checked  = settings.system === "global";
         document.getElementById("loyaltySysProduct").checked = settings.system === "product";
-        document.getElementById("loyaltyGlobalSpent").value = settings.spent;
-        document.getElementById("loyaltyGlobalEarn").value = settings.earn;
-        document.getElementById("loyaltyExpiry").value = settings.expiry || "";
-        toggleLoyaltyView(); renderLoyaltyProductsTable();
+        document.getElementById("loyaltyGlobalSpent").value  = settings.spent;
+        document.getElementById("loyaltyGlobalEarn").value   = settings.earn;
+        expiryPeriods = settings.expiryPeriods || [];
+        renderExpiryPeriods();
+        toggleLoyaltyView();
+        renderLoyaltyProductsTable();
     }
-}
+};
 
 window.toggleLoyaltyView = function() {
     let system = document.querySelector('input[name="loyaltySystem"]:checked').value;
@@ -1198,15 +1200,18 @@ window.toggleLoyaltyView = function() {
 
 window.saveLoyaltySettings = function() {
     let system = document.querySelector('input[name="loyaltySystem"]:checked').value;
-    let spent = document.getElementById("loyaltyGlobalSpent").value || 10;
-    let earn = document.getElementById("loyaltyGlobalEarn").value || 1;
-    let expiry = document.getElementById("loyaltyExpiry").value;
-    let settings = { system: system, spent: parseFloat(spent), earn: parseFloat(earn), expiry: expiry };
-    
+    let spent  = document.getElementById("loyaltyGlobalSpent").value || 10;
+    let earn   = document.getElementById("loyaltyGlobalEarn").value || 1;
+    let settings = {
+        system: system,
+        spent: parseFloat(spent),
+        earn: parseFloat(earn),
+        expiryPeriods: expiryPeriods
+    };
     db.ref('/settings').set(settings).then(() => {
         alert("تم حفظ إعدادات نظام الولاء بنجاح!");
     });
-}
+};
 
 window.renderLoyaltyProductsTable = function() {
     let tbody = document.getElementById("loyaltyProductsBody");
@@ -1300,28 +1305,68 @@ window.onload = () => {
 // دالة موحدة لفحص انتهاء صلاحية نقاط الولاء وتصفيرها في فايربيس عند الحاجة
 window.checkAndResetLoyaltyExpiry = function(user, phoneKey) {
     let settings = JSON.parse(localStorage.getItem("eljory_loyalty_settings")) || {};
-    if (!settings.expiry || !user) return user;
+    let periods  = settings.expiryPeriods || [];
+    if (!periods.length || !user) return user;
 
-    let expiryDate = new Date(settings.expiry);
-    let currentDate = new Date();
-    expiryDate.setHours(0,0,0,0);
-    currentDate.setHours(0,0,0,0);
+    let now      = new Date();
+    let curMonth = now.getMonth() + 1;
+    let curDay   = now.getDate();
+    let curYear  = now.getFullYear();
 
-    if (currentDate >= expiryDate && (user.points || 0) > 0) {
-        let oldPoints = user.points;
-        let history = user.pointsHistory || [];
+    let history      = user.pointsHistory || [];
+    let totalDeduct  = 0;
+    let changed      = false;
+
+    history = history.map(entry => {
+        if (entry.type !== "earn" || entry.expired) return entry;
+
+        // تحويل التاريخ من "DD/MM/YYYY" لشهر
+        let parts     = entry.date.split("/");
+        let entryMonth = parseInt(parts[1]);
+        let entryYear  = parseInt(parts[2]);
+
+        // إيجاد الفترة المناسبة لهذه النقاط
+        let matchedPeriod = periods.find(p =>
+            entryMonth >= p.earnFrom && entryMonth <= p.earnTo
+        );
+        if (!matchedPeriod) return entry;
+
+        // هل عدينا يوم الانتهاء في أي سنة بعد سنة الاكتساب؟
+        let expireYear = entryYear;
+        // لو شهر الانتهاء أكبر من شهر الاكتساب → نفس السنة، غير كده → السنة الجاية
+        if (matchedPeriod.expireMonth <= matchedPeriod.earnTo) {
+            expireYear = entryYear + 1;
+        }
+
+        let isPastExpiry = (curYear > expireYear) ||
+            (curYear === expireYear && curMonth > matchedPeriod.expireMonth) ||
+            (curYear === expireYear && curMonth === matchedPeriod.expireMonth && curDay >= matchedPeriod.expireDay);
+
+        if (isPastExpiry) {
+            totalDeduct += entry.amount;
+            changed = true;
+            return { ...entry, expired: true };
+        }
+        return entry;
+    });
+
+    if (changed && totalDeduct > 0) {
+        let actualDeduct = Math.min(totalDeduct, user.points || 0);
         history.push({
-            type: "deduct",
-            amount: oldPoints,
-            reason: currentLang === 'ar' ? "انتهت صلاحية النقاط الدورية للمتجر 🧹" : "Points expired",
-            date: new Date().toLocaleDateString('en-GB')
+            type:   "deduct",
+            amount: actualDeduct,
+            reason: `انتهت صلاحية النقاط حسب الفترة المحددة 🧹`,
+            date:   now.toLocaleDateString('en-GB')
         });
-        user.points = 0;
+        user.points        = Math.max(0, (user.points || 0) - actualDeduct);
         user.pointsHistory = history;
-        db.ref('/users/' + phoneKey).update({ points: 0, pointsHistory: history });
+        db.ref('/users/' + phoneKey).update({
+            points:        user.points,
+            pointsHistory: history
+        });
     }
     return user;
-}
+};
 
 window.doRegister = async function(event) {
     if (event) event.preventDefault();
