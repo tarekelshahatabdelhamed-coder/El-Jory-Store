@@ -30,8 +30,19 @@ if (typeof firebase.storage === 'function') {
 // تحديث نقاط الولاء) ممكن تمنع العمليات دي أساساً. الكود محمي بالكامل:
 // لو الصفحة مش شايلة مكتبة firebase-auth-compat.js، بيتجاهل الخطوة بأمان.
 if (typeof firebase.auth === 'function') {
-    firebase.auth().signInAnonymously().catch(function(error) {
-        console.warn('⚠️ تعذر تسجيل الدخول المجهول:', error.message);
+    // ⚠️ إصلاح: كنا بننادي signInAnonymously() فورًا من غير ما ننتظر Firebase
+    // يتأكد الأول هل فيه جلسة محفوظة (زي جلسة الأدمن) ولا لأ. ده كان بيسبب
+    // تعارض توقيت (race condition): أحيانًا الجلسة المجهولة كانت بتحل محل
+    // الجلسة الحقيقية قبل ما تسترجع، فكنت بتضطر تسجل دخول تاني بعد كل ريفريش.
+    // دلوقتي بننتظر أول استدعاء لـ onAuthStateChanged (اللي بيحصل بعد ما
+    // Firebase يخلص التأكد من الجلسة المحفوظة)، وبس لو مفيش يوزر مسجل خالص
+    // بننادي signInAnonymously().
+    firebase.auth().onAuthStateChanged(function(user) {
+        if (!user) {
+            firebase.auth().signInAnonymously().catch(function(error) {
+                console.warn('⚠️ تعذر تسجيل الدخول المجهول:', error.message);
+            });
+        }
     });
 }
 
