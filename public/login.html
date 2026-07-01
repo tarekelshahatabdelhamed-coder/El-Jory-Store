@@ -64,7 +64,7 @@
                     <input type="password" class="form-control" id="regPassword" required>
                 </div>
                 
-                <button type="submit" class="btn-auth" style="width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 5px; font-weight: bold; font-size: 16px; cursor: pointer;">إنشاء الحساب</button>
+                <button type="submit" id="btnRegisterSubmit" class="btn-auth" style="width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 5px; font-weight: bold; font-size: 16px; cursor: pointer;">إنشاء الحساب</button>
             </form>
             <div class="auth-switch" style="text-align: center; margin-top: 15px;">
                 <span id="hasAccountText">لديك حساب بالفعل؟</span> 
@@ -90,12 +90,13 @@
     </div>
 
 <!-- 1. مكتبات فايربيس الأساسية (بما فيها الـ Storage عشان الإيرور يختفي) -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
+     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
+     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
 
-    <!-- 2. ملفات متجرك -->
-    <script src="js/firebase-init.js"></script>
+<!-- 2. ملفات متجرك -->
+<script src="js/firebase-init.js"></script>
     <script src="js/store-core.js"></script>
     <script src="script.js"></script>
 </body>

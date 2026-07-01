@@ -1409,8 +1409,13 @@ window.checkAndResetLoyaltyExpiry = function(user, phoneKey) {
     return user;
 };
 
+let isRegisteringNow = false; // منع الضغط المتكرر أثناء التسجيل
+
 window.doRegister = async function(event) {
     if (event) event.preventDefault();
+
+    // لو في عملية تسجيل شغالة بالفعل، تجاهل أي ضغطة زيادة
+    if (isRegisteringNow) return;
 
     let name = document.getElementById("regName").value.trim();
     let phone = document.getElementById("regPhone").value.trim();
@@ -1425,38 +1430,62 @@ window.doRegister = async function(event) {
         return;
     }
 
-    db.ref('/users/' + cleanPhone).once('value').then(async (snapshot) => {
+    let btn = document.getElementById("btnRegisterSubmit");
+    let originalBtnText = btn ? btn.innerText : "";
+
+    isRegisteringNow = true;
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = "0.6";
+        btn.style.cursor = "not-allowed";
+        btn.innerText = currentLang === 'ar' ? "⏳ جاري إنشاء الحساب..." : "⏳ Creating account...";
+    }
+
+    try {
+        let snapshot = await db.ref('/users/' + cleanPhone).once('value');
+
         if (snapshot.exists()) {
             alert(currentLang === 'ar' ? "هذا الرقم مسجل بالفعل! برجاء تسجيل الدخول." : "Phone already registered! Please login.");
             toggleAuth('login');
-        } else {
-            let salt = window.generateSalt();
-            let passwordHash = await window.hashPassword(password, salt);
-
-            let newUser = {
-                id: 'USR-' + cleanPhone,
-                name: name,
-                phone: cleanPhone,
-                email: email,
-                passwordHash: passwordHash,
-                passwordSalt: salt,
-                region: region,
-                address: address + " - " + region,
-                addresses: [{ id: Date.now(), text: address + " - " + region, isPrimary: true }],
-                points: 0,
-                joinDate: new Date().toLocaleDateString('en-GB'),
-                isBlocked: false
-            };
-
-            db.ref('/users/' + cleanPhone).set(newUser).then(() => {
-                alert(currentLang === 'ar' ? "تم إنشاء الحساب بنجاح! 🚀" : "Account created successfully! 🚀");
-                localStorage.setItem("eljory_auth", "true");
-                localStorage.setItem("eljory_active_phone", cleanPhone);
-                localStorage.setItem("eljory_active_user", JSON.stringify(newUser));
-                window.location.href = "account.html";
-            }).catch((error) => {
-                console.error("خطأ في التسجيل: ", error);
-            });
+            return;
         }
-    });
+
+        let salt = window.generateSalt();
+        let passwordHash = await window.hashPassword(password, salt);
+
+        let newUser = {
+            id: 'USR-' + cleanPhone,
+            name: name,
+            phone: cleanPhone,
+            email: email,
+            passwordHash: passwordHash,
+            passwordSalt: salt,
+            region: region,
+            address: address + " - " + region,
+            addresses: [{ id: Date.now(), text: address + " - " + region, isPrimary: true }],
+            points: 0,
+            joinDate: new Date().toLocaleDateString('en-GB'),
+            isBlocked: false
+        };
+
+        await db.ref('/users/' + cleanPhone).set(newUser);
+
+        alert(currentLang === 'ar' ? "تم إنشاء الحساب بنجاح! 🚀" : "Account created successfully! 🚀");
+        localStorage.setItem("eljory_auth", "true");
+        localStorage.setItem("eljory_active_phone", cleanPhone);
+        localStorage.setItem("eljory_active_user", JSON.stringify(newUser));
+        window.location.href = "account.html";
+
+    } catch (error) {
+        console.error("خطأ في التسجيل: ", error);
+        alert(currentLang === 'ar' ? "حدث خطأ أثناء إنشاء الحساب، برجاء المحاولة مرة أخرى." : "An error occurred while creating your account. Please try again.");
+    } finally {
+        isRegisteringNow = false;
+        if (btn) {
+            btn.disabled = false;
+            btn.style.opacity = "1";
+            btn.style.cursor = "pointer";
+            btn.innerText = originalBtnText || (currentLang === 'ar' ? "إنشاء الحساب" : "Create Account");
+        }
+    }
 };
