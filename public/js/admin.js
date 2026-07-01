@@ -2125,8 +2125,12 @@ firebase.auth().onAuthStateChanged(function(user) {
     let sidebar      = document.getElementById("adminSidebarPanel");
     let mainPanel    = document.getElementById("adminMainPanel");
     let loadingScreen= document.getElementById("adminLoadingScreen");
-    if (user) {
-        db.ref('/admins/' + user.uid).once('value', function(snap) {
+
+    // ⚠️ اليوزر المجهول (Anonymous) مش أدمن، وقراءة /admins ليه هترفض دايمًا
+    // من قواعد الأمان. فبنعامله زي إنه مفيش يوزر مسجل خالص، ونعرض شاشة تسجيل
+    // الدخول العادية بدل ما الكود يقف على خطأ permission_denied.
+    if (user && !user.isAnonymous) {
+        db.ref('/admins/' + user.uid).once('value').then(function(snap) {
             if(loadingScreen) loadingScreen.style.display = "none";
             if (snap.val() === true) {
                 if(loginScreen) loginScreen.style.display = "none";
@@ -2147,6 +2151,12 @@ firebase.auth().onAuthStateChanged(function(user) {
                 document.getElementById("adminLoginError").innerText     = "ليس لديك صلاحية الدخول.";
                 document.getElementById("adminLoginError").style.display = "block";
             }
+        }).catch(function(err) {
+            console.warn("تعذر التحقق من صلاحيات الأدمن:", err.message);
+            if(loadingScreen) loadingScreen.style.display = "none";
+            if(loginScreen)   loginScreen.style.display   = "flex";
+            if(sidebar)       sidebar.style.display       = "none";
+            if(mainPanel)     mainPanel.style.display     = "none";
         });
     } else {
         if(loadingScreen) loadingScreen.style.display = "none";
