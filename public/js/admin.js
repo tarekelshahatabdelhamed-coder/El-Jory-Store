@@ -1180,6 +1180,34 @@ window.saveCustomerEdit = function() {
     });
 };
 
+// ⚠️ إصلاح أمني (استكمال نقطة استرجاع كلمة المرور): دي الطريقة الآمنة الوحيدة
+// المتاحة دلوقتي لتوليد كلمة مرور جديدة لعميل - بعد ما الأدمن يتأكد من هوية
+// العميل بنفسه (تليفون/واتساب)، يفتح تعديل العميل من هنا ويولّد له كلمة مرور
+// جديدة، وبعدين يبلغه بيها يدوياً. الكلمة مبتتخزنش ولا بتتبعت لحد تاني، وبتظهر
+// مرة واحدة بس للأدمن نفسه جوه اللوحة المحمية بتسجيل الدخول.
+window.adminResetCustomerPassword = async function() {
+    let phoneKey = document.getElementById("editCustPhoneKey").value;
+    if(!phoneKey) return;
+    if(!confirm("هل تأكدت من هوية العميل عبر التليفون/واتساب؟ سيتم الآن توليد كلمة مرور جديدة له.")) return;
+
+    let newPass = Math.floor(100000 + Math.random() * 900000).toString();
+
+    let saltArr = new Uint8Array(16);
+    crypto.getRandomValues(saltArr);
+    let salt = Array.from(saltArr).map(b => b.toString(16).padStart(2, '0')).join('');
+
+    let encoder = new TextEncoder();
+    let data = encoder.encode(salt + newPass);
+    let hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    let hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+    db.ref('/users/' + phoneKey).update({ passwordHash: hash, passwordSalt: salt, password: null }).then(() => {
+        alert("✅ تم توليد كلمة مرور جديدة:\n\n" + newPass + "\n\nابلغها للعميل بنفسك بعد التأكد من هويته. لن تظهر هذه الكلمة مرة أخرى.");
+    }).catch(() => {
+        alert("❌ حدث خطأ أثناء تحديث كلمة المرور، حاول مرة أخرى.");
+    });
+};
+
 window.viewCustomerPointsHistory = function(phone) {
     let usersDB = JSON.parse(localStorage.getItem("eljory_users_db")) || [];
     let u       = usersDB.find(x => window.getShortPhone(x.phone) === window.getShortPhone(phone));
@@ -2105,6 +2133,12 @@ firebase.auth().onAuthStateChanged(function(user) {
                 if(sidebar)     sidebar.style.display     = "flex";
                 if(mainPanel)   mainPanel.style.display   = "block";
                 if(typeof loadAdminsList === "function") loadAdminsList();
+                // ⚠️ إصلاح: مزامنة الروت (كل بيانات المتجر شامل /users و /orders)
+                // كانت بتشتغل تلقائي لحظة تحميل admin.js، يعني أي حد يفتح admin.html
+                // في المتصفح كان بينزّل نسخة كاملة من الداتابيز حتى لو مسجلش دخول
+                // أصلاً (الفورم بس هو اللي كان مخفي، البيانات كانت اتسحبت فعلاً).
+                // دلوقتي المزامنة بتشتغل بس بعد ما نتأكد إن المستخدم أدمن معتمد.
+                if(typeof window.startAdminSync === "function") window.startAdminSync();
             } else {
                 firebase.auth().signOut();
                 if(loginScreen) loginScreen.style.display = "flex";
@@ -2174,8 +2208,11 @@ firebase.auth().onAuthStateChanged(function(user) {
     }, 50);
 
     // الاستماع الحي للسحابة (real-time sync)
+    let _adminSyncStarted = false;
     let startSync = function() {
         if (!window.db) { setTimeout(startSync, 200); return; }
+        if (_adminSyncStarted) return; // منعاً للاشتراك المتكرر لو onAuthStateChanged نادى تاني
+        _adminSyncStarted = true;
         window.db.ref('/').on('value', snapshot => {
             let data     = snapshot.val() || {};
             let safeSet  = (key, val) => originalSetItem.call(localStorage, key, JSON.stringify(val));
@@ -2208,7 +2245,10 @@ firebase.auth().onAuthStateChanged(function(user) {
             if(typeof renderAdminCustomLists === "function") renderAdminCustomLists();
         });
     };
-    startSync();
+     // ⚠️ إصلاح: مبقاش بننادي startSync() هنا تلقائي (ده كان بيسحب كل قاعدة
+    // البيانات لأي حد يفتح admin.html حتى قبل تسجيل الدخول). دلوقتي بنعرضها
+    // عالمياً بس، وبتتنادى من onAuthStateChanged بعد التأكد إن المستخدم أدمن.
+    window.startAdminSync = startSync;
 
     // ─── محرر المدونة ──────────────────────────────────────────
 

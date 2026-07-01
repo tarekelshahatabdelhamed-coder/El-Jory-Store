@@ -478,22 +478,29 @@ tbody.innerHTML += `<tr>
     }
 
     if(appliedPromoObj) {
+        // ✅ إصلاح: الكوبون المخصص لمنتجات معينة (scope: specific) لازم يتفعّل بس لو
+        // واحد على الأقل من المنتجات المحددة موجود في السلة (isPromoQualified)، لكن
+        // قيمة الخصم نفسها لازم تتحسب على *إجمالي السلة كله* (grandTotal) مش بس على
+        // المنتجات المحددة (applicableTotal) - ده الفرق عن السلوك القديم اللي كان
+        // بيقصر الخصم على المنتجات المشمولة فقط.
         let applicableTotal = 0;
+        let isPromoQualified = appliedPromoObj.scope === 'all';
         cart.forEach(item => {
-            if(appliedPromoObj.scope === 'all' || appliedPromoObj.products.includes(item.id)) {
+            if(appliedPromoObj.scope === 'all' || (appliedPromoObj.products && appliedPromoObj.products.includes(item.id))) {
                 applicableTotal += (item.price * item.qty);
+                isPromoQualified = true;
             }
         });
 
-        if(applicableTotal > 0 || appliedPromoObj.type === "shipping") {
+        if(isPromoQualified) {
             if(appliedPromoObj.type === "percent") {
-                let discountAmount = applicableTotal * (appliedPromoObj.value / 100);
+                let discountAmount = grandTotal * (appliedPromoObj.value / 100);
                 finalTotal = grandTotal - discountAmount;
-                let pctMsg = currentLang === 'ar' ? `(تم خصم ${appliedPromoObj.value}% من المنتجات المشمولة)` : `(${appliedPromoObj.value}% off applicable items)`;
+                let pctMsg = currentLang === 'ar' ? `(تم خصم ${appliedPromoObj.value}% من إجمالي السلة)` : `(${appliedPromoObj.value}% off your total cart)`;
                 discountMsg = `<br><span style="color:#f38c18; font-size:16px;">${pctMsg}</span>`;
             } else if (appliedPromoObj.type === "fixed") {
                 let discountAmount = appliedPromoObj.value;
-                if(discountAmount > applicableTotal) discountAmount = applicableTotal; 
+                if(discountAmount > grandTotal) discountAmount = grandTotal; 
                 finalTotal = grandTotal - discountAmount;
                 let fixMsg = currentLang === 'ar' ? `(تم خصم ${appliedPromoObj.value} ${currency})` : `(${appliedPromoObj.value} ${currency} off)`;
                 discountMsg = `<br><span style="color:#f38c18; font-size:16px;">${fixMsg}</span>`;
@@ -749,22 +756,28 @@ if(btnCheckout) {
                     }
 
                     // تسجيل استخدام البروموكود العادي في Firebase
+                    // ⚠️ إصلاح: كان بيعمل قراءة كل الكوبونات ثم كتابتها كاملة (read-then-write)،
+                    // ولو حصل تشيك أوت متزامن من عميلين في نفس اللحظة ممكن نفقد تحديث أو نتخطى
+                    // الحد الأقصى المسموح. دلوقتي بنستخدم .transaction() على /promos عشان
+                    // فايربيس يضمن إن التحديث ذري (atomic) ويعيد المحاولة تلقائياً لو حصل تعارض،
+                    // وكمان بنتأكد من الحد الأقصى (maxTotal) *جوه* نفس الـ transaction.
                     if (window.appliedPromoObj && window.appliedPromoObj.code && !window.appliedPromoObj.rewardName) {
                         const promoCode = window.appliedPromoObj.code;
                         const userPhoneKey = getShortPhone(user.phone);
-                        db.ref('/promos').once('value').then(snapP => {
-                            let allPromos = [];
-                            if(snapP.exists()) {
-                                let pd = snapP.val();
-                                allPromos = Array.isArray(pd) ? pd.filter(x=>x) : Object.values(pd).filter(x=>x);
+                        db.ref('/promos').transaction(function(currentPromos) {
+                            if (!currentPromos) return currentPromos;
+                            let allPromos = Array.isArray(currentPromos) ? currentPromos : Object.values(currentPromos);
+                            let pi = allPromos.findIndex(p => p && p.code === promoCode);
+                            if (pi > -1) {
+                                let promo = allPromos[pi];
+                                let reachedMax = promo.maxTotal && (promo.usageCount || 0) >= promo.maxTotal;
+                                if (!reachedMax) {
+                                    promo.usageCount = (promo.usageCount || 0) + 1;
+                                    if (!promo.usedBy) promo.usedBy = {};
+                                    promo.usedBy[userPhoneKey] = (promo.usedBy[userPhoneKey] || 0) + 1;
+                                }
                             }
-                            let pi = allPromos.findIndex(p => p.code === promoCode);
-                            if(pi > -1) {
-                                allPromos[pi].usageCount = (allPromos[pi].usageCount || 0) + 1;
-                                if(!allPromos[pi].usedBy) allPromos[pi].usedBy = {};
-                                allPromos[pi].usedBy[userPhoneKey] = (allPromos[pi].usedBy[userPhoneKey] || 0) + 1;
-                                db.ref('/promos').set(allPromos);
-                            }
+                            return allPromos;
                         });
                     }
 
@@ -887,23 +900,22 @@ window.doForgotPassword = function(event) {
     let reqMsg = currentLang === 'ar' ? "يرجى إدخال البريد الإلكتروني" : "Please enter your email";
     if(!email) return alert(reqMsg);
 
-    db.ref('/users').orderByChild('email').equalTo(email).once('value').then(snapshot => {
-        if(snapshot.exists()) {
-            snapshot.forEach(async child => {
-                let newPass = Math.floor(100000 + Math.random() * 900000).toString();
-                let salt = window.generateSalt();
-                let hash = await window.hashPassword(newPass, salt);
-                child.ref.update({ passwordHash: hash, passwordSalt: salt, password: null }).then(() => {
-                    let succMsg = currentLang === 'ar' ? `(نجاح)\nتم إرسال كلمة مرور جديدة لبريدك!\nكلمة المرور الجديدة هي: ${newPass}` : `(Success)\nNew password sent!\nYour new password is: ${newPass}`;
-                    alert(succMsg);
-                    toggleAuth('login');
-                });
-            });
-        } else {
-            let notFoundMsg = currentLang === 'ar' ? "هذا البريد الإلكتروني غير مسجل لدينا." : "Email not found.";
-            alert(notFoundMsg); 
-        }
-    });
+    // ⚠️ إصلاح أمني: كان الكود القديم بيولّد كلمة مرور جديدة ويعرضها في alert()
+    // لأي حد يكتب أي إيميل، وده معناه أي حد عارف إيميل عميل يقدر يستولي على حسابه فوراً.
+    // دلوقتي: مفيش أي تغيير في الباسورد يحصل تلقائي؛ بنوجّه العميل للتواصل مع الدعم
+    // عبر واتساب، وبعد ما الأدمن يتأكد من هويته يدوياً، يقدر يولّد له باسورد جديد
+    // من داخل لوحة التحكم نفسها (زرار "توليد كلمة مرور جديدة" في تعديل العميل).
+    let waNumber = window.JORY_WHATSAPP || '201100395049';
+    let waText = currentLang === 'ar'
+        ? `مرحباً، عايز أسترجع كلمة المرور بتاعة حسابي.\nالبريد الإلكتروني المسجل: ${email}`
+        : `Hello, I'd like to reset my account password.\nRegistered email: ${email}`;
+    let waLink = `https://wa.me/${waNumber}?text=${encodeURIComponent(waText)}`;
+
+    let infoMsg = currentLang === 'ar'
+        ? "لحمايتك، لا يمكن استرجاع كلمة المرور تلقائياً.\nهيتم تحويلك الآن لواتساب عشان نتأكد من هويتك ونساعدك فوراً."
+        : "For your security, passwords can't be reset automatically.\nYou'll be redirected to WhatsApp so our team can verify your identity and help you right away.";
+    alert(infoMsg);
+    window.open(waLink, '_blank');
 }
 
 window.doLogout = function() { 
@@ -1007,10 +1019,25 @@ window.renderOrders = function() {
 window.cancelOrderUser = function(orderId) {
     let confirmMsg = currentLang === 'ar' ? "هل أنت متأكد من إلغاء هذا الطلب؟" : "Are you sure you want to cancel this order?";
     if(!confirm(confirmMsg)) return;
-    
+
+    // ⚠️ إصلاح أمني: كان أي حد يقدر يلغي أي طلب برقمه بس (والأرقام تسلسلية وسهلة التخمين)
+    // من غير ما نتأكد إنه صاحب الطلب فعلاً. دلوقتي بنتأكد إن رقم تليفون الطلب
+    // مطابق لرقم تليفون العميل المسجل دخوله قبل ما نسمح بالإلغاء.
+    let currentUser = getCurrentUser();
+    let notLoggedMsg = currentLang === 'ar' ? "يجب تسجيل الدخول أولاً!" : "You must be logged in!";
+    if(!currentUser) { alert(notLoggedMsg); return; }
+    let myPhone = getShortPhone(currentUser.phone);
+
     db.ref('/orders/' + orderId).once('value').then(snapshot => {
         let order = snapshot.val();
-        if(order && (order.status === "Pending" || order.status === "Processing" || !order.status)) {
+        let notFoundMsg = currentLang === 'ar' ? "هذا الطلب غير موجود." : "Order not found.";
+        if(!order) { alert(notFoundMsg); return; }
+
+        let orderPhone = order.customer ? getShortPhone(order.customer.phone) : "";
+        let notOwnerMsg = currentLang === 'ar' ? "عفواً، لا يمكنك إلغاء طلب لا يخصك." : "Sorry, you can't cancel an order that isn't yours.";
+        if(orderPhone !== myPhone) { alert(notOwnerMsg); return; }
+
+        if(order.status === "Pending" || order.status === "Processing" || !order.status) {
             db.ref('/orders/' + orderId).update({status: "Cancelled"}).then(() => {
                 if(order.items) {
                     order.items.forEach(item => { db.ref('/products/' + item.id + '/stock').transaction(currentStock => (currentStock || 0) + item.qty); });
@@ -1142,20 +1169,34 @@ window.exportCustomersCSV = function() {
     let usersDB = JSON.parse(localStorage.getItem("eljory_users_db")) || [];
     let ordersDB = JSON.parse(localStorage.getItem("eljory_orders")) || [];
     if(usersDB.length === 0) return alert("لا يوجد عملاء لتصديرهم");
-    let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
-    csvContent += "كود العميل,الاسم,التليفون,البريد الالكتروني,تاريخ التسجيل,العنوان الاساسي,اجمالي الطلبات,تم التوصيل,ملغي,اجمالي المدفوعات,حالة الحساب\n";
+
+    // ⚠️ إصلاح: كانت الأعمدة من غير أي quoting، فلو اسم أو عنوان عميل فيه فاصلة
+    // كانت بتتكسر في إكسيل. دلوقتي بنحط كل قيمة بين علامتي اقتباس وبنعمل escape
+    // للاقتباسات الداخلية، بنفس أسلوب exportProductsCSV بالظبط.
+    let esc = v => `"${String(v === undefined || v === null ? "" : v).replace(/"/g, '""')}"`;
+
+    let csvContent = "كود العميل;الاسم;التليفون;البريد الالكتروني;تاريخ التسجيل;العنوان الاساسي;اجمالي الطلبات;تم التوصيل;ملغي;اجمالي المدفوعات;حالة الحساب\r\n";
 
     usersDB.forEach(u => {
         let userOrders = ordersDB.filter(o => o.customer && getShortPhone(o.customer.phone) === getShortPhone(u.phone));
         let deliveredCount = userOrders.filter(o => o.status === "Delivered").length;
         let totalSpent = userOrders.filter(o => o.status === "Delivered").reduce((sum, order) => sum + order.total, 0);
-        let primaryAddr = u.addresses && u.addresses.find(a => a.isPrimary) ? u.addresses.find(a => a.isPrimary).text.replace(/,/g, " - ") : "غير محدد"; 
-        let row = [u.id || "N/A", u.name, u.phone, u.email, u.joinDate || "N/A", primaryAddr, userOrders.length, deliveredCount, userOrders.filter(o => o.status === "Cancelled").length, totalSpent, u.isBlocked ? "محظور" : "نشط"];
-        csvContent += row.join(",") + "\n";
+        let primaryAddr = u.addresses && u.addresses.find(a => a.isPrimary) ? u.addresses.find(a => a.isPrimary).text : "غير محدد";
+        let row = [
+            esc(u.id || "N/A"), esc(u.name), esc(u.phone), esc(u.email),
+            esc(u.joinDate || "N/A"), esc(primaryAddr), userOrders.length, deliveredCount,
+            userOrders.filter(o => o.status === "Cancelled").length, totalSpent,
+            esc(u.isBlocked ? "محظور" : "نشط")
+        ];
+        csvContent += row.join(";") + "\r\n";
     });
 
-    let encodedUri = encodeURI(csvContent);
-    let link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", `ElJory_Customers_${new Date().toLocaleDateString()}.csv`);
+    let bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+    let blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
+    let url = URL.createObjectURL(blob);
+    let link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `ElJory_Customers_${new Date().toLocaleDateString()}.csv`);
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
 

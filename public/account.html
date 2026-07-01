@@ -168,6 +168,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
 
     <script src="js/firebase-init.js"></script>
     <script src="js/store-core.js"></script>
@@ -230,17 +231,16 @@ function loadAccountData(user) {
 }
 
     function fetchAndRenderOrders(phoneKey) {
-        db.ref('/orders').on('value', snapshot => {
+        // ⚠️ إصلاح: كان بيسحب /orders كله (طلبات كل العملاء) لمتصفح العميل ويفلتره
+        // محلياً، وده معناه أي عميل بيشوف بيانات كل العملاء التانيين (اسم/تليفون/عنوان)
+        // في متصفحه حتى لو مش ظاهرة على الشاشة. دلوقتي بنستعلم بس عن الطلبات اللي
+        // رقم تليفونها يطابق العميل الحالي.
+        db.ref('/orders').orderByChild('customer/phone').equalTo(phoneKey).on('value', snapshot => {
             let allOrders = [];
             if (snapshot.exists()) {
                 snapshot.forEach(child => {
                     let ord = child.val();
-                    if (ord && ord.customer && ord.customer.phone) {
-                        let ordPhone = unifyPhone(ord.customer.phone);
-                        if (ordPhone === phoneKey) {
-                            allOrders.push(ord);
-                        }
-                    }
+                    if (ord) allOrders.push(ord);
                 });
             }
             renderCustomerOrders(allOrders);
@@ -370,45 +370,52 @@ function loadAccountData(user) {
 
         let user = window.getCurrentUser();
         let phoneKey = unifyPhone(user.phone);
+        let uniqueCode = "GIFT_" + Math.random().toString(36).substr(2, 5).toUpperCase();
+        let redeemDate = new Date().toLocaleDateString('en-GB');
+        let insufficientPoints = false;
 
-        db.ref('/users/' + phoneKey).once('value').then(snap => {
-            let liveUser = snap.val();
-            if(liveUser.points >= cost) {
-                let newPoints = liveUser.points - cost;
-                let uniqueCode = "GIFT_" + Math.random().toString(36).substr(2, 5).toUpperCase();
-                
-                let newCoupon = {
-                    code: uniqueCode,
-                    rewardName: rewardName,
-                    type: type,
-                    discountVal: discountVal,
-                    isUsed: false,
-                    date: new Date().toLocaleDateString('en-GB')
-                };
+        // ⚠️ إصلاح: كان بيقرا رصيد النقاط بـ once('value') ثم يكتب التحديث في خطوة
+        // منفصلة (update). لو العميل ضغط "استبدال" مرتين بسرعة أو فتح تابين، ممكن
+        // يستبدل نقط أكتر من رصيده الفعلي. دلوقتي بنستخدم .transaction() اللي
+        // بتضمن قراءة وكتابة ذرية (atomic) وبتعيد المحاولة تلقائياً لو حصل تعارض.
+        db.ref('/users/' + phoneKey).transaction(function(liveUser) {
+            if (!liveUser) return liveUser;
+            if ((liveUser.points || 0) < cost) {
+                insufficientPoints = true;
+                return; // إلغاء الـ transaction من غير أي تعديل
+            }
 
-                let newHistory = {
-                    type: "deduct",
-                    amount: cost,
-                    reason: `استبدال مكافأة: ${rewardName}`,
-                    date: new Date().toLocaleDateString('en-GB')
-                };
+            let newCoupon = {
+                code: uniqueCode,
+                rewardName: rewardName,
+                type: type,
+                discountVal: discountVal,
+                isUsed: false,
+                date: redeemDate
+            };
 
-                let userCoupons = liveUser.coupons || [];
-                userCoupons.push(newCoupon);
+            let newHistory = {
+                type: "deduct",
+                amount: cost,
+                reason: `استبدال مكافأة: ${rewardName}`,
+                date: redeemDate
+            };
 
-                let pointsHistory = liveUser.pointsHistory || [];
-                pointsHistory.push(newHistory);
+            liveUser.points = (liveUser.points || 0) - cost;
+            liveUser.coupons = liveUser.coupons || [];
+            liveUser.coupons.push(newCoupon);
+            liveUser.pointsHistory = liveUser.pointsHistory || [];
+            liveUser.pointsHistory.push(newHistory);
 
-                db.ref('/users/' + phoneKey).update({
-                    points: newPoints,
-                    coupons: userCoupons,
-                    pointsHistory: pointsHistory
-                }).then(() => {
-                    let succMsg = currentLang === 'ar' ? `تم الاستبدال بنجاح!\nكود الهدية الخاص بك هو: ${uniqueCode}\nتجد الكود في قسم "هداياي وكوبوناتي".` : `Redeemed successfully!\nYour gift code is: ${uniqueCode}\nFind it in "My Coupons".`;
-                    alert(succMsg);
-                });
-            } else {
+            return liveUser;
+        }, function(error, committed) {
+            if (error) {
+                alert(currentLang === 'ar' ? "حدث خطأ أثناء الاستبدال، حاول مرة أخرى." : "An error occurred, please try again.");
+            } else if (!committed || insufficientPoints) {
                 alert(currentLang === 'ar' ? "نقاطك لا تكفي للاستبدال!" : "Not enough points!");
+            } else {
+                let succMsg = currentLang === 'ar' ? `تم الاستبدال بنجاح!\nكود الهدية الخاص بك هو: ${uniqueCode}\nتجد الكود في قسم "هداياي وكوبوناتي".` : `Redeemed successfully!\nYour gift code is: ${uniqueCode}\nFind it in "My Coupons".`;
+                alert(succMsg);
             }
         });
     }

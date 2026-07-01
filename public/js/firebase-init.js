@@ -17,10 +17,23 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 
+```javascript
 // تعريف المتغيرات العامة للوصول لقاعدة البيانات
 window.db = firebase.database();
 if (typeof firebase.storage === 'function') {
     window.storage = firebase.storage();
+}
+
+// ⚠️ إضافة مطلوبة عشان قواعد الأمان الجديدة تشتغل صح: تسجيل دخول مجهول
+// (Anonymous Auth) تلقائي لأي زائر. العملاء في الموقع بيستخدموا نظام دخول
+// مخصص (رقم تليفون + كلمة مرور) مش Firebase Auth الرسمي، فمن غير الخطوة دي
+// كانت قواعد الأمان اللي بتطلب "auth != null" (زي التسجيل، حفظ الطلبات،
+// تحديث نقاط الولاء) ممكن تمنع العمليات دي أساساً. الكود محمي بالكامل:
+// لو الصفحة مش شايلة مكتبة firebase-auth-compat.js، بيتجاهل الخطوة بأمان.
+if (typeof firebase.auth === 'function') {
+    firebase.auth().signInAnonymously().catch(function(error) {
+        console.warn('⚠️ تعذر تسجيل الدخول المجهول:', error.message);
+    });
 }
 
 // مسار قاعدة البيانات الأساسي كمتغير عام

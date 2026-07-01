@@ -148,6 +148,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
 
 <!-- ✅ إصلاح 2: تم إضافة store-core.js (كانت ناقصة وبتكسر الـ checkout) -->
 <script src="js/firebase-init.js"></script>
@@ -326,6 +327,23 @@ document.addEventListener("DOMContentLoaded", () => {
                     msgEl.innerText = currentLang === 'ar'
                         ? "هذا الكود للعملاء الجدد فقط!"
                         : "This code is for new customers only!";
+                    return;
+                }
+            }
+
+            // ⚠️ إصلاح: النسخة القديمة هنا كانت بتطبق الكوبون المخصص لمنتجات معينة
+            // (scope: specific) على أي سلة من غير ما تتأكد إن أحد المنتجات المحددة
+            // موجود فعلاً في السلة. دلوقتي بنتحقق من كده الأول؛ ولو تحقق الشرط،
+            // الخصم بيتطبق على productsTotal (إجمالي السلة كله) زي ما هو مطلوب بالظبط.
+            if (standardPromo.scope === 'specific') {
+                const hasQualifyingProduct = cartItems.some(item => (standardPromo.products || []).includes(item.id));
+                if (!hasQualifyingProduct) {
+                    window.appliedPromoObj = null;
+                    msgEl.style.backgroundColor = "#ffeaea"; msgEl.style.color = "#d9534f";
+                    msgEl.innerText = currentLang === 'ar'
+                        ? "❌ هذا الكود يخص منتجات معينة غير موجودة في سلتك حالياً."
+                        : "❌ This code applies to specific products that aren't in your cart.";
+                    updateTotalsDisplay(productsTotal, false, null, false);
                     return;
                 }
             }

@@ -323,6 +323,8 @@
     </div>
 
     <!-- ===== Firebase + Scripts ===== -->
+    <!-- مكتبة لتنقية أي HTML قبل عرضه (بتحمي من XSS في محتوى المدونة) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
@@ -422,6 +424,20 @@
 
     let qoAppliedPromo = null;
 
+    // ⚠️ إصلاح: النسخة القديمة من applyQoPromo كانت بتفحص بس التاريخ، من غير أي
+    // فحص للحد الأقصى الكلي (maxTotal) أو حد الاستخدام لكل عميل (maxPerUser) أو
+    // شرط العملاء الجدد (newUsersOnly)، ومن غير أي فحص إن المنتج الحالي من ضمن
+    // المنتجات المخصصة للكوبون (scope: specific). دلوقتي بقت متطابقة مع نفس
+    // الفحوصات المطبقة في صفحة السلة (cart.html).
+    function showQoPromoError(msg) {
+        qoAppliedPromo = null;
+        let msgEl = document.getElementById("qoPromoMsg");
+        msgEl.innerText = msg;
+        msgEl.style.color = "#d9534f";
+        msgEl.style.display = "block";
+        updateQoSummary();
+    }
+
     window.applyQoPromo = function() {
         let code = document.getElementById("qoPromo").value.trim().toUpperCase();
         let msgEl = document.getElementById("qoPromoMsg");
@@ -434,17 +450,49 @@
             now <= new Date(p.end)
         );
 
-        if (valid) {
-            qoAppliedPromo = valid;
-            msgEl.innerText = "✅ تم تطبيق الكوبون!";
-            msgEl.style.color = "green";
-            msgEl.style.display = "block";
-        } else {
-            qoAppliedPromo = null;
-            msgEl.innerText = "❌ الكود غير صحيح أو منتهي الصلاحية";
-            msgEl.style.color = "#d9534f";
-            msgEl.style.display = "block";
+        if (!valid) {
+            showQoPromoError("❌ الكود غير صحيح أو منتهي الصلاحية");
+            return;
         }
+
+        // فحص إن الكوبون مخصص لمنتجات معينة، وإن المنتج الحالي من ضمنها
+        if (valid.scope === 'specific' && !(valid.products || []).includes(currentProductId)) {
+            showQoPromoError("❌ هذا الكود لا يخص هذا المنتج");
+            return;
+        }
+
+        // فحص الحد الأقصى الكلي للاستخدام
+        if (valid.maxTotal && (valid.usageCount || 0) >= valid.maxTotal) {
+            showQoPromoError("❌ عذراً، تم استنفاد هذا الكود بالكامل");
+            return;
+        }
+
+        // فحص حد الاستخدام لكل عميل (لو العميل مسجل دخول بالفعل)
+        let qoCurrentUser = window.getCurrentUser ? window.getCurrentUser() : null;
+        if (qoCurrentUser && valid.maxPerUser) {
+            let phoneKey = window.getShortPhone(qoCurrentUser.phone);
+            let userUsage = valid.usedBy ? (valid.usedBy[phoneKey] || 0) : 0;
+            if (userUsage >= valid.maxPerUser) {
+                showQoPromoError(`❌ لقد استخدمت هذا الكود من قبل (${userUsage} مرة). الحد المسموح ${valid.maxPerUser}.`);
+                return;
+            }
+        }
+
+        // فحص شرط العملاء الجدد فقط
+        if (valid.newUsersOnly && qoCurrentUser) {
+            let phoneKey = window.getShortPhone(qoCurrentUser.phone);
+            let allOrders = JSON.parse(localStorage.getItem("eljory_orders") || "[]");
+            let hasPriorOrders = allOrders.some(o => o.customer && window.getShortPhone(o.customer.phone) === phoneKey && o.status !== "Cancelled");
+            if (hasPriorOrders) {
+                showQoPromoError("❌ هذا الكود للعملاء الجدد فقط");
+                return;
+            }
+        }
+
+        qoAppliedPromo = valid;
+        msgEl.innerText = "✅ تم تطبيق الكوبون!";
+        msgEl.style.color = "green";
+        msgEl.style.display = "block";
         updateQoSummary();
     };
 
@@ -675,8 +723,17 @@
             fbq('track', 'ViewContent', { content_ids: [p.id], content_type: 'product', value: p.price, currency: 'EGP' });
         }
 
+        // ⚠️ إصلاح: وصف المنتج المفروض نص عادي بس (مش HTML)، فلو حد كتب فيه
+        // وسوم HTML بالغلط أو بقصد كان بيتنفذ زي ما هو (XSS). دلوقتي بنعمل escape
+        // للنص الأول (بتحويله لعقدة DOM نصية ثم قراءة innerHTML)، وبعدين نحول
+        // أسطر جديدة (\n) لـ <br> بس.
+        function escapeHtml(str) {
+            let div = document.createElement('div');
+            div.innerText = str;
+            return div.innerHTML;
+        }
         // تحويل النص العادي لـ HTML بفواصل السطر
-        let descHtml = pDesc.replace(/\n/g, '<br>');
+        let descHtml = escapeHtml(pDesc).replace(/\n/g, '<br>');
 
         container.innerHTML = `
             <div class="product-image-box">
@@ -727,7 +784,15 @@
         if (!content || content.trim() === '') return;
         let section = document.getElementById('productBlogSection');
         let blogDiv = document.getElementById('productBlogContent');
-        blogDiv.innerHTML = content;
+        // ⚠️ إصلاح: كان بيحقن محتوى المدونة في الصفحة زي ما هو (innerHTML) من غير
+        // أي تنقية. لو حساب أدمن اتخترق أو اتضاف حساب أدمن مش موثوق، كان يقدر يحط
+        // كود يشتغل (XSS) في صفحة منتج يتأثر بيها كل زائر. دلوقتي بنستخدم DOMPurify
+        // لتنقية المحتوى، مع السماح بالـ iframe عشان فيديوهات يوتيوب/فيسبوك اللي
+        // محرر المدونة بتاع الأدمن بيدرجها تفضل شغالة.
+        let cleanContent = (typeof DOMPurify !== 'undefined')
+            ? DOMPurify.sanitize(content, { ADD_TAGS: ['iframe'], ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'target'] })
+            : content;
+        blogDiv.innerHTML = cleanContent;
         section.style.display = 'block';
     }
 
