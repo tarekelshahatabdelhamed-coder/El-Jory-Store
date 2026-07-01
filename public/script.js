@@ -896,19 +896,23 @@ window.doLogin = async function(event) {
 
 window.doForgotPassword = function(event) {
     if(event) event.preventDefault();
-    let email = document.getElementById("forgotEmail").value.trim();
-    let reqMsg = currentLang === 'ar' ? "يرجى إدخال البريد الإلكتروني" : "Please enter your email";
-    if(!email) return alert(reqMsg);
+    let phone = document.getElementById("forgotPhone").value.trim();
+    let reqMsg = currentLang === 'ar' ? "يرجى إدخال رقم التليفون" : "Please enter your phone number";
+    if(!phone) return alert(reqMsg);
+
+    let cleanPhone = window.getShortPhone(phone);
+    let invalidMsg = currentLang === 'ar' ? "رقم التليفون غير صحيح!" : "Invalid phone number!";
+    if(cleanPhone.length < 10) return alert(invalidMsg);
 
     // ⚠️ إصلاح أمني: كان الكود القديم بيولّد كلمة مرور جديدة ويعرضها في alert()
-    // لأي حد يكتب أي إيميل، وده معناه أي حد عارف إيميل عميل يقدر يستولي على حسابه فوراً.
+    // لأي حد يكتب أي رقم، وده معناه أي حد عارف رقم عميل يقدر يستولي على حسابه فوراً.
     // دلوقتي: مفيش أي تغيير في الباسورد يحصل تلقائي؛ بنوجّه العميل للتواصل مع الدعم
     // عبر واتساب، وبعد ما الأدمن يتأكد من هويته يدوياً، يقدر يولّد له باسورد جديد
     // من داخل لوحة التحكم نفسها (زرار "توليد كلمة مرور جديدة" في تعديل العميل).
     let waNumber = window.JORY_WHATSAPP || '201100395049';
     let waText = currentLang === 'ar'
-        ? `مرحباً، عايز أسترجع كلمة المرور بتاعة حسابي.\nالبريد الإلكتروني المسجل: ${email}`
-        : `Hello, I'd like to reset my account password.\nRegistered email: ${email}`;
+        ? `مرحباً، عايز أسترجع كلمة المرور بتاعة حسابي.\nرقم التليفون المسجل: ${cleanPhone}`
+        : `Hello, I'd like to reset my account password.\nRegistered phone: ${cleanPhone}`;
     let waLink = `https://wa.me/${waNumber}?text=${encodeURIComponent(waText)}`;
 
     let infoMsg = currentLang === 'ar'
