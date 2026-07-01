@@ -17,7 +17,6 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 
-```javascript
 // تعريف المتغيرات العامة للوصول لقاعدة البيانات
 window.db = firebase.database();
 if (typeof firebase.storage === 'function') {
