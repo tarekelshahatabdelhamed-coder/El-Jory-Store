@@ -2223,23 +2223,12 @@ firebase.auth().onAuthStateChanged(function(user) {
         if (!window.db) { setTimeout(startSync, 200); return; }
         if (_adminSyncStarted) return; // منعاً للاشتراك المتكرر لو onAuthStateChanged نادى تاني
         _adminSyncStarted = true;
-        window.db.ref('/').on('value', snapshot => {
-            let data     = snapshot.val() || {};
-            let safeSet  = (key, val) => originalSetItem.call(localStorage, key, JSON.stringify(val));
-            let fbToArray= (obj) => obj ? (Array.isArray(obj) ? obj.filter(x=>x) : Object.values(obj).filter(x=>x)) : [];
-            safeSet("eljory_products",        fbToArray(data.products));
-            safeSet("eljory_categories",      fbToArray(data.categories));
-            safeSet("eljory_orders",          fbToArray(data.orders));
-            safeSet("eljory_users_db",        fbToArray(data.users));
-            safeSet("eljory_regions",         fbToArray(data.regions));
-            safeSet("eljory_banners",         fbToArray(data.banners));
-            safeSet("eljory_promos",          fbToArray(data.promos));
-            safeSet("eljory_rewards",         fbToArray(data.rewards));
-            safeSet("eljory_gallery",         fbToArray(data.gallery));
-            safeSet("eljory_custom_lists",    fbToArray(data.customLists));
-            safeSet("eljory_sections",        fbToArray(data.sections));
-            safeSet("eljory_loyalty_settings",data.settings || { system:"global", spent:10, earn:1 });
-            // تحديث الواجهة في الخلفية
+
+        let safeSet   = (key, val) => originalSetItem.call(localStorage, key, JSON.stringify(val));
+        let fbToArray = (obj) => obj ? (Array.isArray(obj) ? obj.filter(x=>x) : Object.values(obj).filter(x=>x)) : [];
+
+        // تحديث الواجهة في الخلفية (نفس القائمة القديمة، بس بقت دالة نقدر ننادي عليها من أي مسار)
+        let renderEverything = function() {
             if(typeof loadAdminOrders        === "function") loadAdminOrders();
             if(typeof renderAdminProducts    === "function") renderAdminProducts();
             if(typeof renderAdminCustomers   === "function") renderAdminCustomers();
@@ -2253,7 +2242,27 @@ firebase.auth().onAuthStateChanged(function(user) {
             if(typeof loadAdminLoyalty       === "function") loadAdminLoyalty();
             if(typeof renderAdminSections    === "function") renderAdminSections();
             if(typeof renderAdminCustomLists === "function") renderAdminCustomLists();
-        });
+        };
+
+        // ⚠️ إصلاح: كنا بنقرأ الجذر (root) كله دفعة واحدة عبر db.ref('/').on('value')،
+        // لكن قواعد الأمان عندنا ".read": false على الجذر، وقواعد Realtime Database
+        // مبتعملش "قراءة جزئية" — لو القراءة مرفوضة عند المسار المطلوب بالظبط، العملية
+        // كلها بترفض حتى لو فيه مسارات فرعية جواها مسموح بيها فعلياً (زي /products
+        // و /users نفسها). فكانت كل بيانات اللوحة (منتجات، عملاء، أقسام...) بتفشل
+        // بصمت من غير أي رسالة خطأ واضحة. الحل: بنعمل استماع منفصل لكل مسار على
+        // حدة، بالظبط زي ما store-core.js بيعمل مع المسارات العامة.
+        window.db.ref('/products').on('value', snap => { safeSet("eljory_products", fbToArray(snap.val())); renderEverything(); });
+        window.db.ref('/categories').on('value', snap => { safeSet("eljory_categories", fbToArray(snap.val())); renderEverything(); });
+        window.db.ref('/orders').on('value', snap => { safeSet("eljory_orders", fbToArray(snap.val())); renderEverything(); });
+        window.db.ref('/users').on('value', snap => { safeSet("eljory_users_db", fbToArray(snap.val())); renderEverything(); }, err => console.warn('⚠️ تعذرت قراءة /users:', err.message));
+        window.db.ref('/regions').on('value', snap => { safeSet("eljory_regions", fbToArray(snap.val())); renderEverything(); });
+        window.db.ref('/banners').on('value', snap => { safeSet("eljory_banners", fbToArray(snap.val())); renderEverything(); });
+        window.db.ref('/promos').on('value', snap => { safeSet("eljory_promos", fbToArray(snap.val())); renderEverything(); });
+        window.db.ref('/rewards').on('value', snap => { safeSet("eljory_rewards", fbToArray(snap.val())); renderEverything(); });
+        window.db.ref('/gallery').on('value', snap => { safeSet("eljory_gallery", fbToArray(snap.val())); renderEverything(); });
+        window.db.ref('/customLists').on('value', snap => { safeSet("eljory_custom_lists", fbToArray(snap.val())); renderEverything(); });
+        window.db.ref('/sections').on('value', snap => { safeSet("eljory_sections", fbToArray(snap.val())); renderEverything(); });
+        window.db.ref('/settings').on('value', snap => { safeSet("eljory_loyalty_settings", snap.val() || { system:"global", spent:10, earn:1 }); renderEverything(); });
     };
      // ⚠️ إصلاح: مبقاش بننادي startSync() هنا تلقائي (ده كان بيسحب كل قاعدة
     // البيانات لأي حد يفتح admin.html حتى قبل تسجيل الدخول). دلوقتي بنعرضها
