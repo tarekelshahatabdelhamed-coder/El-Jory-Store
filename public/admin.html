@@ -803,6 +803,16 @@
                         <div class="form-group" style="margin-bottom:0;"><label>أقصى عدد منتجات تظهر</label><input type="number" id="secMaxProducts" class="form-control" value="8" min="1" max="50"></div>
                     </div>
                     <div class="form-group"><label>لون الخلفية (اختياري)</label><input type="color" id="secBgColor" value="#ffffff" style="width:100%;height:45px;border:1px solid #ddd;border-radius:5px;cursor:pointer;"></div>
+                    <div class="form-group">
+                        <label>صورة خلفية السيكشن (اختياري)</label>
+                        <input type="text" id="secBgImg" class="form-control" placeholder="رابط صورة الخلفية...">
+                        <div style="display:flex;gap:10px;margin-top:10px;">
+                            <button type="button" onclick="triggerDirectUpload('secBgImg')" class="btn btn-green" style="flex:1;">📤 رفع صورة</button>
+                            <button type="button" onclick="openGalleryModal('secBgImg')" class="btn" style="background:#e68a10;flex:1;">🖼️ من الاستوديو</button>
+                            <button type="button" onclick="document.getElementById('secBgImg').value='';" class="btn btn-red" style="flex:0 0 auto;">✖ مسح</button>
+                        </div>
+                        <p style="color:gray;font-size:12px;margin-top:6px;">لو اخترت صورة، هيتم عرضها كخلفية خلف السيكشن بالكامل (مع تعتيم خفيف يخلي المحتوى واضح فوقها). تفضّل على لون الخلفية لو الاتنين متحددين.</p>
+                    </div>
                     <div class="form-group"><label>أولوية الترتيب</label><input type="number" id="secPriority" class="form-control" value="1" min="1"></div>
                 </div>
                 <div style="flex:2;min-width:280px;">

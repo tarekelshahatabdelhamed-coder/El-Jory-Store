@@ -236,10 +236,28 @@
         container.innerHTML = '';
         sections.forEach(sec => {
             const el = document.createElement('div');
-            el.className   = 'jory-section';
-            el.style.cssText = `margin:18px 0;background:${sec.bgColor||'transparent'};
-                border-radius:${sec.bgColor?'14px':'0'};overflow:hidden;
-                box-shadow:${sec.bgColor?'0 4px 14px rgba(0,0,0,.07)':'none'};`;
+            el.className = 'jory-section';
+
+            const hasBgImg   = !!sec.bgImage;
+            const hasBgColor = !!sec.bgColor;
+            const rounded    = (hasBgImg || hasBgColor) ? '18px' : '0';
+            const shadow     = (hasBgImg || hasBgColor) ? '0 6px 20px rgba(0,0,0,.08)' : 'none';
+
+            if (hasBgImg) {
+                // خلفية صورة: بنحط طبقة تعتيم خفيفة (overlay) فوق الصورة عشان
+                // المحتوى والمنتجات فوقها تفضل واضحة ومقروءة أياً كانت الصورة.
+                el.style.cssText = `
+                    margin:22px 0;position:relative;overflow:hidden;
+                    border-radius:${rounded};box-shadow:${shadow};
+                    background-image:linear-gradient(rgba(255,255,255,.88),rgba(255,255,255,.88)),url('${sec.bgImage}');
+                    background-size:cover;background-position:center;background-repeat:no-repeat;
+                    padding:8px 0;
+                `;
+            } else {
+                el.style.cssText = `margin:18px 0;background:${sec.bgColor||'transparent'};
+                    border-radius:${rounded};overflow:hidden;box-shadow:${shadow};`;
+            }
+
             el.innerHTML = buildSectionHTML(sec);
             container.appendChild(el);
         });

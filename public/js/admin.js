@@ -293,6 +293,7 @@ window.saveSection = function() {
         linkValue:    document.getElementById('secLinkValue').value.trim(),
         maxProducts:  parseInt(document.getElementById('secMaxProducts').value) || 8,
         bgColor:      document.getElementById('secBgColor').value === '#ffffff' ? '' : document.getElementById('secBgColor').value,
+        bgImage:      document.getElementById('secBgImg').value.trim(),
         priority:     parseInt(document.getElementById('secPriority').value) || 1,
         isActive:     true
     };
@@ -321,6 +322,7 @@ window.resetSectionForm = function() {
     document.getElementById('secLinkValueBox').style.display       = 'none';
     document.getElementById('secPriority').value                   = '1';
     document.getElementById('secBgColor').value                    = '#ffffff';
+    document.getElementById('secBgImg').value                      = '';
     document.getElementById('secSaveBtn').innerHTML                = '➕ حفظ السيكشن';
     document.getElementById('secCancelBtn').style.display          = 'none';
     buildLayoutPicker();
@@ -342,6 +344,7 @@ window.editSection = function(id) {
     document.getElementById('secLinkType').value       = sec.linkType || 'none';
     document.getElementById('secPriority').value       = sec.priority || 1;
     document.getElementById('secBgColor').value        = sec.bgColor || '#ffffff';
+    document.getElementById('secBgImg').value          = sec.bgImage || '';
     document.getElementById('secMaxProducts').value    = sec.maxProducts || 8;
     toggleSecProductsBox();
     if (sec.linkType && sec.linkType !== 'none') {
