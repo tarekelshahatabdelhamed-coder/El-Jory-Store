@@ -75,6 +75,64 @@ window.saveBotIsActive = function() {
     db.ref('/botSettings/isActive').set(toggle.checked).catch(err => {
         alert("حصل خطأ أثناء الحفظ: " + err.message);
     });
+    // يفتح شاشة اللوج المباشر تلقائيًا لحظة ما تتغيّر حالة التفعيل
+    window.openBotLiveLog();
+};
+
+// ================================================================
+// اللوج المباشر للبوت (Live Log)
+// البوت (index.js) بيكتب كل سطر console.log/console.error بتاعه في
+// /liveLogs في نفس قاعدة البيانات. إحنا هنا بس بنستمع (on child_added)
+// ونعرض السطور أول ما توصل، زي شاشة تيرمنال حية. البوت نفسه بينظّف
+// أي سطر عمره أكتر من 24 ساعة تلقائيًا كل ساعة.
+// ================================================================
+const LIVE_LOG_DISPLAY_LIMIT = 300;
+let _liveLogRef = null;
+let _liveLogListenerAttached = false;
+
+function _appendLiveLogLine(entry) {
+    let body = document.getElementById("botLiveLogBody");
+    if (!body || !entry) return;
+
+    let time = entry.time
+        ? new Date(entry.time).toLocaleTimeString('ar-EG', { timeZone: 'Africa/Cairo', hour12: false })
+        : "";
+    let isError = entry.level === 'error';
+
+    let line = document.createElement("div");
+    line.style.color = isError ? '#ff7b72' : '#7ee787';
+    line.style.marginBottom = '2px';
+    line.textContent = `[${time}] ${entry.text || ""}`;
+    body.appendChild(line);
+
+    // اسكرول تلقائي لتحت، إلا لو المستخدم مركّز شايف سطور فوق قصدًا
+    let nearBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 100;
+    if (nearBottom) body.scrollTop = body.scrollHeight;
+}
+
+window.openBotLiveLog = function() {
+    let modal = document.getElementById("botLiveLogModal");
+    let body  = document.getElementById("botLiveLogBody");
+    if (!modal || !body) return;
+
+    modal.style.display = "flex";
+
+    if (_liveLogListenerAttached) return; // الاستماع شغال بالفعل من فتحة سابقة
+
+    body.innerHTML = "";
+    _liveLogRef = db.ref('/liveLogs').limitToLast(LIVE_LOG_DISPLAY_LIMIT);
+    _liveLogListenerAttached = true;
+    _liveLogRef.on('child_added', snap => _appendLiveLogLine(snap.val()));
+};
+
+window.closeBotLiveLog = function() {
+    let modal = document.getElementById("botLiveLogModal");
+    if (modal) modal.style.display = "none";
+    if (_liveLogRef) {
+        _liveLogRef.off('child_added');
+        _liveLogRef = null;
+    }
+    _liveLogListenerAttached = false;
 };
 
 // مدة الإيقاف المؤقت (بالدقايق) لما الأدمن يرد يدويًا على عميل من موبايله —

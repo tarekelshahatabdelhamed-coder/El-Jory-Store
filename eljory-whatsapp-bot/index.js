@@ -84,6 +84,66 @@ initializeApp({
 const db = getDatabase();
 const MAX_MESSAGES_PER_CUSTOMER = 50;
 
+// ==================== اللوج المباشر للبوت (لوحة الأدمن) ====================
+// الفكرة: بدل ما نعدّل كل سطر console.log/console.error في الملف (فيه مئات)،
+// بنعمل "اعتراض" (override) للدالتين نفسهم مرة واحدة هنا. من اللحظة دي،
+// أي console.log أو console.error في أي مكان في الملف هيتنفذ عادي في
+// التيرمنال زي ما هو، وهيتبعت كمان نسخة منه لـ Firebase تحت مسار /liveLogs
+// عشان صفحة الأدمن تقدر تعرضه لحظة بلحظة زي شاشة تيرمنال حقيقية.
+const LIVE_LOG_RETENTION_MS = 24 * 60 * 60 * 1000; // الاحتفاظ باللوج لمدة 24 ساعة بس
+
+function _formatLiveLogArgs(args) {
+    return args.map(a => {
+        if (typeof a === 'string') return a;
+        if (a instanceof Error) return a.message;
+        try { return JSON.stringify(a); } catch (e) { return String(a); }
+    }).join(' ');
+}
+
+function pushLiveLog(level, args) {
+    try {
+        db.ref('/liveLogs').push({
+            text: _formatLiveLogArgs(args),
+            level: level, // 'info' أو 'error'
+            time: ServerValue.TIMESTAMP
+        }).catch(() => { /* لو فشل إرسال اللوج، نتجاهله بهدوء - ميقفش البوت */ });
+    } catch (e) {
+        // تجاهل بهدوء - اللوج المباشر ميزة إضافية، مش لازم تعطّل البوت لو فشلت
+    }
+}
+
+const _origConsoleLog = console.log.bind(console);
+const _origConsoleError = console.error.bind(console);
+
+console.log = function(...args) {
+    _origConsoleLog(...args);
+    pushLiveLog('info', args);
+};
+
+console.error = function(...args) {
+    _origConsoleError(...args);
+    pushLiveLog('error', args);
+};
+
+// تنظيف اللوجات الأقدم من 24 ساعة - بيشتغل مرة عند بدء التشغيل وبعدين كل ساعة
+async function cleanupOldLiveLogs() {
+    try {
+        const cutoff = Date.now() - LIVE_LOG_RETENTION_MS;
+        const snap = await db.ref('/liveLogs').orderByChild('time').endAt(cutoff).once('value');
+        const updates = {};
+        snap.forEach(child => { updates[child.key] = null; });
+        if (Object.keys(updates).length > 0) {
+            await db.ref('/liveLogs').update(updates);
+            _origConsoleLog(`🧹 تم حذف ${Object.keys(updates).length} سطر لوج أقدم من 24 ساعة`);
+        }
+    } catch (e) {
+        _origConsoleError('⚠️ تعذر تنظيف اللوج المباشر:', e.message);
+    }
+}
+
+cleanupOldLiveLogs();
+setInterval(cleanupOldLiveLogs, 60 * 60 * 1000); // إعادة التنظيف كل ساعة
+
 async function saveConversation(chatKey, customerMessage, aiReply) {
     try {
         const conversationRef = db.ref(`conversations/${chatKey}`);
