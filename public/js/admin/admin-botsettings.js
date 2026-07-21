@@ -76,15 +76,16 @@ window.saveBotIsActive = function() {
         alert("حصل خطأ أثناء الحفظ: " + err.message);
     });
     // يفتح شاشة اللوج المباشر تلقائيًا لحظة ما تتغيّر حالة التفعيل
-    window.openBotLiveLog();
+    window.showBotLiveLog();
 };
 
 // ================================================================
 // اللوج المباشر للبوت (Live Log)
 // البوت (index.js) بيكتب كل سطر console.log/console.error بتاعه في
-// /liveLogs في نفس قاعدة البيانات. إحنا هنا بس بنستمع (on child_added)
-// ونعرض السطور أول ما توصل، زي شاشة تيرمنال حية. البوت نفسه بينظّف
-// أي سطر عمره أكتر من 24 ساعة تلقائيًا كل ساعة.
+// /liveLogs في نفس قاعدة البيانات. إحنا هنا بنعمل حاجتين:
+// 1) once('value') أول ما نفتح الشاشة - يجيب آخر اللوجات المخزنة فورًا.
+// 2) on('child_added') بعد كده - يضيف أي سطر جديد لحظة ما يوصل.
+// البوت نفسه بينظّف أي سطر عمره أكتر من 24 ساعة تلقائيًا كل ساعة.
 // ================================================================
 const LIVE_LOG_DISPLAY_LIMIT = 300;
 let _liveLogRef = null;
@@ -105,34 +106,52 @@ function _appendLiveLogLine(entry) {
     line.textContent = `[${time}] ${entry.text || ""}`;
     body.appendChild(line);
 
-    // اسكرول تلقائي لتحت، إلا لو المستخدم مركّز شايف سطور فوق قصدًا
     let nearBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 100;
     if (nearBottom) body.scrollTop = body.scrollHeight;
 }
 
-window.openBotLiveLog = function() {
-    let modal = document.getElementById("botLiveLogModal");
-    let body  = document.getElementById("botLiveLogBody");
-    if (!modal || !body) return;
-
-    modal.style.display = "flex";
-
-    if (_liveLogListenerAttached) return; // الاستماع شغال بالفعل من فتحة سابقة
-
-    body.innerHTML = "";
-    _liveLogRef = db.ref('/liveLogs').limitToLast(LIVE_LOG_DISPLAY_LIMIT);
-    _liveLogListenerAttached = true;
-    _liveLogRef.on('child_added', snap => _appendLiveLogLine(snap.val()));
+window.toggleBotLiveLog = function() {
+    let panel = document.getElementById("botLiveLogPanel");
+    if (!panel) return;
+    if (panel.style.display === "none" || !panel.style.display) {
+        window.showBotLiveLog();
+    } else {
+        panel.style.display = "none";
+    }
 };
 
-window.closeBotLiveLog = function() {
-    let modal = document.getElementById("botLiveLogModal");
-    if (modal) modal.style.display = "none";
-    if (_liveLogRef) {
-        _liveLogRef.off('child_added');
-        _liveLogRef = null;
-    }
-    _liveLogListenerAttached = false;
+window.showBotLiveLog = function() {
+    let panel  = document.getElementById("botLiveLogPanel");
+    let body   = document.getElementById("botLiveLogBody");
+    let status = document.getElementById("botLiveLogStatus");
+    if (!panel || !body) return;
+
+    panel.style.display = "block";
+
+    if (_liveLogListenerAttached) return; // شغالة بالفعل من فتحة سابقة
+
+    body.innerHTML = "";
+    if (status) status.textContent = "⏳ جاري تحميل اللوج...";
+
+    let liveLogsRoot = db.ref('/liveLogs').limitToLast(LIVE_LOG_DISPLAY_LIMIT);
+
+    // الخطوة 1: نجيب كل اللوج الموجود حاليًا دفعة واحدة، عشان نضمن ظهوره
+    // فورًا حتى لو حصل أي تأخير أو تعارض توقيت مع الاستماع اللحظي.
+    liveLogsRoot.once('value').then(snap => {
+        let entries = [];
+        snap.forEach(child => { entries.push(child.val()); });
+        entries.forEach(_appendLiveLogLine);
+        if (status) status.textContent = entries.length ? `🟢 متصل (${entries.length} سطر)` : "🟡 متصل - مفيش لوج لسه";
+        body.scrollTop = body.scrollHeight;
+    }).catch(err => {
+        if (status) status.textContent = "🔴 خطأ";
+        body.innerHTML = `<div style="color:#ff7b72;">تعذر تحميل اللوج: ${err.message}</div>`;
+    });
+
+    // الخطوة 2: نستمع لأي سطر جديد يتضاف بعد كده لحظيًا
+    _liveLogRef = liveLogsRoot;
+    _liveLogListenerAttached = true;
+    _liveLogRef.on('child_added', snap => _appendLiveLogLine(snap.val()));
 };
 
 // مدة الإيقاف المؤقت (بالدقايق) لما الأدمن يرد يدويًا على عميل من موبايله —
