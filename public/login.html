@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول | الجوري ستور</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="site-header"></div>
+<script src="js/header-loader.js"></script>
+
+    <div class="auth-container" style="max-width: 500px; margin: 50px auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        
+        <div id="loginFormBox">
+            <h2 id="loginTitle" style="text-align: center; color: #1d364a; margin-bottom: 20px;">تسجيل الدخول</h2>
+            <form onsubmit="doLogin(event)">
+                <div class="form-group">
+                    <label id="labelLoginPhone">رقم التليفون</label>
+                    <input type="tel" class="form-control" id="loginPhone" required>
+                </div>
+                <div class="form-group">
+                    <label id="labelLoginPassword">كلمة المرور</label>
+                    <input type="password" class="form-control" id="loginPassword" required>
+                </div>
+                <button type="submit" class="btn-auth" id="btnLoginSubmit" style="width: 100%; padding: 12px; background: #1d364a; color: white; border: none; border-radius: 5px; font-weight: bold; font-size: 16px; cursor: pointer;">دخول</button>
+            </form>
+            <div class="auth-switch" style="text-align: center; margin-top: 15px;">
+                <span id="noAccountText">ليس لديك حساب؟</span> 
+                <a onclick="toggleAuth('register')" id="linkToRegister" style="color: #f38c18; cursor: pointer; font-weight: bold;">إنشاء حساب جديد</a>
+            </div>
+            <div style="text-align: center; margin-top: 10px;">
+                <a onclick="toggleAuth('forgot')" style="color: #999; cursor: pointer; font-size: 14px;">نسيت كلمة المرور؟</a>
+            </div>
+        </div>
+
+        <div id="registerFormBox" style="display:none;">
+            <h2 id="registerTitle" style="text-align: center; color: #1d364a; margin-bottom: 20px;">إنشاء حساب جديد</h2>
+            <form onsubmit="doRegister(event)">
+                <div class="form-group">
+                    <label id="labelFullName">الاسم بالكامل</label>
+                    <input type="text" class="form-control" id="regName" required>
+                </div>
+                <div class="form-group">
+                    <label>رقم التليفون (للدخول)</label>
+                    <input type="tel" class="form-control" id="regPhone" required>
+                </div>
+                <div class="form-group">
+                    <label>البريد الإلكتروني (لاسترجاع الحساب)</label>
+                    <input type="email" class="form-control" id="regEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>المنطقة / المحافظة</label>
+                    <select class="form-control" id="regRegion" required>
+                        <option value="">-- اختر المنطقة --</option>
+                        </select>
+                </div>
+                <div class="form-group">
+                    <label>العنوان بالتفصيل</label>
+                    <input type="text" class="form-control" id="regAddress" required>
+                </div>
+                <div class="form-group">
+                    <label id="labelRegPassword">كلمة المرور</label>
+                    <input type="password" class="form-control" id="regPassword" required>
+                </div>
+                
+                <button type="submit" id="btnRegisterSubmit" class="btn-auth" style="width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 5px; font-weight: bold; font-size: 16px; cursor: pointer;">إنشاء الحساب</button>
+            </form>
+            <div class="auth-switch" style="text-align: center; margin-top: 15px;">
+                <span id="hasAccountText">لديك حساب بالفعل؟</span> 
+                <a onclick="toggleAuth('login')" style="color: #1d364a; cursor: pointer; font-weight: bold;">تسجيل الدخول</a>
+            </div>
+        </div>
+
+        <div id="forgotFormBox" style="display:none;">
+    <h2 style="text-align: center; color: #1d364a; margin-bottom: 20px;">استرجاع كلمة المرور</h2>
+    <p style="text-align: center; color: #666; font-size: 14px; margin-bottom: 20px;">لحمايتك، استرجاع كلمة المرور بيتم عن طريق فريق الدعم بعد التأكد من هويتك. اكتب رقم تليفونك المسجل وهنحولك لواتساب.</p>
+    <form onsubmit="doForgotPassword(event)">
+        <div class="form-group">
+            <label>رقم التليفون</label>
+            <input type="tel" class="form-control" id="forgotPhone" required>
+        </div>
+        <button type="submit" class="btn-auth" style="width: 100%; padding: 12px; background: #f38c18; color: #1d364a; border: none; border-radius: 5px; font-weight: bold; font-size: 16px; cursor: pointer;">تواصل مع الدعم عبر واتساب</button>
+    </form>
+    <div class="auth-switch" style="text-align: center; margin-top: 15px;">
+        <a onclick="toggleAuth('login')" style="color: #1d364a; cursor: pointer; font-weight: bold;">العودة لتسجيل الدخول</a>
+    </div>
+</div>
+
+    </div>
+
+<!-- 1. مكتبات فايربيس الأساسية (بما فيها الـ Storage عشان الإيرور يختفي) -->
+     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
+     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+
+<!-- 2. ملفات متجرك -->
+<script src="js/firebase-init.js"></script>
+    <script src="js/store-core.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

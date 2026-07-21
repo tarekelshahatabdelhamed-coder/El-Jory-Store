@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>El Jory Store | الجوري ستور</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+
+        /* ══════════════════════════════════════
+           BASE
+        ══════════════════════════════════════ */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Cairo', sans-serif; background: #f8fafc; color: #1d364a; }
+        .jory-wrap { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+        .jory-section-title {
+            display: flex; align-items: center; justify-content: space-between;
+            margin: 0 0 18px;
+        }
+        .jory-section-title h2 {
+            font-size: clamp(19px, 2.6vw, 26px); font-weight: 900; color: #1d364a;
+            position: relative; padding-right: 14px;
+        }
+        .jory-section-title h2::before {
+            content: ''; position: absolute; right: 0; top: 3px; bottom: 3px;
+            width: 5px; border-radius: 3px; background: #f38c18;
+        }
+        .jory-section-title a {
+            color: #f38c18; font-weight: 700; font-size: 14px; text-decoration: none;
+            white-space: nowrap;
+        }
+        .jory-section-title a:hover { text-decoration: underline; }
+
+        /* ══════════════════════════════════════
+           شريط علوي رفيع (زي التوصيل السريع / الضمان)
+        ══════════════════════════════════════ */
+        .jory-top-strip {
+            background: #1d364a; color: #f8b468;
+            text-align: center; font-size: 13px; font-weight: 700;
+            padding: 8px 12px; letter-spacing: .3px;
+        }
+        .jory-top-strip span { color: rgba(255,255,255,.55); margin: 0 10px; }
+
+        /* ══════════════════════════════════════
+           HERO / السلايدر الرئيسي
+        ══════════════════════════════════════ */
+        .jory-hero-zone {
+            background: linear-gradient(180deg, #eef4fb 0%, #fff 60%);
+            padding: 26px 0 6px;
+        }
+
+        .slider-container {
+            max-width: 1440px; margin: 0 auto; padding: 0 20px;
+            position: relative; border-radius: 22px;
+            overflow: visible; box-shadow: none;
+        }
+        .slider-container > .slide {
+            border-radius: 22px; overflow: hidden;
+            box-shadow: 0 16px 40px rgba(29,54,74,.16);
+        }
+        .slide { display: none; width: 100%; }
+        .slide.active { display: block; }
+        .slide img {
+            width: 100%; height: auto;
+            min-height: 260px; max-height: 560px; object-fit: cover;
+            aspect-ratio: 32/11; display: block;
+            transition: opacity .6s ease, transform 6s ease;
+        }
+        /* تكبير هادي جداً للصورة النشطة بيدي إحساس حيوية زي بانرات المواقع الكبيرة */
+        .slide.active img { transform: scale(1.015); }
+        @keyframes slideIn {
+            from { opacity: 0; transform: scale(1.04); }
+            to   { opacity: 1; transform: scale(1.015); }
+        }
+        .slide.active img { animation: slideIn .7s ease; }
+
+        .prev-slide, .next-slide {
+            cursor: pointer; position: absolute; top: 50%;
+            transform: translateY(-50%);
+            width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+            color: #1d364a; font-size: 19px; font-weight: bold;
+            background: rgba(255,255,255,.92); backdrop-filter: blur(3px);
+            border-radius: 50%; box-shadow: 0 6px 18px rgba(0,0,0,.18);
+            user-select: none; z-index: 5; transition: .25s;
+        }
+        .next-slide { left: 24px; }
+        .prev-slide { right: 24px; }
+        .prev-slide:hover, .next-slide:hover { background: #f38c18; color: #fff; transform: translateY(-50%) scale(1.08); }
+
+        .slider-dots { text-align: center; padding: 18px 0 6px; }
+        .slider-dot {
+            display: inline-block; width: 9px; height: 9px;
+            border-radius: 50%; background: #d1d5db;
+            margin: 0 5px; cursor: pointer; transition: .3s;
+        }
+        .slider-dot.active { background: #f38c18; width: 26px; border-radius: 5px; }
+
+        /* شريط ثقة صغير تحت السلايدر */
+        .jory-trust-strip {
+            display: flex; justify-content: center; gap: 40px; flex-wrap: wrap;
+            padding: 18px 24px 26px; max-width: 1280px; margin: 0 auto;
+        }
+        .jory-trust-item {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 13px; font-weight: 700; color: #1d364a;
+        }
+        .jory-trust-item span.ico { font-size: 20px; }
+
+        /* ══════════════════════════════════════
+           تسوق بالفئة — دواير الأقسام
+        ══════════════════════════════════════ */
+        .jory-cats-zone { background: #fff; padding: 30px 0 40px; }
+        #dynamicCategoriesGrid.categories-grid {
+            display: flex !important; gap: 22px !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto; overflow-y: hidden;
+            padding: 6px 2px 14px !important;
+            scroll-snap-type: x proximity;
+            justify-content: flex-start !important;
+        }
+        #dynamicCategoriesGrid.categories-grid::-webkit-scrollbar { height: 6px; }
+        #dynamicCategoriesGrid.categories-grid::-webkit-scrollbar-thumb { background: #eef2f5; border-radius: 10px; }
+
+        #dynamicCategoriesGrid .category-card {
+            flex: 0 0 auto; width: 132px; scroll-snap-align: start;
+            background: transparent; box-shadow: none; border-radius: 0; padding-bottom: 0;
+            text-align: center; transition: transform .25s;
+        }
+        #dynamicCategoriesGrid .category-card:hover { transform: translateY(-4px); box-shadow: none; }
+        #dynamicCategoriesGrid .category-card img {
+            width: 108px; height: 108px; object-fit: cover;
+            border-radius: 50%; border: 3px solid #f0f8ff;
+            box-shadow: 0 6px 16px rgba(29,54,74,.1);
+            margin: 0 auto;
+        }
+        #dynamicCategoriesGrid .category-card h3 {
+            font-size: 14px; margin: 12px 0 0; color: #1d364a;
+        }
+        #dynamicCategoriesGrid .category-card p,
+        #dynamicCategoriesGrid .category-card .btn-browse { display: none; }
+
+        /* ══════════════════════════════════════
+           السكاشن الاحترافية (تديرها من الأدمن)
+        ══════════════════════════════════════ */
+        #storefrontSections { margin: 6px 0; }
+        .jory-section { opacity: 0; transform: translateY(20px); transition: opacity .5s ease, transform .5s ease; }
+        .jory-section.visible { opacity: 1; transform: translateY(0); }
+
+        /* ══════════════════════════════════════
+           ليه تختار الجوري ستور — شريط المميزات
+        ══════════════════════════════════════ */
+        .jory-features-zone { background: #1d364a; padding: 44px 0; margin-top: 20px; }
+        .jory-features-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 26px;
+        }
+        .jory-feature-card {
+            text-align: center; color: #fff; padding: 10px;
+        }
+        .jory-feature-card .ico {
+            width: 62px; height: 62px; border-radius: 50%;
+            background: rgba(243,140,24,.15); border: 1px solid rgba(243,140,24,.35);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 28px; margin: 0 auto 14px;
+        }
+        .jory-feature-card h4 { font-size: 15px; margin-bottom: 6px; color: #f8b468; }
+        .jory-feature-card p { font-size: 13px; color: rgba(255,255,255,.65); line-height: 1.6; }
+
+        /* ══════════════════════════════════════
+           بانر CTA كبير
+        ══════════════════════════════════════ */
+        .jory-cta-zone {
+            background: linear-gradient(135deg, #f38c18, #d97b0e);
+            padding: 46px 24px; text-align: center; color: #fff;
+        }
+        .jory-cta-zone h2 { font-size: clamp(20px, 3vw, 30px); margin-bottom: 14px; font-weight: 900; }
+        .jory-cta-zone p { font-size: 15px; margin-bottom: 22px; color: rgba(255,255,255,.9); }
+        .jory-cta-zone a {
+            display: inline-block; background: #1d364a; color: #fff; text-decoration: none;
+            padding: 13px 34px; border-radius: 10px; font-weight: 700; font-size: 15px;
+            transition: .2s;
+        }
+        .jory-cta-zone a:hover { background: #142534; transform: translateY(-2px); }
+
+        /* ══════════════════════════════════════
+           الفوتر
+        ══════════════════════════════════════ */
+        .jory-footer { background: #14283a; color: rgba(255,255,255,.7); padding: 50px 0 0; }
+        .jory-footer-grid {
+            display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 30px;
+            padding-bottom: 34px; border-bottom: 1px solid rgba(255,255,255,.08);
+        }
+        .jory-footer-col h4 {
+            color: #fff; font-size: 15px; margin-bottom: 16px; font-weight: 800;
+            position: relative; padding-right: 12px;
+        }
+        .jory-footer-col h4::before {
+            content:''; position:absolute; right:0; top:3px; bottom:3px; width:4px;
+            background:#f38c18; border-radius:3px;
+        }
+        .jory-footer-col p { font-size: 13.5px; line-height: 1.9; margin-bottom: 14px; }
+        .jory-footer-col ul { list-style: none; }
+        .jory-footer-col ul li { margin-bottom: 10px; }
+        .jory-footer-col ul li a {
+            color: rgba(255,255,255,.7); text-decoration: none; font-size: 13.5px; transition: .2s;
+        }
+        .jory-footer-col ul li a:hover { color: #f38c18; }
+        .jory-footer-social { display: flex; gap: 10px; margin-top: 6px; }
+        .jory-footer-social a {
+            width: 38px; height: 38px; border-radius: 50%;
+            background: rgba(255,255,255,.08); display: flex; align-items: center; justify-content: center;
+            color: #fff; text-decoration: none; transition: .2s;
+        }
+        .jory-footer-social a:hover { background: #f38c18; }
+        .jory-footer-social svg { width: 18px; height: 18px; fill: currentColor; }
+        .jory-footer-bottom {
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+            padding: 18px 0; font-size: 12.5px; color: rgba(255,255,255,.45);
+        }
+
+        /* ══════════════════════════════════════
+           MOBILE
+        ══════════════════════════════════════ */
+        @media (max-width: 768px) {
+            .jory-top-strip { font-size: 11px; padding: 7px 10px; }
+            .slider-container { padding: 0 12px; }
+            .slider-container > .slide { border-radius: 16px; }
+            .slide img { min-height: 140px; max-height: 200px; aspect-ratio: 4/3; object-fit: cover; }
+            .prev-slide, .next-slide { width: 36px; height: 36px; font-size: 15px; }
+            .next-slide { left: 14px; } .prev-slide { right: 14px; }
+            .jory-trust-strip { gap: 18px; padding: 14px 16px 20px; }
+            .jory-trust-item { font-size: 11.5px; }
+            .jory-wrap { padding: 0 16px; }
+            #dynamicCategoriesGrid .category-card { width: 96px; }
+            #dynamicCategoriesGrid .category-card img { width: 82px; height: 82px; }
+            .jory-features-grid { grid-template-columns: repeat(2, 1fr); gap: 18px; }
+            .jory-footer-grid { grid-template-columns: 1fr 1fr; gap: 26px; }
+        }
+        @media (max-width: 420px) {
+            .jory-footer-grid { grid-template-columns: 1fr; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- ══ الهيدر المشترك — header-loader.js يحقنه هنا ══ -->
+    <div id="site-header"></div>
+    <script src="js/header-loader.js"></script>
+
+    <!-- ══ شريط علوي رفيع ══ -->
+    <div class="jory-top-strip">
+        توصيل سريع لكل المحافظات 🚚 <span>|</span> ضمان على كل المنتجات ✅ <span>|</span> نقاط ولاء مع كل عملية شراء 🎁
+    </div>
+
+    <!-- ══ Hero / السلايدر ══ -->
+    <div class="jory-hero-zone">
+        <div id="sliderContainer" class="slider-container" style="display:none;"></div>
+        <div id="sliderDots"      class="slider-dots"      style="display:none;"></div>
+
+        <div class="jory-trust-strip">
+            <div class="jory-trust-item"><span class="ico">🚚</span> توصيل لكل مصر</div>
+            <div class="jory-trust-item"><span class="ico">🛡️</span> ضمان معتمد</div>
+            <div class="jory-trust-item"><span class="ico">↩️</span> استرجاع سهل</div>
+            <div class="jory-trust-item"><span class="ico">🎁</span> نقاط واسترداد</div>
+        </div>
+    </div>
+
+    <!-- ══ تسوق بالفئة ══ -->
+    <div class="jory-cats-zone">
+        <div class="jory-wrap">
+            <div class="jory-section-title">
+                <h2 id="catZoneTitle">تسوق بالفئة</h2>
+                <a href="categories.html" id="catZoneSeeAll">كل الأقسام ←</a>
+            </div>
+            <div class="jory-cat-strip-wrap" style="position:relative;">
+                <button type="button" class="jory-strip-arrow prev" onclick="joryStripScroll('dynamicCategoriesGrid',1)">&#10095;</button>
+                <button type="button" class="jory-strip-arrow next" onclick="joryStripScroll('dynamicCategoriesGrid',-1)">&#10094;</button>
+                <div class="categories-grid" id="dynamicCategoriesGrid" data-featured-only="1"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ السكاشن الاحترافية (يديرها الأدمن) ══ -->
+    <div id="storefrontSections"></div>
+
+    <!-- ══ ليه تختار الجوري ستور ══ -->
+    <div class="jory-features-zone">
+        <div class="jory-wrap jory-features-grid">
+            <div class="jory-feature-card">
+                <div class="ico">💰</div>
+                <h4>أفضل سعر</h4>
+                <p>أسعار تنافسية على كل المنتجات باستمرار</p>
+            </div>
+            <div class="jory-feature-card">
+                <div class="ico">🛡️</div>
+                <h4>ضمان حقيقي</h4>
+                <p>كل منتج مضمون واسترجاع سهل خلال فترة محددة</p>
+            </div>
+            <div class="jory-feature-card">
+                <div class="ico">🚚</div>
+                <h4>توصيل سريع</h4>
+                <p>شحن لكل المحافظات بمواعيد تسليم دقيقة</p>
+            </div>
+            <div class="jory-feature-card">
+                <div class="ico">🎧</div>
+                <h4>دعم فني</h4>
+                <p>فريق دعم جاهز يرد على استفساراتك أول بأول</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ بانر CTA ══ -->
+    <div class="jory-cta-zone">
+        <h2>هل أنت مستعد تبدأ تسوقك؟</h2>
+        <p>تصفح كل الأقسام والعروض المتاحة دلوقتي</p>
+        <a href="categories.html">تسوق دلوقتي</a>
+    </div>
+
+    <!-- ══ الفوتر ══ -->
+    <footer class="jory-footer">
+        <div class="jory-wrap jory-footer-grid">
+            <div class="jory-footer-col">
+                <h4>الجوري ستور</h4>
+                <p>وجهتك الأولى للتسوق أونلاين بأفضل الأسعار وضمان حقيقي على كل المنتجات.</p>
+                <div class="jory-footer-social" id="footerSocial">
+                    <a href="https://wa.me/201100395049" target="_blank" rel="noopener" title="واتساب">
+                        <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.918-1.418A9.955 9.955 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.962 7.962 0 0 1-4.062-1.112l-.291-.173-3.024.871.842-3.107-.19-.302A7.952 7.952 0 0 1 4 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.588 8-8 8z"/></svg>
+                    </a>
+                    <a href="https://facebook.com/Elgorystore" target="_blank" rel="noopener" title="فيسبوك">
+                        <svg viewBox="0 0 24 24"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.791-4.697 4.533-4.697 1.313 0 2.686.236 2.686.236v2.97h-1.514c-1.491 0-1.956.93-1.956 1.886v2.268h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
+                    </a>
+                </div>
+            </div>
+
+            <div class="jory-footer-col">
+                <h4>روابط سريعة</h4>
+                <ul>
+                    <li><a href="index.html">الرئيسية</a></li>
+                    <li><a href="categories.html">الأقسام</a></li>
+                    <li><a href="cart.html">السلة</a></li>
+                    <li><a href="account.html">حسابي</a></li>
+                </ul>
+            </div>
+
+            <div class="jory-footer-col">
+                <h4>خدمة العملاء</h4>
+                <ul>
+                    <li><a href="account.html">تتبع الطلب</a></li>
+                    <li><a href="login.html">تسجيل الدخول</a></li>
+                    <li><a href="https://wa.me/201100395049" target="_blank" rel="noopener">تواصل معنا واتساب</a></li>
+                </ul>
+            </div>
+
+            <div class="jory-footer-col">
+                <h4>تواصل معنا</h4>
+                <ul>
+                    <li><a href="tel:01100395049" dir="ltr" style="unicode-bidi:plaintext;">01100395049</a></li>
+                    <li><a href="https://facebook.com/Elgorystore" target="_blank" rel="noopener">فيسبوك الجوري ستور</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="jory-wrap jory-footer-bottom">
+            <span>© <span id="footerYear"></span> جميع الحقوق محفوظة لـ الجوري ستور</span>
+            <span>صُنع بحب في مصر 🇪🇬</span>
+        </div>
+    </footer>
+
+    <!-- ══ Firebase ══ -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+
+    <!-- ══ Core ══ -->
+    <script src="js/firebase-init.js"></script>
+    <script src="js/store-core.js"></script>
+    <script src="js/sections-renderer.js"></script>
+    <script src="script.js"></script>
+
+    <script>
+    // ══════════════════════════════════════════════════════
+    //  السلايدر الإعلاني
+    // ══════════════════════════════════════════════════════
+    var currentBannerIndex = 0;
+    var bannerInterval;
+
+    window.renderBanners = function () {
+        var banners = JSON.parse(localStorage.getItem('eljory_banners') || '[]');
+        var slider  = document.getElementById('sliderContainer');
+        var dotsEl  = document.getElementById('sliderDots');
+        if (!slider) return;
+
+        var active = banners
+            .filter(function(b) { return b.isActive !== false; })
+            .sort(function(a, b) { return (a.priority || 0) - (b.priority || 0); });
+
+        if (!active.length) {
+            slider.style.display = 'none';
+            dotsEl.style.display = 'none';
+            return;
+        }
+
+        slider.style.display = 'block';
+        currentBannerIndex   = 0;
+
+        // بناء الشرائح
+        var slidesHTML = active.map(function(b, i) {
+            var action = '';
+            if      (b.linkType === 'product'     && b.linkValue) action = 'onclick="location.href=\'product.html?id='    + b.linkValue + '\'"';
+            else if (b.linkType === 'category'    && b.linkValue) action = 'onclick="location.href=\'shop.html?cat='      + b.linkValue + '\'"';
+            else if (b.linkType === 'subcategory' && b.linkValue) action = 'onclick="location.href=\'shop.html?list='     + b.linkValue + '\'"';
+            else if (b.linkType === 'external'    && b.linkValue) action = 'onclick="window.open(\'' + b.linkValue + '\',\'_blank\')"';
+
+            var mobileImg = b.imgMobile || b.img;
+            var srcTag    = mobileImg !== b.img ? '<source media="(max-width:768px)" srcset="' + mobileImg + '">' : '';
+
+            return '<div class="slide' + (i === 0 ? ' active' : '') + '"'
+                 +   (action ? ' style="cursor:pointer;" ' + action : '') + '>'
+                 +   '<picture>' + srcTag + '<img src="' + b.img + '" alt="' + (b.title || 'El Jory') + '"></picture>'
+                 + '</div>';
+        }).join('');
+
+        var navHTML = active.length > 1
+            ? '<a class="prev-slide" onclick="changeSlide(-1)">&#10094;</a>'
+            + '<a class="next-slide" onclick="changeSlide(1)">&#10095;</a>'
+            : '';
+
+        slider.innerHTML = slidesHTML + navHTML;
+
+        // نقاط التنقل
+        if (active.length > 1) {
+            dotsEl.style.display = 'block';
+            dotsEl.innerHTML = active.map(function(_, i) {
+                return '<span class="slider-dot' + (i === 0 ? ' active' : '') + '"'
+                     + ' onclick="goToSlide(' + i + ')"></span>';
+            }).join('');
+        } else {
+            dotsEl.style.display = 'none';
+        }
+
+        // 6.5 ثانية — وقت كافي لقراءة البانر
+        clearInterval(bannerInterval);
+        if (active.length > 1) bannerInterval = setInterval(function() { changeSlide(1); }, 6500);
+    };
+
+    window.changeSlide = function (n) {
+        var slides = document.querySelectorAll('.slide');
+        if (!slides.length) return;
+        slides[currentBannerIndex].classList.remove('active');
+        updateDot(currentBannerIndex, false);
+        currentBannerIndex = (currentBannerIndex + n + slides.length) % slides.length;
+        slides[currentBannerIndex].classList.add('active');
+        updateDot(currentBannerIndex, true);
+    };
+
+    window.goToSlide = function (idx) {
+        var slides = document.querySelectorAll('.slide');
+        if (!slides.length) return;
+        slides[currentBannerIndex].classList.remove('active');
+        updateDot(currentBannerIndex, false);
+        currentBannerIndex = idx;
+        slides[currentBannerIndex].classList.add('active');
+        updateDot(currentBannerIndex, true);
+    };
+
+    function updateDot(idx, isActive) {
+        var allDots = document.querySelectorAll('.slider-dot');
+        if (allDots[idx]) allDots[idx].classList.toggle('active', isActive);
+    }
+
+    // ══════════════════════════════════════════════════════
+    //  Intersection Observer
+    //  ملحوظة: إظهار السكاشن (fade-in) بقى بيتم تلقائياً جوه
+    //  sections-renderer.js نفسه (شغال حتى مع أي إعادة بناء تلقائية
+    //  تيجي من فايربيس). الدالة دي فاضلة هنا للتوافق فقط، مفيش داعي نستخدمها.
+    // ══════════════════════════════════════════════════════
+    function observeSections() { /* لم تعد مطلوبة — الإظهار بيتم داخل sections-renderer.js */ }
+
+    // ══════════════════════════════════════════════════════
+    //  تعريب عنوان "تسوق بالفئة" حسب اللغة + السنة في الفوتر
+    // ══════════════════════════════════════════════════════
+    function applyHomeExtras() {
+        var isAr = (localStorage.getItem('eljory_lang') || 'ar') === 'ar';
+        var t = document.getElementById('catZoneTitle');
+        var s = document.getElementById('catZoneSeeAll');
+        if (t) t.innerText = isAr ? 'تسوق بالفئة' : 'Shop by Category';
+        if (s) s.innerText = isAr ? 'كل الأقسام ←' : 'All Categories →';
+        var y = document.getElementById('footerYear');
+        if (y) y.innerText = new Date().getFullYear();
+    }
+
+    // ══════════════════════════════════════════════════════
+    //  التهيئة
+    // ══════════════════════════════════════════════════════
+    document.addEventListener('DOMContentLoaded', function () {
+        applyHomeExtras();
+        setTimeout(function () {
+            if (typeof renderBanners            === 'function') renderBanners();
+            if (typeof renderStorefrontSections === 'function') {
+                renderStorefrontSections();
+                setTimeout(observeSections, 100);
+            }
+            applyHomeExtras();
+        }, 700);
+    });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- ✅ إصلاح 1: تم إضافة meta viewport (كانت ناقصة) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سلة التسوق | الجوري ستور</title>
+    <link rel="stylesheet" href="style.css">
+<style>
+    .cart-table-wrapper { overflow-x: auto; margin-top: 20px; }
+    table { width: 100%; border-collapse: collapse; min-width: 600px; }
+    th, td { padding: 15px; border-bottom: 1px solid #ddd; text-align: center; }
+    th { background-color: #1d364a; color: white; }
+    
+    .cart-summary-wrapper {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        margin-top: 30px;
+        gap: 25px;
+    }
+
+    .promo-box {
+        flex: 1;
+        min-width: 300px;
+        max-width: 450px;
+        background: #fdfdfd;
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px dashed #ccc;
+    }
+
+    .summary-box {
+        background: #fff;
+        padding: 30px 25px;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        min-width: 300px;
+        text-align: center;
+        border: 1px solid #eee;
+    }
+
+    /* ── موبايل كارت ── */
+    @media (max-width: 768px) {
+        .cart-section { padding: 16px 12px !important; }
+        .cart-section h2 { font-size: 18px; margin-bottom: 12px; }
+
+        /* إخفاء الجدول واستبداله بكروت */
+        .cart-table-wrapper table thead { display: none; }
+        .cart-table-wrapper table,
+        .cart-table-wrapper table tbody,
+        .cart-table-wrapper table tr,
+        .cart-table-wrapper table td { display: block; width: 100%; min-width: unset; }
+        .cart-table-wrapper table tr {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.07);
+            margin-bottom: 12px;
+            padding: 12px;
+            position: relative;
+        }
+        .cart-table-wrapper table td {
+            padding: 5px 8px;
+            border: none;
+            text-align: right;
+            font-size: 13px;
+        }
+        .cart-table-wrapper table td::before {
+            content: attr(data-label);
+            font-weight: 700;
+            color: #1d364a;
+            margin-left: 6px;
+            font-size: 12px;
+        }
+        /* صورة المنتج تبقى أكبر شوية */
+        .cart-table-wrapper table td img {
+            width: 60px !important;
+            height: 60px !important;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        /* السمري والبرومو */
+        .cart-summary-wrapper {
+            flex-direction: column;
+            gap: 14px;
+            margin-top: 16px;
+        }
+        .promo-box {
+            min-width: unset;
+            max-width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+        }
+        .promo-box p { font-size: 13px; margin-bottom: 10px; }
+        .summary-box {
+            min-width: unset;
+            width: 100%;
+            padding: 16px;
+            border-radius: 12px;
+        }
+        #cartTotal { font-size: 18px !important; margin-bottom: 14px !important; }
+        #btnCheckout { font-size: 15px !important; padding: 12px !important; }
+    }
+</style>
+</head>
+<body>
+<div id="site-header"></div>
+<script src="js/header-loader.js"></script>
+
+<section class="cart-section" style="padding: 50px 5%;">
+    <h2 id="cartTitle" style="color: #1d364a; border-bottom: 2px solid #f38c18; display: inline-block; padding-bottom: 10px;">سلة التسوق</h2>
+    
+    <div class="cart-table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th id="thCartProd">المنتج</th>
+                    <th id="thCartPrice">السعر</th>
+                    <th id="thCartQty">الكمية</th>
+                    <th id="thCartSub">الإجمالي</th>
+                    <th id="thCartAction">حذف</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div class="cart-summary-wrapper">
+        <div class="promo-box">
+            <p id="promoLabel" style="font-weight: bold; color: #1d364a; margin-top: 0; margin-bottom: 15px;">لديك كود خصم؟ (أو كود هدية من نقاطك)</p>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="promoInput" class="form-control" placeholder="أدخل الكود هنا..." style="flex: 1;">
+                <button class="btn-browse" onclick="applyPromo()" id="btnApplyPromo" style="padding: 10px 20px; margin: 0;">تطبيق</button>
+            </div>
+            <p id="promoMessage" style="font-weight: bold; margin-top: 15px; display: none; padding: 10px; border-radius: 5px; text-align: center;"></p>
+            <div id="autoCouponsDiv"></div>
+        </div>
+
+        <div class="summary-box">
+            <div id="cartTotal" style="font-size: 24px; font-weight: bold; color: #1d364a; margin-top: 0; margin-bottom: 25px;">الإجمالي: 0 ج.م</div>
+            <button class="btn-auth" id="btnCheckout" style="width: 100%; font-size: 18px; padding: 15px; background-color: #28a745; border: none; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s;">إتمام الطلب</button>
+        </div>
+    </div>
+</section>
+
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+
+<!-- ✅ إصلاح 2: تم إضافة store-core.js (كانت ناقصة وبتكسر الـ checkout) -->
+<script src="js/firebase-init.js"></script>
+<script src="js/store-core.js"></script>
+
+<script src="script.js"></script>
+
+<script>
+    window.currentUserCoupons = [];
+    window.cartDiscountAmount = 0;
+    window.cartPromoCodeUsed  = null;
+
+document.addEventListener("DOMContentLoaded", () => {
+    // عرض الكوبونات المتاحة للعميل تلقائياً (من فايربيس مباشرة، نفس مكان حفظها الحقيقي)
+    let currentUser = getCurrentUser();
+
+    if (currentUser && currentUser.phone) {
+        let phoneKey = getShortPhone(currentUser.phone);
+        db.ref('/users/' + phoneKey + '/coupons').once('value').then(snap => {
+            let userCoupons = snap.val() || [];
+            window.currentUserCoupons = userCoupons;
+            let activeCoupons = userCoupons.filter(c => !c.isUsed);
+
+            let autoDiv = document.getElementById("autoCouponsDiv");
+            if (activeCoupons.length > 0 && autoDiv) {
+                let giftTitle = currentLang === 'ar'
+                    ? '🎁 هدايا متاحة في حسابك (اضغط للتطبيق):'
+                    : '🎁 Gifts available in your account (Click to apply):';
+                let html = `
+                    <div style="margin-top: 20px; padding: 15px; background: #e8f5e9; border: 1px dashed #28a745; border-radius: 8px;">
+                        <span style="color:#1d364a; font-weight:bold; font-size:14px;">${giftTitle}</span>
+                        <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">`;
+                activeCoupons.forEach(c => {
+                    html += `<button onclick="document.getElementById('promoInput').value='${c.code}'; applyPromo();"
+                                style="background:#28a745; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold; transition:0.3s;"
+                                onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                                ${c.rewardName} (${c.code})
+                             </button>`;
+                });
+                html += `</div></div>`;
+                autoDiv.innerHTML = html;
+            }
+        });
+    }
+});
+
+    // ✅ إصلاح 4: دالة applyPromo المُصلحة
+    // - بتحسب الإجمالي الصح مع مصاريف الشحن
+    // - بتحدّث window.cartFinalTotal عشان الـ checkout يشتغل صح
+    // - بتعرض تفاصيل (مجموع + شحن + إجمالي كلي) بدل رقم واحد بس
+    window.applyPromo = function() {
+        const msgEl = document.getElementById("promoMessage");
+        const codeInput = document.getElementById("promoInput").value.trim().toUpperCase();
+        const currency = currentLang === 'ar' ? 'ج.م' : 'EGP';
+        const cartTotalEl = document.getElementById("cartTotal");
+
+        msgEl.style.display = "block";
+
+        if (!codeInput) {
+            msgEl.style.backgroundColor = "#ffeaea"; msgEl.style.color = "#d9534f";
+            msgEl.innerText = currentLang === 'ar' ? "من فضلك أدخل كود الخصم أولاً!" : "Please enter a promo code first!";
+            return;
+        }
+
+        const cartItems = JSON.parse(localStorage.getItem("eljory_cart")) || [];
+        if (cartItems.length === 0) {
+            msgEl.style.backgroundColor = "#ffeaea"; msgEl.style.color = "#d9534f";
+            msgEl.innerText = currentLang === 'ar' ? "السلة فارغة!" : "Cart is empty!";
+            return;
+        }
+
+        // حساب مجموع المنتجات
+        const productsTotal = cartItems.reduce((sum, item) => sum + (item.price * item.qty), 0);
+        // سحب مصاريف الشحن المحسوبة من renderCart
+        const shippingFee = window.cartShippingFee || 0;
+
+        // دالة مساعدة لتحديث العرض والـ window.cartFinalTotal
+        function updateTotalsDisplay(discountedProducts, freeShipping, promoMsg, isError) {
+            const finalShipping = freeShipping ? 0 : shippingFee;
+            const finalTotal    = discountedProducts + finalShipping;
+
+            // تحديث القيمة اللي الـ checkout بيقرأها
+            window.cartFinalTotal = finalTotal;
+
+            // ⭐ نظام الحسابات: بنسجل قيمة الخصم الفعلية على المنتجات (مش الشحن)
+            // عشان الـ checkout يقدر يحفظها جوه الطلب، وبعدين تتسجل تلقائياً
+            // كمصروف "خصم كوبون" لما الطلب يتحول لـ"تم التوصيل". مبنسجلش خصم
+            // للشحن المجاني هنا لأنه مطلوب يستثنى من الحسبة زي ما هو متفق عليه.
+            window.cartDiscountAmount = isError ? 0 : Math.max(0, productsTotal - discountedProducts);
+            window.cartPromoCodeUsed  = (!isError && window.appliedPromoObj) ? (window.appliedPromoObj.code || null) : null;
+
+            const beforeText = currentLang === 'ar' ? 'المجموع:'        : 'Subtotal:';
+            const shipLabel  = currentLang === 'ar' ? 'مصاريف الشحن:'   : 'Shipping:';
+            const afterText  = currentLang === 'ar' ? 'الإجمالي الكلي:' : 'Grand Total:';
+            const freeWord   = currentLang === 'ar' ? 'مجاني 🎉'        : 'Free 🎉';
+            const shipDisplay = finalShipping === 0
+                ? `<span style="color:green; font-weight:bold;">${freeWord}</span>`
+                : `${finalShipping} ${currency}`;
+
+            cartTotalEl.innerHTML = `
+                <div style="font-size:17px; color:#555; margin-bottom:5px;">${beforeText} <strong>${discountedProducts}</strong> ${currency}</div>
+                <div style="font-size:17px; color:#555; margin-bottom:12px; border-bottom:1px solid #ccc; padding-bottom:10px;">${shipLabel} <strong>${shipDisplay}</strong></div>
+                <div style="color:green; font-size:24px;">${afterText} <strong>${finalTotal}</strong> ${currency}</div>
+            `;
+
+            if (promoMsg) {
+                msgEl.style.backgroundColor = isError ? "#ffeaea" : "#e8f5e9";
+                msgEl.style.color           = isError ? "#d9534f" : "#28a745";
+                msgEl.innerText = promoMsg;
+            }
+        }
+
+        // 1. البحث في كوبونات الولاء (من البيانات اللي جبناها لايف من فايربيس)
+        const userCoupons  = window.currentUserCoupons || [];
+        const loyaltyCoupon = userCoupons.find(c => c.code === codeInput && !c.isUsed);
+
+        if (loyaltyCoupon) {
+            const discount = parseFloat(loyaltyCoupon.discountVal) || 0;
+            if (productsTotal <= discount) {
+                msgEl.style.backgroundColor = "#ffeaea"; msgEl.style.color = "#d9534f";
+                msgEl.innerText = currentLang === 'ar'
+                    ? "عفواً! قيمة الكوبون أكبر من أو تساوي إجمالي السلة."
+                    : "Sorry! Coupon value >= cart total.";
+                return;
+            }
+            window.appliedPromoObj = { code: codeInput, value: discount, type: "fixed", label: loyaltyCoupon.rewardName };
+            localStorage.setItem("eljory_applied_loyalty_coupon", JSON.stringify(loyaltyCoupon));
+            const msg = currentLang === 'ar'
+                ? `🎉 تم تطبيق كوبون الهدية! خصم ${discount} ${currency}`
+                : `🎉 Gift coupon applied! ${discount} ${currency} off`;
+            updateTotalsDisplay(productsTotal - discount, false, msg, false);
+            return;
+        }
+
+        // 2. البحث في البروموكودات العامة
+        const regularPromos = JSON.parse(localStorage.getItem("eljory_promos")) || [];
+        const standardPromo = regularPromos.find(p => p.code === codeInput);
+
+        if (standardPromo) {
+            const now = new Date();
+
+            // فحص التواريخ
+            if (now < new Date(standardPromo.start) || now > new Date(standardPromo.end)) {
+                msgEl.style.backgroundColor = "#ffeaea"; msgEl.style.color = "#d9534f";
+                msgEl.innerText = currentLang === 'ar'
+                    ? "الكود منتهي الصلاحية أو لم يبدأ بعد!"
+                    : "Code expired or not active yet!";
+                return;
+            }
+
+            // ⭐ فحص الحد الأدنى لقيمة الفاتورة (لو محدد)
+            if (standardPromo.minOrderValue && productsTotal < standardPromo.minOrderValue) {
+                msgEl.style.backgroundColor = "#ffeaea"; msgEl.style.color = "#d9534f";
+                msgEl.innerText = currentLang === 'ar'
+                    ? `الحد الأدنى لاستخدام هذا الكود هو ${standardPromo.minOrderValue} ${currency}. سلتك الحالية ${productsTotal} ${currency}.`
+                    : `Minimum order value for this code is ${standardPromo.minOrderValue} ${currency}. Your cart is ${productsTotal} ${currency}.`;
+                return;
+            }
+
+            // فحص الحد الأقصى الكلي
+            if (standardPromo.maxTotal && (standardPromo.usageCount || 0) >= standardPromo.maxTotal) {
+                msgEl.style.backgroundColor = "#ffeaea"; msgEl.style.color = "#d9534f";
+                msgEl.innerText = currentLang === 'ar'
+                    ? "عذراً، تم استنفاد هذا الكود بالكامل!"
+                    : "Sorry, this code has been fully used!";
+                return;
+            }
+
+            // فحص حد الاستخدام لكل عميل
+            const currentUser = getCurrentUser();
+            if (currentUser && standardPromo.maxPerUser) {
+                const phoneKey = getShortPhone(currentUser.phone);
+                const userUsage = standardPromo.usedBy ? (standardPromo.usedBy[phoneKey] || 0) : 0;
+                if (userUsage >= standardPromo.maxPerUser) {
+                    msgEl.style.backgroundColor = "#ffeaea"; msgEl.style.color = "#d9534f";
+                    msgEl.innerText = currentLang === 'ar'
+                        ? `لقد استخدمت هذا الكود بالفعل ${userUsage} ${userUsage === 1 ? 'مرة' : 'مرات'}. الحد المسموح ${standardPromo.maxPerUser}.`
+                        : `You have already used this code ${userUsage} time(s). Max allowed: ${standardPromo.maxPerUser}.`;
+                    return;
+                }
+            }
+
+            // فحص شرط العملاء الجدد
+            if (standardPromo.newUsersOnly && currentUser) {
+                const phoneKey = getShortPhone(currentUser.phone);
+                // بنجيب أوردرات العميل من localStorage (المحدّث من Firebase)
+                const allOrders = JSON.parse(localStorage.getItem("eljory_orders") || "[]");
+                const userOrders = allOrders.filter(o =>
+                    o.customer && getShortPhone(o.customer.phone) === phoneKey &&
+                    o.status !== "Cancelled"
+                );
+                if (userOrders.length > 0) {
+                    msgEl.style.backgroundColor = "#ffeaea"; msgEl.style.color = "#d9534f";
+                    msgEl.innerText = currentLang === 'ar'
+                        ? "هذا الكود للعملاء الجدد فقط!"
+                        : "This code is for new customers only!";
+                    return;
+                }
+            }
+
+            // ⚠️ إصلاح: النسخة القديمة هنا كانت بتطبق الكوبون المخصص لمنتجات معينة
+            // (scope: specific) على أي سلة من غير ما تتأكد إن أحد المنتجات المحددة
+            // موجود فعلاً في السلة. دلوقتي بنتحقق من كده الأول؛ ولو تحقق الشرط،
+            // الخصم بيتطبق على productsTotal (إجمالي السلة كله) زي ما هو مطلوب بالظبط.
+            if (standardPromo.scope === 'specific') {
+                const hasQualifyingProduct = cartItems.some(item => (standardPromo.products || []).includes(item.id));
+                if (!hasQualifyingProduct) {
+                    window.appliedPromoObj = null;
+                    msgEl.style.backgroundColor = "#ffeaea"; msgEl.style.color = "#d9534f";
+                    msgEl.innerText = currentLang === 'ar'
+                        ? "❌ هذا الكود يخص منتجات معينة غير موجودة في سلتك حالياً."
+                        : "❌ This code applies to specific products that aren't in your cart.";
+                    updateTotalsDisplay(productsTotal, false, null, false);
+                    return;
+                }
+            }
+
+            window.appliedPromoObj = standardPromo;
+            localStorage.removeItem("eljory_applied_loyalty_coupon");
+
+            // شحن مجاني
+            if (standardPromo.type === "shipping") {
+                const msg = currentLang === 'ar'
+                    ? "🎉 تم تطبيق كود الشحن المجاني!"
+                    : "🎉 Free shipping applied!";
+                updateTotalsDisplay(productsTotal, true, msg, false);
+                return;
+            }
+
+            // خصم ثابت
+            if (standardPromo.type === "fixed") {
+                const val = parseFloat(standardPromo.value);
+                if (productsTotal <= val) {
+                    msgEl.style.backgroundColor = "#ffeaea"; msgEl.style.color = "#d9534f";
+                    msgEl.innerText = currentLang === 'ar'
+                        ? "قيمة الخصم أكبر من إجمالي المنتجات!"
+                        : "Discount value exceeds cart total!";
+                    return;
+                }
+                const msg = currentLang === 'ar'
+                    ? `🎉 تم تطبيق الخصم! وفرت ${val} ${currency}`
+                    : `🎉 Discount applied! You saved ${val} ${currency}`;
+                updateTotalsDisplay(productsTotal - val, false, msg, false);
+                return;
+            }
+
+            // خصم نسبي
+            if (standardPromo.type === "percent") {
+                const pctVal = parseFloat(standardPromo.value);
+                let discount = productsTotal * (pctVal / 100);
+                let cappedMsg = "";
+                // ⭐ الحد الأقصى لقيمة الخصم (لو الأدمن حدده) بيمنع خصم النسبة
+                // المئوية من تجاوز مبلغ معين مهما كان إجمالي السلة كبير
+                if (standardPromo.maxDiscountValue && discount > standardPromo.maxDiscountValue) {
+                    discount = standardPromo.maxDiscountValue;
+                    cappedMsg = currentLang === 'ar'
+                        ? ` (الخصم بحد أقصى ${standardPromo.maxDiscountValue} ${currency})`
+                        : ` (capped at ${standardPromo.maxDiscountValue} ${currency})`;
+                }
+                const msg = (currentLang === 'ar'
+                    ? `🎉 تم تطبيق خصم ${pctVal}%!`
+                    : `🎉 ${pctVal}% discount applied!`) + cappedMsg;
+                updateTotalsDisplay(productsTotal - discount, false, msg, false);
+                return;
+            }
+        }
+
+        // مفيش كود مطابق
+        window.appliedPromoObj = null;
+        localStorage.removeItem("eljory_applied_loyalty_coupon");
+        msgEl.style.backgroundColor = "#ffeaea"; msgEl.style.color = "#d9534f";
+        msgEl.innerText = currentLang === 'ar'
+            ? "❌ الكود غير صحيح أو تم استخدامه مسبقاً!"
+            : "❌ Invalid code or already used!";
+        // إعادة عرض الإجمالي بدون خصم
+        updateTotalsDisplay(productsTotal, false, null, false);
+    };
+</script>
+</body>
+</html>

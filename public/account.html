@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حسابي | الجوري ستور</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+       /* تنسيق مؤشر حالة الطلب الاحترافي */
+        .order-progress-container { margin: 15px 0; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #eee; }
+        .order-timeline { display: flex; justify-content: space-between; position: relative; margin-bottom: 5px; padding: 0 10px; }
+        .order-timeline::before { content: ''; position: absolute; top: 12px; left: 0; right: 0; height: 4px; background: #eef2f5; z-index: 1; }
+        .timeline-progress-bar { position: absolute; top: 12px; right: 0; height: 4px; background: #28a745; z-index: 2; transition: width 0.4s ease; }
+        .timeline-step { position: relative; z-index: 3; display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #999; font-weight: bold; width: 60px; }
+        .timeline-step .circle { width: 26px; height: 26px; border-radius: 50%; background: #eef2f5; border: 3px solid #fff; display: flex; justify-content: center; align-items: center; margin-bottom: 5px; font-size: 12px; color: #ccc; transition: 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .timeline-step.active { color: #1d364a; }
+        .timeline-step.active .circle { background: #28a745; color: white; border-color: #28a745; }
+        
+        /* تنسيق جدول سجل حركات النقاط */
+        .history-table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; border-radius: 8px; overflow: hidden; font-size: 13px; border: 1px solid #eee; }
+        .history-table th, .history-table td { padding: 10px 12px; text-align: right; border-bottom: 1px solid #f5f5f5; }
+        .history-table th { background: #1d364a; color: white; }
+        .badge-earn { background: #28a745; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; }
+        .badge-redeem { background: #d9534f; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; }
+       .reward-card { border: 1px solid #eef2f5; padding: 20px; border-radius: 10px; text-align: center; background: white; transition: 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .reward-card:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(29, 54, 74, 0.1); border-color: #f38c18; }
+        .reward-img { width: 80px; height: 80px; object-fit: cover; border-radius: 50%; margin-bottom: 15px; border: 2px solid #eef2f5; }
+        .reward-icon { font-size: 50px; margin-bottom: 10px; }
+        .reward-title { font-size: 18px; color: #1d364a; margin: 0 0 10px 0; font-weight: bold; }
+        .reward-cost { font-size: 20px; color: #f38c18; font-weight: bold; margin-bottom: 15px; }
+        .btn-redeem { padding: 12px; width: 100%; border: none; border-radius: 5px; font-weight: bold; font-size: 16px; transition: 0.3s; }
+        .btn-redeem.active { background: #1d364a; color: white; cursor: pointer; }
+        .btn-redeem.active:hover { background: #f38c18; }
+        .btn-redeem.disabled { background: #eef2f5; color: #999; cursor: not-allowed; }
+        
+        /* تنسيقات التبويبات (Tabs) */
+        .acc-tab { display: none; animation: fadeIn 0.4s ease-in-out; }
+        .acc-tab.active { display: block; }
+        .sidebar-menu li a { display: block; padding: 12px 15px; border-radius: 5px; margin-bottom: 8px; text-decoration: none; transition: 0.3s; }
+        .sidebar-menu li a:hover, .sidebar-menu li a.active-link { background: #eef2f5; color: #f38c18 !important; border-right: 4px solid #f38c18; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* ── موبايل - سجل النقاط ── */
+        @media (max-width: 768px) {
+        .history-table thead { display: none; }
+        .history-table, .history-table tbody, .history-table tr, .history-table td { display: block; width: 100%; }
+        .history-table tr {
+        background: #fff;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        padding: 10px 12px;
+        border: 1px solid #eee;
+        box-shadow: 0 2px 6px rgba(0,0,0,.05);
+        }
+        .history-table td {
+        padding: 4px 6px;
+        font-size: 13px;
+        border: none;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        }
+        .history-table td::before {
+        content: attr(data-label);
+        font-weight: 700;
+        color: #1d364a;
+        min-width: 70px;
+        font-size: 12px;
+        }
+
+        /* الكوبونات */
+        #myCouponsList > div {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px;
+        }
+
+        /* متجر المكافآت */
+         #rewardsGrid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+       .reward-card { padding: 12px; }
+       .reward-icon { font-size: 36px; }
+       .reward-title { font-size: 14px; }
+       .reward-cost { font-size: 16px; }
+       .btn-redeem { font-size: 13px; padding: 8px; }
+
+       /* رصيد النقاط */
+       #tab-rewards > div { padding: 16px !important; }
+       #loyaltyPointsDisplay { font-size: 26px !important; }
+     }
+    </style>
+</head>
+<body>
+    <div id="site-header"></div>
+<script src="js/header-loader.js"></script>
+
+    <div class="account-container">
+       <aside class="account-sidebar">
+            <h3 id="accountGreeting">أهلاً بك</h3>
+            <ul class="sidebar-menu" style="list-style: none; padding: 0;">
+                <li><a href="#" onclick="switchAccTab('orders', this)" id="menuOrders" style="color: #1d364a; font-weight: bold;">📦 طلباتي</a></li>
+                <li><a href="#" onclick="switchAccTab('settings', this)" id="menuSettings" style="color: #1d364a; font-weight: bold;">⚙️ إعدادات الحساب</a></li>
+                <li><a href="#" onclick="switchAccTab('rewards', this)" id="menuRewards" style="color: #1d364a; font-weight: bold;">🌟 نقاطي والجوائز</a></li>
+                <li><a href="#" onclick="switchAccTab('warranties', this)" id="menuWarranties" style="color: #1d364a; font-weight: bold;">🛡️ ضماناتي</a></li>
+            </ul>
+            <button id="mobileLogoutBtn" onclick="doLogout()" 
+                style="display:none; width:100%; padding:12px; background:#d9534f; color:white; border:none; border-radius:8px; font-size:15px; font-weight:bold; cursor:pointer; margin-top:15px;">
+                🚪 تسجيل الخروج
+            </button>
+        </aside>
+
+        <section class="account-content">
+            
+            <div id="tab-orders" class="acc-tab">
+                <h2 id="tabOrdersTitle" style="color: #1d364a; border-bottom: 2px solid #f38c18; display: inline-block; padding-bottom: 10px; margin-top: 0;">📦 طلباتي السابقة</h2>
+                <div id="myOrdersContainer" style="margin-top: 15px;"></div>
+            </div>
+            
+            <div id="tab-settings" class="acc-tab">
+                <h2 id="tabSettingsTitle" style="color: #1d364a; border-bottom: 2px solid #f38c18; display: inline-block; padding-bottom: 10px; margin-top: 0;">إعدادات الحساب</h2>
+                
+                <div style="background:white; padding:20px; border-radius:8px; border:1px solid #ddd; margin-bottom:20px;">
+                    <h3 id="personalInfoTitle" style="margin-top:0; color:#1d364a;">البيانات الشخصية</h3>
+                    <div style="display:flex; gap:15px; flex-wrap:wrap;">
+                        <div class="form-group" style="flex:1; min-width:200px;"><label id="labelName">الاسم</label><input type="text" id="editName" class="form-control"></div>
+                        <div class="form-group" style="flex:1; min-width:200px;"><label id="labelPhone">رقم التليفون</label><input type="tel" id="editPhone" class="form-control" disabled title="لا يمكن تغيير رقم التليفون الأساسي"></div>
+                        <div class="form-group" style="flex:1; min-width:200px;"><label id="labelEmail">البريد الإلكتروني</label><input type="email" id="editEmail" class="form-control"></div>
+                        <div class="form-group" style="flex:1; min-width:200px;"><label id="labelPassword">تغيير كلمة المرور</label><input type="password" id="editPassword" class="form-control" placeholder="اتركه فارغاً إذا لم ترد تغييره"></div>
+                    </div>
+                    <button id="btnSaveProfile" class="btn btn-green" onclick="saveProfile()" style="padding:10px 20px; border:none; color:white; border-radius:5px; cursor:pointer;">💾 حفظ التعديلات</button>
+                </div>
+
+                <div style="background:white; padding:20px; border-radius:8px; border:1px solid #ddd; margin-bottom: 30px;">
+                    <h3 id="addressesTitle" style="margin-top:0; color:#1d364a;">عناويني (للتوصيل)</h3>
+                    <p id="addressDesc" style="font-size:12px; color:#666;">العنوان المحدد بـ (الأساسي) سيتم استخدامه أوتوماتيكياً في طلباتك القادمة.</p>
+                    <div id="addressesList" style="margin-bottom:15px;"></div>
+                    <div style="display:flex; gap:10px; flex-wrap: wrap;">
+                        <input type="text" id="newAddressInput" class="form-control" placeholder="أدخل عنواناً جديداً بالتفصيل..." style="flex:2; min-width:200px;">
+                        <select id="newAddressRegion" class="form-control" style="flex:1; min-width:160px;">
+                            <option value="">-- اختر المنطقة --</option>
+                        </select>
+                        <button id="btnAddAddress" style="background:#1d364a; color:white; border:none; padding:10px; border-radius:5px; cursor:pointer;" onclick="addNewAddress()">➕ إضافة عنوان</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-rewards" class="acc-tab">
+                <div style="background: #fdf5e6; padding: 30px; border-radius: 12px; border: 2px dashed #f38c18;">
+                    <div style="text-align:center; margin-bottom: 30px;">
+                        <h2 id="rewardsTitle" style="margin-top:0; color:#1d364a; font-size: 28px;">🌟 متجر المكافآت والهدايا</h2>
+                        <p style="font-size:18px; color:#666;"><span id="currentBalanceText">رصيدك الحالي:</span> <span id="loyaltyPointsDisplay" style="color:#f38c18; font-weight:bold; font-size:32px;">0</span> <span id="pointsWord">نقطة</span></p>
+                    </div>
+
+                    <div id="rewardsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px;"></div>
+                    
+                    <div id="pointsHistorySection" style="margin-top: 40px; display: none; background: white; padding: 20px; border-radius: 10px; border: 1px solid #ddd;">
+                        <h3 id="historyTitle" style="color: #1d364a; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 0;">📜 سجل حركات نقاطي</h3>
+                        <div id="pointsHistoryList"></div>
+                    </div>
+                    
+                    <div id="myCouponsSection" style="margin-top: 20px; display: none; background: #eef2f5; padding: 20px; border-radius: 10px;">
+                        <h3 id="activeCouponsTitle" style="color: #1d364a; border-bottom: 2px solid #ddd; padding-bottom: 10px; margin-top: 0;">🎟️ هداياي وكوبوناتي النشطة</h3>
+                        <div id="myCouponsList" style="display: grid; gap: 10px; margin-top: 15px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-warranties" class="acc-tab">
+                <h2 style="color: #1d364a; border-bottom: 2px solid #f38c18; display: inline-block; padding-bottom: 10px; margin-top: 0;">🛡️ ضماناتي</h2>
+                <div id="warrantyPageContentBox" style="margin-top: 15px;"></div>
+                <div id="myWarrantiesContainer" style="margin-top: 15px;"></div>
+            </div>
+
+        </section>
+    </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+
+    <script src="js/firebase-init.js"></script>
+    <script src="js/store-core.js"></script>
+    <script src="script.js"></script>
+
+
+<script>
+    // دالة مساعدة لتوحيد أرقام التليفون وتفادي أي أخطاء
+    function unifyPhone(phone) {
+        if(!phone) return "";
+        return String(phone).replace(/\D/g, '').slice(-10);
+    }
+
+    window.switchAccTab = function(tabId, el) {
+        document.querySelectorAll('.acc-tab').forEach(t => t.classList.remove('active'));
+        let targetTab = document.getElementById('tab-' + tabId);
+        if(targetTab) targetTab.classList.add('active');
+        
+        document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active-link'));
+        if(el) { el.classList.add('active-link'); } 
+        else { 
+            let link = document.querySelector(`a[onclick*="${tabId}"]`);
+            if(link) link.classList.add('active-link'); 
+        }
+        localStorage.setItem("eljory_active_acc_tab", tabId);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        let lastTab = localStorage.getItem("eljory_active_acc_tab") || "settings";
+        switchAccTab(lastTab);
+        if (typeof renderWarrantyPageContent === "function") renderWarrantyPageContent();
+
+        // شيلنا التأخير (setTimeout) وبقى بيحمل فوراً
+        let user = window.getCurrentUser();
+        if(user) {
+            loadAccountData(user);
+        } else {
+            window.location.href = "login.html"; // لو مش مسجل دخول يطرده لصفحة الدخول
+        }
+    });
+
+function loadAccountData(user) {
+    let phoneKey = unifyPhone(user.phone);
+    
+    // سحب بيانات العميل الحية من فايربيس
+    db.ref('/users/' + phoneKey).on('value', snapshot => {
+        if(snapshot.exists()) {
+            let liveUser = snapshot.val();
+            liveUser = window.checkAndResetLoyaltyExpiry(liveUser, phoneKey);
+            localStorage.setItem("eljory_active_user", JSON.stringify(liveUser));
+            
+            document.getElementById("loyaltyPointsDisplay").innerText = liveUser.points || 0;
+            
+            renderPointsHistory(liveUser);
+            renderMyCoupons(liveUser);
+            fetchAndRenderRewards(liveUser.points || 0, liveUser);
+        }
+    });
+
+    // تشغيل دالة سحب الطلبات فوراً بدون تأخير
+    fetchAndRenderOrders(phoneKey);
+}
+
+    function fetchAndRenderOrders(phoneKey) {
+        // ⚠️ إصلاح: كان بيسحب /orders كله (طلبات كل العملاء) لمتصفح العميل ويفلتره
+        // محلياً، وده معناه أي عميل بيشوف بيانات كل العملاء التانيين (اسم/تليفون/عنوان)
+        // في متصفحه حتى لو مش ظاهرة على الشاشة. دلوقتي بنستعلم بس عن الطلبات اللي
+        // رقم تليفونها يطابق العميل الحالي.
+        db.ref('/orders').orderByChild('customer/phone').equalTo(phoneKey).on('value', snapshot => {
+            let allOrders = [];
+            if (snapshot.exists()) {
+                snapshot.forEach(child => {
+                    let ord = child.val();
+                    if (ord) allOrders.push(ord);
+                });
+            }
+            renderCustomerOrders(allOrders);
+            renderCustomerWarranties(allOrders);
+        });
+    } 
+
+    function renderCustomerOrders(myOrders) {
+        let container = document.getElementById("myOrdersContainer");
+        if(!container) return;
+        
+        myOrders.reverse(); // أحدث طلب أولاً
+        window._myOrdersCache = myOrders; // ⭐ يُستخدم لاحقاً في viewMyInvoice لعرض فاتورة الطلب
+
+        if(myOrders.length === 0) {
+            let emptyOrd = currentLang === 'ar' ? 'ليس لديك أي طلبات سابقة حتى الآن.' : 'You have no previous orders yet.';
+            container.innerHTML = `<p style="text-align:center; color:gray; padding:20px; background:white; border-radius:8px; border:1px solid #eee;">${emptyOrd}</p>`;
+            return;
+        }
+
+        container.innerHTML = "";
+        let lblOrdId = currentLang === 'ar' ? 'رقم الطلب:' : 'Order ID:';
+        let lblDate = currentLang === 'ar' ? 'التاريخ:' : 'Date:';
+        let lblTotal = currentLang === 'ar' ? 'الإجمالي:' : 'Total:';
+        let curr = currentLang === 'ar' ? 'ج.م' : 'EGP';
+
+        myOrders.forEach(o => {
+            let st = o.status || "Pending";
+            let statusText = currentLang === 'ar' ? "قيد الانتظار ⏳" : "Pending ⏳";
+            let bg = "#f38c18";
+            let step1 = "active", step2 = "", step3 = "", step4 = "";
+            let progressWidth = "0%";
+
+            if(st === "Processing" || st === "Pending") {
+                statusText = currentLang === 'ar' ? "قيد المراجعة والتجهيز ⚙️" : "Processing ⚙️";
+                progressWidth = "15%";
+            } else if(st === "Shipped") {
+                statusText = currentLang === 'ar' ? "تم الشحن مع المندوب 🚚" : "Shipped 🚚";
+                bg = "#17a2b8";
+                step2 = "active";
+                progressWidth = "60%";
+            } else if(st === "Delivered") {
+                statusText = currentLang === 'ar' ? "تم التوصيل بنجاح ✅" : "Delivered ✅";
+                bg = "#28a745";
+                step2 = "active"; step3 = "active"; step4 = "active";
+                progressWidth = "100%";
+            } else if(st === "Cancelled") {
+                statusText = currentLang === 'ar' ? "ملغي ❌" : "Cancelled ❌";
+                bg = "#d9534f";
+                progressWidth = "0%";
+            }
+
+            let tlStep1 = currentLang === 'ar' ? 'تم استلامه' : 'Received';
+            let tlStep2 = currentLang === 'ar' ? 'جاري التجهيز' : 'Processing';
+            let tlStep3 = currentLang === 'ar' ? 'تم الشحن' : 'Shipped';
+            let tlStep4 = currentLang === 'ar' ? 'تم التوصيل' : 'Delivered';
+
+            let cancelBtnHtml = "";
+            if (st === "Pending" || st === "Processing") {
+                let cancelTxt = currentLang === 'ar' ? '❌ إلغاء الطلب' : '❌ Cancel Order';
+                cancelBtnHtml = `<button onclick="cancelOrderUser('${o.id}')"
+                        style="background:#d9534f; color:white; border:none; padding:8px 18px; border-radius:6px; cursor:pointer; font-weight:bold; font-size:13px;">
+                        ${cancelTxt}
+                    </button>`;
+            }
+
+            // ⭐ زرار عرض الفاتورة — متاح دايماً بغض النظر عن حالة الطلب، بيفتح
+            // مودال بشكل الفاتورة الرسمية زي ما بتظهر عند الأدمن بالظبط.
+            let invoiceTxt = currentLang === 'ar' ? '🧾 عرض الفاتورة' : '🧾 View Invoice';
+            let invoiceBtnHtml = `<button onclick="viewMyInvoice('${o.id}')"
+                    style="background:#1d364a; color:white; border:none; padding:8px 18px; border-radius:6px; cursor:pointer; font-weight:bold; font-size:13px;">
+                    ${invoiceTxt}
+                </button>`;
+
+            let actionsRowHtml = `<div style="padding: 15px 20px 0; text-align:left; display:flex; gap:10px; flex-wrap:wrap;">
+                ${invoiceBtnHtml}
+                ${cancelBtnHtml}
+            </div>`;
+
+            container.innerHTML += `
+            <div class="order-progress-container">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                    <div>
+                        <strong style="color: #1d364a; font-size: 16px;">${lblOrdId} ${o.id}</strong><br>
+                        <small style="color: #666;">${lblDate} <span dir="ltr">${o.date}</span></small>
+                    </div>
+                    <div style="text-align: left;">
+                        <span style="color: #f38c18; font-weight: bold; font-size: 16px;">${lblTotal} ${o.total} ${curr}</span><br>
+                        <span class="status-badge" style="background-color: ${bg}; margin-top: 5px; color:white; padding:3px 8px; border-radius:4px;">${statusText}</span>
+                    </div>
+                </div>
+                ${st !== 'Cancelled' ? `
+                <div style="padding: 0 20px;">
+                    <div class="order-timeline">
+                        <div class="timeline-progress-bar" style="width: ${progressWidth}; right: 0; left: auto;"></div>
+                        <div class="timeline-step ${step1}"><div class="circle">📝</div><span>${tlStep1}</span></div>
+                        <div class="timeline-step ${st === 'Shipped' || st === 'Delivered' ? 'active' : ''}"><div class="circle">⚙️</div><span>${tlStep2}</span></div>
+                        <div class="timeline-step ${step2}"><div class="circle">🚚</div><span>${tlStep3}</span></div>
+                        <div class="timeline-step ${step4}"><div class="circle">🏠</div><span>${tlStep4}</span></div>
+                    </div>
+                </div>
+                ` : ''}
+                ${actionsRowHtml}
+            </div>`;
+        });
+    }
+
+    // ⭐ نظام الضمان: عرض كل الفواتير اللي فيها منتجات مضمونة لهذا العميل،
+    // مع حالة كل ضمان وتاريخ الانتهاء والأيام المتبقية (بنستخدم نفس مصفوفة
+    // الطلبات اللي اتجابت أصلاً لصفحة "طلباتي" من غير أي استعلام إضافي).
+    // ⭐ عرض المحتوى المخصص اللي الأدمن كتبه من لوحة التحكم (رسالة + زرار
+    // اختياري) فوق قائمة الضمانات. بنستخدم DOMPurify زي ما بيحصل بالظبط مع
+    // محتوى مدونة المنتج في product.html، عشان أي HTML يكتبه الأدمن ميتحولش
+    // لثغرة XSS تتنفذ في متصفح أي عميل فاتح صفحة حسابه.
+    window.renderWarrantyPageContent = function() {
+        let box = document.getElementById("warrantyPageContentBox");
+        if (!box) return;
+        let data = JSON.parse(localStorage.getItem("eljory_warranty_content") || "null");
+        if (!data || (!data.content && !data.btnText)) { box.innerHTML = ""; return; }
+
+        let cleanContent = (data.content && typeof DOMPurify !== 'undefined')
+            ? DOMPurify.sanitize(data.content)
+            : (data.content || '');
+
+        let btnHtml = "";
+        if (data.btnText && data.btnLink) {
+            btnHtml = `<a href="${data.btnLink}" target="_blank" rel="noopener"
+                style="display:inline-block;margin-top:12px;background:#f38c18;color:#1d364a;
+                       padding:10px 22px;border-radius:8px;font-weight:bold;text-decoration:none;">
+                ${data.btnText}
+            </a>`;
+        }
+
+        box.innerHTML = `<div style="background:#fff7ed;border:1px dashed #f38c18;border-radius:10px;padding:18px 20px;">
+            <div style="color:#1d364a;line-height:1.9;font-size:14.5px;">${cleanContent}</div>
+            ${btnHtml}
+        </div>`;
+    };
+
+    function renderCustomerWarranties(myOrders) {
+        let container = document.getElementById("myWarrantiesContainer");
+        if (!container) return;
+
+        let graceDays = window.getWarrantyGraceDaysSetting ? window.getWarrantyGraceDaysSetting() : 3;
+        let products = JSON.parse(localStorage.getItem("eljory_products") || "[]");
+
+        let warrantyOrders = (myOrders || []).filter(o => o.warrantyToken &&
+            (o.items || []).some(it => (parseInt(it.warrantyMonths) || 0) > 0));
+
+        if (!warrantyOrders.length) {
+            let emptyMsg = currentLang === 'ar' ? 'مفيش ضمانات مسجلة على حسابك حتى الآن.' : 'No warranties registered on your account yet.';
+            container.innerHTML = `<p style="text-align:center; color:gray; padding:20px; background:white; border-radius:8px; border:1px solid #eee;">${emptyMsg}</p>`;
+            return;
+        }
+
+        container.innerHTML = "";
+        warrantyOrders.forEach(o => {
+            let warrantyItems = (o.items || []).filter(it => (parseInt(it.warrantyMonths) || 0) > 0);
+            // ⚠️ إصلاح: كان النص بيتكسر بصريًا (bidi) لما اسم المنتج إنجليزي جوه
+            // سطر عربي (كلمة "شهر" وعلامة الضمان بيتقلبوا مكانهم). الحل: كل
+            // سطر منتج بقى عنصر مستقل بـ dir="auto" عشان المتصفح يحدد اتجاه
+            // كل سطر لوحده حسب محتواه (عربي أو إنجليزي) من غير ما يأثر على
+            // باقي السطور اللي جنبه.
+            let itemsHtml = warrantyItems.map(it => {
+                let p = products.find(x => x.id === it.id);
+                let name = p ? (currentLang === 'ar' ? p.titleAr : (p.titleEn || p.titleAr)) : it.id;
+                let monthsWord = currentLang === 'ar' ? 'شهر' : 'months';
+                return `<div dir="auto" style="padding:4px 0;">🛡️ <span>${name}</span> — ${it.warrantyMonths} ${monthsWord}</div>`;
+            }).join('');
+
+            let statusHtml = "";
+            let actionHtml = "";
+
+            if (o.warrantyStatus === "active") {
+                // ⭐ حساب تاريخ الانتهاء لكل منتج على حدة (بمدته الخاصة)، وبعدين
+                // نطلع أقرب تاريخ انتهاء وأبعد تاريخ انتهاء بين كل المنتجات في
+                // نفس الفاتورة (بدل ما نعرض تاريخ واحد بس بناءً على أطول مدة)
+                let endDates = warrantyItems.map(it => {
+                    let d = new Date(o.warrantyActivatedAt);
+                    d.setMonth(d.getMonth() + (parseInt(it.warrantyMonths) || 0));
+                    return d.getTime();
+                });
+                let earliestEnd = Math.min(...endDates);
+                let latestEnd   = Math.max(...endDates);
+                let remainingDaysLatest = Math.ceil((latestEnd - Date.now()) / (24*60*60*1000));
+                let isExpired = remainingDaysLatest <= 0;
+
+                statusHtml = isExpired
+                    ? `<span style="color:#d9534f;font-weight:bold;">❌ انتهى الضمان</span>`
+                    : `<span style="color:#28a745;font-weight:bold;">✅ ساري — باقي ${remainingDaysLatest} يوم</span>`;
+
+                let localeStr = currentLang === 'ar' ? 'ar-EG' : 'en-GB';
+                if (earliestEnd === latestEnd) {
+                    // كل المنتجات في الفاتورة بنفس مدة الضمان -> تاريخ انتهاء واحد بس
+                    actionHtml = `<div style="font-size:12px;color:#888;margin-top:6px;">ينتهي بتاريخ: ${new Date(latestEnd).toLocaleDateString(localeStr)}</div>`;
+                } else {
+                    actionHtml = `<div style="font-size:12px;color:#888;margin-top:6px;line-height:1.8;">
+                        🔸 أول ضمان بينتهي بتاريخ: ${new Date(earliestEnd).toLocaleDateString(localeStr)}<br>
+                        🔹 آخر ضمان بينتهي بتاريخ: ${new Date(latestEnd).toLocaleDateString(localeStr)}
+                    </div>`;
+                }
+            } else if (!o.deliveredAt) {
+                statusHtml = `<span style="color:#888;font-weight:bold;">⏳ بانتظار تسجيل الاستلام</span>`;
+            } else {
+                let deadline = o.deliveredAt + (graceDays * 24*60*60*1000);
+                if (Date.now() > deadline) {
+                    statusHtml = `<span style="color:#d9534f;font-weight:bold;">❌ انتهت مهلة التفعيل</span>`;
+                } else {
+                    statusHtml = `<span style="color:#f38c18;font-weight:bold;">⚠️ لسه محتاج تفعيل!</span>`;
+                    let link = o.warrantyToken ? (window.buildWarrantyLink ? window.buildWarrantyLink(o.warrantyToken) : ('warranty.html?token=' + o.warrantyToken)) : '#';
+                    actionHtml = `<a href="${link}" style="display:inline-block;margin-top:8px;background:#f38c18;color:#1d364a;padding:8px 18px;border-radius:6px;font-weight:bold;text-decoration:none;font-size:13px;">فعّل الضمان الآن</a>`;
+                }
+            }
+
+            container.innerHTML += `
+            <div style="background:white;border-radius:10px;border:1px solid #eee;box-shadow:0 2px 8px rgba(0,0,0,.04);padding:18px 20px;margin-bottom:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+                    <strong style="color:#1d364a;">${currentLang === 'ar' ? 'رقم الطلب' : 'Order'}: ${o.id}</strong>
+                    ${statusHtml}
+                </div>
+                <div style="font-size:14px;color:#333;">${itemsHtml}</div>
+                ${actionHtml}
+            </div>`;
+        });
+    }
+
+    function fetchAndRenderRewards(userPoints, liveUser) {
+        db.ref('/rewards').on('value', snapshot => {
+            let rewards = [];
+            if(snapshot.exists()) {
+                let data = snapshot.val();
+                rewards = Array.isArray(data) ? data.filter(x=>x) : Object.values(data).filter(x=>x);
+            }
+            renderUserRewards(rewards, userPoints, liveUser);
+        });
+    }
+
+    function renderUserRewards(rewards, userPoints, currentUser) {
+        let grid = document.getElementById("rewardsGrid");
+        if(!grid) return;
+        grid.innerHTML = "";
+
+        if(rewards.length === 0) {
+            let emptyRew = currentLang === 'ar' ? 'لا توجد مكافآت متاحة حالياً في المتجر.' : 'No rewards available currently.';
+            grid.innerHTML = `<p style="text-align:center; width:100%; color:gray;">${emptyRew}</p>`;
+            return;
+        }
+
+        let btnRedeemTxt = currentLang === 'ar' ? 'استبدل الآن' : 'Redeem Now';
+        let ptsTxt = currentLang === 'ar' ? 'نقطة' : 'Pts';
+
+        rewards.forEach(r => {
+            let canAfford = userPoints >= r.cost;
+            let btnClass = canAfford ? "active" : "disabled";
+            let btnAction = canAfford ? `onclick="redeemReward('${r.id}', '${r.name}', '${r.type}', ${r.discountVal || 0}, ${r.cost})"` : "disabled";
+            let iconHtml = r.type === 'gift' ? `<img src="${r.giftImg}" class="reward-img" alt="هدية">` : (r.type === 'discount' || r.type === 'fixed' ? `<div class="reward-icon">💸</div>` : `<div class="reward-icon">🚚</div>`);
+            
+            grid.innerHTML += `
+            <div class="reward-card">
+                ${iconHtml}
+                <h3 class="reward-title">${r.name}</h3>
+                <div class="reward-cost">${r.cost} ${ptsTxt}</div>
+                <button class="btn-redeem ${btnClass}" ${btnAction}>${btnRedeemTxt}</button>
+            </div>`;
+        });
+    }
+
+    window.redeemReward = function(rewardId, rewardName, type, discountVal, cost) {
+        let confMsg = currentLang === 'ar' ? `هل أنت متأكد من استبدال ${cost} نقطة للحصول على "${rewardName}"؟` : `Are you sure you want to redeem ${cost} points for "${rewardName}"?`;
+        if(!confirm(confMsg)) return;
+
+        let user = window.getCurrentUser();
+        let phoneKey = unifyPhone(user.phone);
+        let uniqueCode = "GIFT_" + Math.random().toString(36).substr(2, 5).toUpperCase();
+        let redeemDate = new Date().toLocaleDateString('en-GB');
+        let insufficientPoints = false;
+
+        // ⚠️ إصلاح: كان بيقرا رصيد النقاط بـ once('value') ثم يكتب التحديث في خطوة
+        // منفصلة (update). لو العميل ضغط "استبدال" مرتين بسرعة أو فتح تابين، ممكن
+        // يستبدل نقط أكتر من رصيده الفعلي. دلوقتي بنستخدم .transaction() اللي
+        // بتضمن قراءة وكتابة ذرية (atomic) وبتعيد المحاولة تلقائياً لو حصل تعارض.
+        db.ref('/users/' + phoneKey).transaction(function(liveUser) {
+            if (!liveUser) return liveUser;
+            if ((liveUser.points || 0) < cost) {
+                insufficientPoints = true;
+                return; // إلغاء الـ transaction من غير أي تعديل
+            }
+
+            let newCoupon = {
+                code: uniqueCode,
+                rewardName: rewardName,
+                type: type,
+                discountVal: discountVal,
+                isUsed: false,
+                date: redeemDate
+            };
+
+            let newHistory = {
+                type: "deduct",
+                amount: cost,
+                reason: `استبدال مكافأة: ${rewardName}`,
+                date: redeemDate
+            };
+
+            liveUser.points = (liveUser.points || 0) - cost;
+            liveUser.coupons = liveUser.coupons || [];
+            liveUser.coupons.push(newCoupon);
+            liveUser.pointsHistory = liveUser.pointsHistory || [];
+            liveUser.pointsHistory.push(newHistory);
+
+            return liveUser;
+        }, function(error, committed) {
+            if (error) {
+                alert(currentLang === 'ar' ? "حدث خطأ أثناء الاستبدال، حاول مرة أخرى." : "An error occurred, please try again.");
+            } else if (!committed || insufficientPoints) {
+                alert(currentLang === 'ar' ? "نقاطك لا تكفي للاستبدال!" : "Not enough points!");
+            } else {
+                let succMsg = currentLang === 'ar' ? `تم الاستبدال بنجاح!\nكود الهدية الخاص بك هو: ${uniqueCode}\nتجد الكود في قسم "هداياي وكوبوناتي".` : `Redeemed successfully!\nYour gift code is: ${uniqueCode}\nFind it in "My Coupons".`;
+                alert(succMsg);
+            }
+        });
+    }
+
+function renderPointsHistory(dbUser) {
+        let section = document.getElementById("pointsHistorySection");
+        let container = document.getElementById("pointsHistoryList");
+        if(!section || !container) return;
+
+        let history = dbUser && dbUser.pointsHistory ? dbUser.pointsHistory : [];
+        if(history.length > 0) {
+            section.style.display = "block";
+            let thDate = currentLang === 'ar' ? 'التاريخ' : 'Date';
+            let thType = currentLang === 'ar' ? 'النوع' : 'Type';
+            let thPts = currentLang === 'ar' ? 'النقاط' : 'Points';
+            let thReason = currentLang === 'ar' ? 'السبب' : 'Reason';
+
+            let html = `<table class="history-table">
+                            <thead><tr><th>${thDate}</th><th>${thType}</th><th>${thPts}</th><th>${thReason}</th></tr></thead>
+                            <tbody>`;
+            
+            [...history].reverse().forEach(h => {
+                // التعديل هنا: خلينا الفحص أذكى بكتير عشان يلقط أي عملية إضافة سواء من الإدمن أو السيستم
+                let isAdd = (h.type === 'add' || h.type === 'earn' || h.type === 'Earn' || (h.reason && h.reason.includes('كسب')));
+                
+                let typeBadge = isAdd ? `<span class="badge-earn" style="background:#28a745;">اكتساب ⬆️</span>` : `<span class="badge-redeem" style="background:#d9534f;">خصم ⬇️</span>`;
+                if(currentLang !== 'ar') typeBadge = isAdd ? `<span class="badge-earn" style="background:#28a745;">Earned ⬆️</span>` : `<span class="badge-redeem" style="background:#d9534f;">Deducted ⬇️</span>`;
+                
+                let sign = isAdd ? '+' : '-';
+                let textColor = isAdd ? '#28a745' : '#d9534f';
+                
+                let l1 = currentLang === 'ar' ? 'التاريخ' : 'Date';
+                let l2 = currentLang === 'ar' ? 'النوع' : 'Type';
+                let l3 = currentLang === 'ar' ? 'النقاط' : 'Points';
+                let l4 = currentLang === 'ar' ? 'السبب' : 'Reason';
+                html += `<tr>
+                <td data-label="${l1}">${h.date}</td>
+                <td data-label="${l2}">${typeBadge}</td>
+                <td data-label="${l3}" style="font-weight:bold; color:${textColor};">${sign}${h.amount}</td>
+                <td data-label="${l4}">${h.reason}</td>
+                 </tr>`;
+            });
+            html += `</tbody></table>`;
+            container.innerHTML = html;
+        } else {
+            section.style.display = "none";
+        }
+    }
+
+    function renderMyCoupons(dbUser) {
+        let section = document.getElementById("myCouponsSection");
+        let list = document.getElementById("myCouponsList");
+        if(!section || !list) return;
+
+        let myCoupons = dbUser && dbUser.coupons ? dbUser.coupons : [];
+        let myActiveCoupons = myCoupons.filter(c => !c.isUsed);
+        
+        let lblRedeemDate = currentLang === 'ar' ? 'تاريخ الاستبدال:' : 'Redeem Date:';
+        
+        if(myActiveCoupons.length > 0) {
+            section.style.display = "block";
+            list.innerHTML = "";
+            myActiveCoupons.forEach(c => {
+                list.innerHTML += `
+                    <div style="background: white; padding: 15px; border-radius: 8px; border-right: 5px solid #28a745; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); margin-bottom: 10px;">
+                        <div>
+                            <strong style="color: #1d364a; font-size: 16px;">${c.rewardName}</strong>
+                            <br><small style="color: gray;">${lblRedeemDate} ${c.date}</small>
+                        </div>
+                        <div style="background: #eef2f5; padding: 8px 15px; border-radius: 5px; font-weight: bold; letter-spacing: 2px;">
+                            ${c.code}
+                        </div>
+                    </div>
+                `;
+            });
+        } else {
+            section.style.display = "none";
+        }
+    }
+</script>
+</body>
+</html>

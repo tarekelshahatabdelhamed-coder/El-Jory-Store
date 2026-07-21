@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تفاصيل المنتج | الجوري ستور</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* ===== صفحة المنتج الرئيسية ===== */
+        .product-details-container {
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 30px;
+            display: flex;
+            gap: 40px;
+            flex-wrap: wrap;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        }
+        .product-image-box { flex: 1; min-width: 300px; text-align: center; }
+        .product-image-box img {
+            max-width: 100%; max-height: 500px; object-fit: contain;
+            border-radius: 10px; padding: 10px; border: 1px solid #eef2f5;
+        }
+        .product-info-box {
+            flex: 1.5; min-width: 300px;
+            display: flex; flex-direction: column; justify-content: center;
+        }
+        .product-title { color: #1d364a; font-size: 32px; margin-top: 0; margin-bottom: 15px; }
+        .product-price { color: #f38c18; font-size: 28px; font-weight: bold; margin-bottom: 20px; }
+        .btn-add-large:hover { opacity: 0.9; transform: translateY(-2px); }
+        .btn-add-large:disabled { background: #ccc !important; color: #666 !important; cursor: not-allowed !important; transform: none; }
+
+        /* ===== قسم المدونة ===== */
+        #productBlogSection {
+            max-width: 1200px;
+            margin: 0 auto 60px auto;
+            padding: 0 30px;
+        }
+        #productBlogContent {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            padding: 40px;
+            line-height: 1.9;
+            font-size: 16px;
+            color: #333;
+        }
+        #productBlogContent img {
+            max-width: 100%;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+        #productBlogContent iframe {
+            width: 100%;
+            max-width: 720px;
+            height: 405px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border: none;
+        }
+        #productBlogContent h2 { color: #1d364a; border-bottom: 3px solid #f38c18; padding-bottom: 8px; }
+        #productBlogContent h3 { color: #1d364a; }
+        #productBlogContent blockquote {
+            border-right: 5px solid #f38c18;
+            background: #fdf5e6;
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 20px 0;
+            font-style: italic;
+            color: #555;
+        }
+
+        /* ===== محرر المدونة (للأدمن فقط) ===== */
+        #blogEditorWrapper {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 30px;
+            display: none;
+        }
+        #blogEditorWrapper.show { display: block; }
+
+        .editor-toolbar {
+            background: #1d364a;
+            border-radius: 10px 10px 0 0;
+            padding: 12px 15px;
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .editor-toolbar button, .editor-toolbar select, .editor-toolbar input[type="color"] {
+            background: rgba(255,255,255,0.12);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 5px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 13px;
+            font-family: inherit;
+            transition: 0.2s;
+        }
+        .editor-toolbar button:hover { background: #f38c18; border-color: #f38c18; color: #1d364a; }
+        .editor-toolbar .sep { width: 1px; background: rgba(255,255,255,0.2); height: 28px; margin: 0 4px; }
+        .editor-toolbar select { color: #1d364a; background: white; }
+        .editor-toolbar input[type="color"] { padding: 3px 6px; width: 40px; height: 34px; }
+        .editor-toolbar label { color: rgba(255,255,255,0.7); font-size: 12px; }
+
+        #blogEditor {
+            min-height: 400px;
+            border: 2px solid #1d364a;
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            padding: 25px;
+            outline: none;
+            font-size: 16px;
+            line-height: 1.9;
+            background: #fff;
+            color: #333;
+        }
+        #blogEditor:focus { border-color: #f38c18; }
+        #blogEditor img { max-width: 100%; border-radius: 8px; }
+        #blogEditor iframe { width: 100%; height: 360px; border: none; border-radius: 8px; }
+        #blogEditor blockquote {
+            border-right: 5px solid #f38c18;
+            background: #fdf5e6;
+            padding: 12px 18px;
+            border-radius: 0 8px 8px 0;
+            margin: 15px 0;
+            color: #555;
+        }
+
+        .editor-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        .editor-actions button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-save-blog { background: #28a745; color: white; }
+        .btn-save-blog:hover { background: #218838; }
+        .btn-toggle-preview { background: #17a2b8; color: white; }
+        .btn-toggle-preview:hover { background: #138496; }
+        .btn-clear-blog { background: #d9534f; color: white; }
+        .btn-clear-blog:hover { background: #c0392b; }
+
+        /* Insert modals */
+        .insert-modal-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 9000;
+            justify-content: center;
+            align-items: center;
+        }
+        .insert-modal-overlay.show { display: flex; }
+        .insert-modal-box {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            width: 480px;
+            max-width: 92%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        .insert-modal-box h3 { color: #1d364a; margin-top: 0; border-bottom: 2px solid #f38c18; padding-bottom: 10px; }
+        .insert-modal-box input, .insert-modal-box select, .insert-modal-box textarea {
+            width: 100%; padding: 10px; border: 1px solid #ddd;
+            border-radius: 6px; font-family: inherit; font-size: 14px;
+            margin-bottom: 12px; box-sizing: border-box;
+        }
+        .insert-modal-box .modal-btns { display: flex; gap: 10px; margin-top: 5px; }
+        .insert-modal-box .modal-btns button {
+            flex: 1; padding: 10px; border: none; border-radius: 6px;
+            font-size: 14px; font-weight: bold; cursor: pointer;
+        }
+        .btn-insert-confirm { background: #1d364a; color: white; }
+        .btn-insert-cancel { background: #e0e0e0; color: #333; }
+
+        /* شريط الأدمن */
+        #adminBlogBar {
+            display: none;
+            max-width: 1200px;
+            margin: 20px auto 0 auto;
+            padding: 0 30px;
+        }
+        #adminBlogBar.show { display: block; }
+        #adminBlogBar .bar-inner {
+            background: linear-gradient(135deg, #1d364a, #2a4d69);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        #adminBlogBar .bar-inner span { font-size: 14px; font-weight: bold; }
+        #adminBlogBar .bar-inner button {
+            background: #f38c18; color: #1d364a;
+            border: none; padding: 8px 18px;
+            border-radius: 6px; font-weight: bold;
+            cursor: pointer; font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== الهيدر ===== -->
+    <div id="site-header"></div>
+    <script src="js/header-loader.js"></script>
+
+    <!-- ===== تفاصيل المنتج ===== -->
+    <div id="singleProductContainer" class="product-details-container">
+        <h2 style="text-align:center; width:100%; color:#1d364a;">جاري تحميل تفاصيل المنتج...</h2>
+    </div>
+
+    <!-- ===== عرض المحتوى المحفوظ ===== -->
+    <div id="productBlogSection" style="display:none;">
+        <div id="productBlogContent"></div>
+    </div>
+
+    <!-- ===== فورم الطلب السريع ===== -->
+    <div id="quickOrderSection" style="max-width:600px; margin:30px auto 60px; padding:0 20px;">
+        <div style="background:#fff; border-radius:12px; box-shadow:0 5px 20px rgba(0,0,0,0.08); overflow:hidden;">
+            
+            <!-- هيدر الفورم -->
+            <div style="background:#1d364a; padding:20px 25px;">
+                <h2 style="color:#f38c18; margin:0; font-size:22px;">🛒 اطلب دلوقتي</h2>
+                <p style="color:rgba(255,255,255,0.7); margin:5px 0 0; font-size:14px;">املي بياناتك وهنوصلك في أسرع وقت</p>
+            </div>
+
+            <!-- بودي الفورم -->
+            <div style="padding:25px;">
+
+                <!-- رسالة النتيجة -->
+                <div id="quickOrderMsg" style="display:none; padding:12px 15px; border-radius:8px; margin-bottom:15px; font-weight:bold; text-align:center;"></div>
+
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; color:#1d364a; font-weight:bold; margin-bottom:6px;">الاسم بالكامل *</label>
+                    <input type="text" id="qoName" placeholder="اسمك هنا..." style="width:100%; padding:12px; border:1.5px solid #ddd; border-radius:8px; font-family:inherit; font-size:15px; box-sizing:border-box;">
+                </div>
+
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; color:#1d364a; font-weight:bold; margin-bottom:6px;">رقم التليفون *</label>
+                    <input type="tel" id="qoPhone" placeholder="01xxxxxxxxx" style="width:100%; padding:12px; border:1.5px solid #ddd; border-radius:8px; font-family:inherit; font-size:15px; box-sizing:border-box;">
+                </div>
+
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; color:#1d364a; font-weight:bold; margin-bottom:6px;">كلمة المرور * <span style="color:gray; font-size:12px; font-weight:normal;">(هتستخدمها لتتبع طلباتك)</span></label>
+                    <input type="password" id="qoPassword" placeholder="كلمة مرور سهلة تتذكرها..." style="width:100%; padding:12px; border:1.5px solid #ddd; border-radius:8px; font-family:inherit; font-size:15px; box-sizing:border-box;">
+                </div>
+
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; color:#1d364a; font-weight:bold; margin-bottom:6px;">المحافظة *</label>
+                    <select id="qoRegion" style="width:100%; padding:12px; border:1.5px solid #ddd; border-radius:8px; font-family:inherit; font-size:15px; box-sizing:border-box; background:#fff;">
+                        <option value="">-- اختر المحافظة --</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; color:#1d364a; font-weight:bold; margin-bottom:6px;">العنوان بالتفصيل *</label>
+                    <input type="text" id="qoAddress" placeholder="الشارع، رقم البيت، أقرب علامة مميزة..." style="width:100%; padding:12px; border:1.5px solid #ddd; border-radius:8px; font-family:inherit; font-size:15px; box-sizing:border-box;">
+                </div>
+
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; color:#1d364a; font-weight:bold; margin-bottom:6px;">كود الخصم <span style="color:gray; font-size:12px; font-weight:normal;">(اختياري)</span></label>
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" id="qoPromo" placeholder="أدخل الكود هنا..." 
+                            style="flex:1; padding:12px; border:1.5px solid #ddd; border-radius:8px; font-family:inherit; font-size:15px; box-sizing:border-box;">
+                        <button onclick="applyQoPromo()" 
+                            style="padding:12px 18px; background:#1d364a; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; white-space:nowrap;">
+                            تطبيق
+                        </button>
+                    </div>
+                    <div id="qoPromoMsg" style="display:none; margin-top:6px; font-size:13px; font-weight:bold;"></div>
+                </div>
+
+                <div style="margin-bottom:20px;">
+                    <label style="display:block; color:#1d364a; font-weight:bold; margin-bottom:6px;">الكمية</label>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <button onclick="qoDecreaseQty()" style="width:38px; height:38px; background:#f0f8ff; border:1.5px solid #1d364a; border-radius:6px; font-size:20px; font-weight:bold; cursor:pointer;">-</button>
+                        <input type="text" id="qoQty" value="1" readonly style="width:50px; text-align:center; padding:8px; border:1.5px solid #ddd; border-radius:6px; font-size:16px; font-weight:bold;">
+                        <button onclick="qoIncreaseQty()" style="width:38px; height:38px; background:#f0f8ff; border:1.5px solid #1d364a; border-radius:6px; font-size:20px; font-weight:bold; cursor:pointer;">+</button>
+                    </div>
+                </div>
+
+                <!-- ملخص السعر -->
+                <div id="qoSummary" style="background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:8px; padding:15px; margin-bottom:20px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:6px; color:#555;">
+                        <span>سعر المنتج:</span>
+                        <span id="qoSubtotalText">0 ج.م</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:6px; color:#555;">
+                        <span>مصاريف الشحن:</span>
+                        <span id="qoShippingText">اختر المحافظة</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:18px; color:#1d364a; border-top:1px solid #ddd; padding-top:10px; margin-top:6px;">
+                        <span>الإجمالي:</span>
+                        <span id="qoTotalText" style="color:#f38c18;">0 ج.م</span>
+                    </div>
+                </div>
+
+                <button onclick="submitQuickOrder()" id="qoSubmitBtn"
+                    style="width:100%; padding:16px; background:#f38c18; color:#1d364a; border:none; border-radius:10px; font-size:18px; font-weight:bold; cursor:pointer; transition:0.3s;">
+                    ✅ تأكيد الطلب
+                </button>
+
+                <p style="text-align:center; color:gray; font-size:13px; margin-top:12px;">
+                    عندك حساب بالفعل؟ <a href="login.html" style="color:#f38c18; font-weight:bold;">سجل دخول</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Firebase + Scripts ===== -->
+    <!-- مكتبة لتنقية أي HTML قبل عرضه (بتحمي من XSS في محتوى المدونة) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="js/firebase-init.js"></script>
+    <script src="js/store-core.js"></script>
+    <script src="script.js"></script>
+
+    <script>
+    // ================================================================
+    // ===== فورم الطلب السريع =====
+    // ================================================================
+    let qoProductPrice = 0;
+    let qoProductStock = 0;
+
+    // تحميل المحافظات في الفورم
+    function loadQoRegions() {
+        let regions = JSON.parse(localStorage.getItem("eljory_regions")) || [];
+        let sel = document.getElementById("qoRegion");
+        if (!sel) return;
+        regions.forEach(r => {
+            if (r.isActive !== false) {
+                let opt = document.createElement("option");
+                opt.value = r.name;
+                opt.dataset.fee = r.fee || 0;
+                opt.innerText = r.name + (r.fee > 0 ? ` (${r.fee} ج.م)` : " (مجاني)");
+                sel.appendChild(opt);
+            }
+        });
+        sel.addEventListener("change", updateQoSummary);
+    }
+
+    function updateQoSummary() {
+        let qty = parseInt(document.getElementById("qoQty").value) || 1;
+        let subtotal = qoProductPrice * qty;
+        let sel = document.getElementById("qoRegion");
+        let fee = 0;
+        let shipText = "اختر المحافظة";
+        if (sel && sel.value) {
+            fee = parseFloat(sel.options[sel.selectedIndex].dataset.fee) || 0;
+            shipText = fee === 0 ? "مجاني 🎉" : fee + " ج.م";
+        }
+
+        let discount = 0;
+        let discountMsg = "";
+        if (qoAppliedPromo) {
+            if (qoAppliedPromo.type === "percent") {
+                discount = subtotal * (qoAppliedPromo.value / 100);
+                // ⭐ الحد الأقصى لقيمة الخصم (لو الأدمن حدده) بيقصّ الخصم عند مبلغ معين
+                if (qoAppliedPromo.maxDiscountValue && discount > qoAppliedPromo.maxDiscountValue) {
+                    discount = qoAppliedPromo.maxDiscountValue;
+                    discountMsg = `خصم ${qoAppliedPromo.value}% (بحد أقصى ${qoAppliedPromo.maxDiscountValue} ج.م): -${discount.toFixed(0)} ج.م`;
+                } else {
+                    discountMsg = `خصم ${qoAppliedPromo.value}%: -${discount.toFixed(0)} ج.م`;
+                }
+            } else if (qoAppliedPromo.type === "fixed") {
+                discount = Math.min(qoAppliedPromo.value, subtotal);
+                discountMsg = `خصم: -${discount} ج.م`;
+            } else if (qoAppliedPromo.type === "shipping") {
+                fee = 0;
+                shipText = "مجاني 🎉 (بروموكود)";
+                discountMsg = "شحن مجاني بالكوبون!";
+            }
+        }
+
+        let total = subtotal - discount + fee;
+
+        document.getElementById("qoSubtotalText").innerText = subtotal + " ج.م";
+        document.getElementById("qoShippingText").innerText = shipText;
+        document.getElementById("qoTotalText").innerText = total.toFixed(0) + " ج.م";
+
+        // سطر الخصم
+        let discountRow = document.getElementById("qoDiscountRow");
+        if (!discountRow) {
+            let summary = document.getElementById("qoSummary");
+            let row = document.createElement("div");
+            row.id = "qoDiscountRow";
+            row.style.cssText = "display:flex; justify-content:space-between; margin-bottom:6px; color:#28a745; font-weight:bold;";
+            summary.insertBefore(row, summary.lastElementChild);
+            discountRow = row;
+        }
+        if (discountMsg) {
+            discountRow.innerHTML = `<span>الخصم:</span><span>${discountMsg}</span>`;
+            discountRow.style.display = "flex";
+        } else {
+            discountRow.style.display = "none";
+        }
+    }
+
+    window.qoIncreaseQty = function() {
+        let input = document.getElementById("qoQty");
+        let val = parseInt(input.value);
+        if (val >= qoProductStock) { alert("عذراً، المتاح في المخزون " + qoProductStock + " قطع فقط!"); return; }
+        input.value = val + 1;
+        updateQoSummary();
+    };
+
+    window.qoDecreaseQty = function() {
+        let input = document.getElementById("qoQty");
+        let val = parseInt(input.value);
+        if (val > 1) { input.value = val - 1; updateQoSummary(); }
+    };
+
+    let qoAppliedPromo = null;
+
+    // ⚠️ إصلاح: النسخة القديمة من applyQoPromo كانت بتفحص بس التاريخ، من غير أي
+    // فحص للحد الأقصى الكلي (maxTotal) أو حد الاستخدام لكل عميل (maxPerUser) أو
+    // شرط العملاء الجدد (newUsersOnly)، ومن غير أي فحص إن المنتج الحالي من ضمن
+    // المنتجات المخصصة للكوبون (scope: specific). دلوقتي بقت متطابقة مع نفس
+    // الفحوصات المطبقة في صفحة السلة (cart.html).
+    function showQoPromoError(msg) {
+        qoAppliedPromo = null;
+        let msgEl = document.getElementById("qoPromoMsg");
+        msgEl.innerText = msg;
+        msgEl.style.color = "#d9534f";
+        msgEl.style.display = "block";
+        updateQoSummary();
+    }
+
+    window.applyQoPromo = function() {
+        let code = document.getElementById("qoPromo").value.trim().toUpperCase();
+        let msgEl = document.getElementById("qoPromoMsg");
+        let promos = JSON.parse(localStorage.getItem("eljory_promos")) || [];
+        let now = new Date();
+
+        let valid = promos.find(p => 
+            p.code === code && 
+            now >= new Date(p.start) && 
+            now <= new Date(p.end)
+        );
+
+        if (!valid) {
+            showQoPromoError("❌ الكود غير صحيح أو منتهي الصلاحية");
+            return;
+        }
+
+        // فحص إن الكوبون مخصص لمنتجات معينة، وإن المنتج الحالي من ضمنها
+        if (valid.scope === 'specific' && !(valid.products || []).includes(currentProductId)) {
+            showQoPromoError("❌ هذا الكود لا يخص هذا المنتج");
+            return;
+        }
+
+        // ⭐ فحص الحد الأدنى لقيمة الفاتورة (لو محدد) — بيتحسب على سعر المنتج × الكمية الحالية
+        let qoCurrentSubtotal = qoProductPrice * (parseInt(document.getElementById("qoQty").value) || 1);
+        if (valid.minOrderValue && qoCurrentSubtotal < valid.minOrderValue) {
+            showQoPromoError(`❌ الحد الأدنى لاستخدام هذا الكود هو ${valid.minOrderValue} ج.م`);
+            return;
+        }
+
+        // فحص الحد الأقصى الكلي للاستخدام
+        if (valid.maxTotal && (valid.usageCount || 0) >= valid.maxTotal) {
+            showQoPromoError("❌ عذراً، تم استنفاد هذا الكود بالكامل");
+            return;
+        }
+
+        // فحص حد الاستخدام لكل عميل (لو العميل مسجل دخول بالفعل)
+        let qoCurrentUser = window.getCurrentUser ? window.getCurrentUser() : null;
+        if (qoCurrentUser && valid.maxPerUser) {
+            let phoneKey = window.getShortPhone(qoCurrentUser.phone);
+            let userUsage = valid.usedBy ? (valid.usedBy[phoneKey] || 0) : 0;
+            if (userUsage >= valid.maxPerUser) {
+                showQoPromoError(`❌ لقد استخدمت هذا الكود من قبل (${userUsage} مرة). الحد المسموح ${valid.maxPerUser}.`);
+                return;
+            }
+        }
+
+        // فحص شرط العملاء الجدد فقط
+        if (valid.newUsersOnly && qoCurrentUser) {
+            let phoneKey = window.getShortPhone(qoCurrentUser.phone);
+            let allOrders = JSON.parse(localStorage.getItem("eljory_orders") || "[]");
+            let hasPriorOrders = allOrders.some(o => o.customer && window.getShortPhone(o.customer.phone) === phoneKey && o.status !== "Cancelled");
+            if (hasPriorOrders) {
+                showQoPromoError("❌ هذا الكود للعملاء الجدد فقط");
+                return;
+            }
+        }
+
+        qoAppliedPromo = valid;
+        msgEl.innerText = "✅ تم تطبيق الكوبون!";
+        msgEl.style.color = "green";
+        msgEl.style.display = "block";
+        updateQoSummary();
+    };
+
+    function showQoMsg(text, isSuccess) {
+        let msg = document.getElementById("quickOrderMsg");
+        msg.innerText = text;
+        msg.style.background = isSuccess ? "#d4edda" : "#f8d7da";
+        msg.style.color = isSuccess ? "#155724" : "#721c24";
+        msg.style.display = "block";
+        msg.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    window.submitQuickOrder = async function() {
+        let name     = document.getElementById("qoName").value.trim();
+        let phone    = document.getElementById("qoPhone").value.trim();
+        let password = document.getElementById("qoPassword").value;
+        let region   = document.getElementById("qoRegion").value;
+        let address  = document.getElementById("qoAddress").value.trim();
+        let qty      = parseInt(document.getElementById("qoQty").value) || 1;
+
+        let isLoggedIn = localStorage.getItem("eljory_auth") === "true";
+        if (!name || !phone || (!password && !isLoggedIn) || !region || !address) {
+            showQoMsg("❗ يرجى ملء جميع الحقول!", false); return;
+        }
+
+        let cleanPhone = window.getShortPhone(phone);
+        if (cleanPhone.length < 10) {
+            showQoMsg("❗ رقم التليفون غير صحيح!", false); return;
+        }
+
+        let btn = document.getElementById("qoSubmitBtn");
+        btn.disabled = true;
+        btn.innerText = "جاري المعالجة...";
+
+        try {
+            let isAlreadyLoggedIn = localStorage.getItem("eljory_auth") === "true";
+            let snap = await db.ref('/users/' + cleanPhone).once('value');
+            let user;
+
+            if (isAlreadyLoggedIn && snap.exists()) {
+                // العميل متسجل — مفيش حاجة نتحقق منها
+                user = snap.val();
+                if (user.isBlocked) {
+                    showQoMsg("❗ هذا الحساب محظور. تواصل مع الإدارة.", false);
+                    btn.disabled = false; btn.innerText = "✅ تأكيد الطلب"; return;
+                }
+            } else if (!snap.exists()) {
+                // إنشاء حساب جديد
+                let salt = window.generateSalt();
+                let passwordHash = await window.hashPassword(password, salt);
+                let fullAddress = address + " - " + region;
+                user = {
+                    id: 'USR-' + cleanPhone,
+                    name: name,
+                    phone: cleanPhone,
+                    email: "",
+                    passwordHash: passwordHash,
+                    passwordSalt: salt,
+                    region: region,
+                    address: fullAddress,
+                    addresses: [{ id: Date.now(), text: fullAddress, isPrimary: true }],
+                    points: 0,
+                    joinDate: new Date().toLocaleDateString('en-GB'),
+                    joinTime: new Date().toLocaleTimeString('ar-EG'),
+                    isBlocked: false
+                };
+                await db.ref('/users/' + cleanPhone).set(user);
+            } else {
+                // حساب موجود — تحقق من كلمة المرور
+                user = snap.val();
+                if (user.isBlocked) {
+                    showQoMsg("❗ هذا الحساب محظور. تواصل مع الإدارة.", false);
+                    btn.disabled = false; btn.innerText = "✅ تأكيد الطلب"; return;
+                }
+                let isValid = false;
+                if (user.passwordHash && user.passwordSalt) {
+                    let hash = await window.hashPassword(password, user.passwordSalt);
+                    isValid = hash === user.passwordHash;
+                } else if (user.password) {
+                    isValid = password === user.password;
+                }
+                if (!isValid) {
+                    showQoMsg("❗ الرقم مسجل بالفعل وكلمة المرور غلط! جرب تسجل دخول.", false);
+                    btn.disabled = false; btn.innerText = "✅ تأكيد الطلب"; return;
+                }
+            }
+
+            // تسجيل دخول أوتوماتيك
+            localStorage.setItem("eljory_auth", "true");
+            localStorage.setItem("eljory_active_phone", cleanPhone);
+            localStorage.setItem("eljory_active_user", JSON.stringify(user));
+
+            // حساب الشحن
+            let sel = document.getElementById("qoRegion");
+            let shippingFee = parseFloat(sel.options[sel.selectedIndex].dataset.fee) || 0;
+            let subtotal = qoProductPrice * qty;
+            let total = subtotal + shippingFee;
+            let primaryAddr = address + " - " + region;
+
+            // رفع الأوردر بالـ transaction
+            let counterSnap = await db.ref('/metadata/lastOrderId').transaction(v => (v || 1000) + 1);
+            let newOrderId = "ORD-" + counterSnap.snapshot.val();
+
+            let products = JSON.parse(localStorage.getItem("eljory_products")) || [];
+            let prod = products.find(p => p.id === currentProductId);
+
+            // حساب الخصم
+            let discount = 0;
+            if (qoAppliedPromo) {
+                if (qoAppliedPromo.type === "percent") {
+                    discount = subtotal * (qoAppliedPromo.value / 100);
+                } else if (qoAppliedPromo.type === "fixed") {
+                    discount = Math.min(qoAppliedPromo.value, subtotal);
+                } else if (qoAppliedPromo.type === "shipping") {
+                    shippingFee = 0;
+                }
+            }
+            total = subtotal - discount + shippingFee;
+
+            // ⭐ نظام الضمان: نجمّد شهور ضمان المنتج وقت البيع نفسه
+            let qoWarrantyMonths = (prod && parseInt(prod.warrantyMonths)) ? parseInt(prod.warrantyMonths) : 0;
+            let qoHasWarranty = qoWarrantyMonths > 0;
+            let newOrder = {
+                id: newOrderId,
+                date: new Date().toLocaleDateString('en-GB'),
+                subTotal: subtotal,
+                discount: discount,
+                promoCode: qoAppliedPromo ? qoAppliedPromo.code : null,
+                shippingFee: shippingFee,
+                total: total,
+                status: "Pending",
+                earnedPoints: 0,
+                customer: { name: user.name, phone: user.phone, address: primaryAddr },
+                items: [{ id: currentProductId, price: qoProductPrice, qty: qty, warrantyMonths: qoWarrantyMonths }],
+                timestamp: firebase.database.ServerValue.TIMESTAMP,
+                warrantyToken: qoHasWarranty ? window.generateWarrantyToken() : null,
+                warrantyStatus: qoHasWarranty ? "not_activated" : null,
+                deliveredAt: null
+            };
+
+            await db.ref('/orders/' + newOrderId).set(newOrder);
+
+            // خصم المخزون
+            await db.ref('/products/' + currentProductId + '/stock').transaction(
+                s => Math.max(0, (s || 0) - qty)
+            );
+
+            // ⭐ سجل حركة المخزون: تسجيل خروج المنتج بسبب هذا الطلب السريع
+            if (typeof window.logStockMovementPublic === 'function') {
+                window.logStockMovementPublic({
+                    productId: currentProductId,
+                    titleAr: (prod && prod.titleAr) ? prod.titleAr : currentProductId,
+                    type: 'out', qty: qty,
+                    reason: `خروج بسبب طلب سريع رقم ${newOrderId}`
+                });
+            }
+
+            // Facebook Pixel
+            if (typeof fbq === 'function') {
+                fbq('track', 'Purchase', {
+                    content_ids: [currentProductId],
+                    value: total, currency: 'EGP', num_items: qty
+                });
+            }
+
+            showQoMsg("✅ تم استلام طلبك بنجاح! رقم طلبك: " + newOrderId, true);
+            btn.innerText = "✅ تم الطلب";
+            document.getElementById("qoName").value = "";
+            document.getElementById("qoPhone").value = "";
+            document.getElementById("qoPassword").value = "";
+            document.getElementById("qoAddress").value = "";
+            document.getElementById("qoRegion").value = "";
+            document.getElementById("qoQty").value = "1";
+
+        } catch (err) {
+            console.error(err);
+            showQoMsg("❗ حدث خطأ، حاول مرة تانية.", false);
+            btn.disabled = false;
+            btn.innerText = "✅ تأكيد الطلب";
+        }
+    };
+
+    // ================================================================
+    // ===== عرض تفاصيل المنتج =====
+    // ================================================================
+    let currentProductId = null;
+    let savedSelection = null;
+
+    window.renderSingleProduct = function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        currentProductId = urlParams.get('id');
+        const container = document.getElementById("singleProductContainer");
+
+        if (!currentProductId) {
+            container.innerHTML = "<h2 style='text-align:center;width:100%;color:#d9534f;'>المنتج غير موجود! تأكد من الرابط.</h2>";
+            return;
+        }
+
+        let products = JSON.parse(localStorage.getItem("eljory_products")) || [];
+        let p = products.find(item => item.id === currentProductId);
+
+        if (!p) {
+            setTimeout(() => {
+                products = JSON.parse(localStorage.getItem("eljory_products")) || [];
+                p = products.find(item => item.id === currentProductId);
+                if (!p) {
+                    container.innerHTML = "<h2 style='text-align:center;width:100%;color:#d9534f;'>عذراً، هذا المنتج غير متوفر حالياً.</h2>";
+                } else {
+                    drawProductDetails(p, container);
+                    loadBlogContent();
+                }
+            }, 1000);
+            return;
+        }
+
+        drawProductDetails(p, container);
+        loadBlogContent();
+        qoProductPrice = p.price;
+        qoProductStock = p.stock;
+        updateQoSummary();
+        document.getElementById("quickOrderSection").style.display = p.stock > 0 ? "block" : "none";
+    };
+
+    function drawProductDetails(p, container) {
+        let pName = (typeof currentLang !== 'undefined' && currentLang === 'en') ? (p.titleEn || p.titleAr) : p.titleAr;
+        let pDesc = (typeof currentLang !== 'undefined' && currentLang === 'en') ? (p.descEn || p.descAr || "No description available.") : (p.descAr || "لا يوجد وصف متاح.");
+        let curr = (typeof currentLang !== 'undefined' && currentLang === 'en') ? 'EGP' : 'ج.م';
+        let btnTxt = (typeof currentLang !== 'undefined' && currentLang === 'en') ? 'Add to Cart' : 'أضف للسلة';
+
+        let pointsTxt = "";
+        let loyaltySettings = JSON.parse(localStorage.getItem("eljory_loyalty_settings")) || { system: "global" };
+        if (loyaltySettings.system === "product" && p.points > 0) {
+            pointsTxt = `<p style="color:#28a745;font-weight:bold;font-size:16px;">🎁 ستحصل على ${p.points} نقطة عند الشراء</p>`;
+        }
+
+        let stockStatus = "", btnDisabled = "";
+        if (p.stock <= 0) {
+            stockStatus = `<span style="color:#d9534f;font-weight:bold;font-size:18px;">نفدت الكمية ❌</span>`;
+            btnDisabled = "disabled";
+        } else {
+            stockStatus = `<span style="color:#28a745;font-weight:bold;font-size:16px;">متوفر في المخزون ✅</span>`;
+        }
+
+        if (typeof fbq === 'function') {
+            fbq('track', 'ViewContent', { content_ids: [p.id], content_type: 'product', value: p.price, currency: 'EGP' });
+        }
+
+        // ⚠️ إصلاح: وصف المنتج المفروض نص عادي بس (مش HTML)، فلو حد كتب فيه
+        // وسوم HTML بالغلط أو بقصد كان بيتنفذ زي ما هو (XSS). دلوقتي بنعمل escape
+        // للنص الأول (بتحويله لعقدة DOM نصية ثم قراءة innerHTML)، وبعدين نحول
+        // أسطر جديدة (\n) لـ <br> بس.
+        function escapeHtml(str) {
+            let div = document.createElement('div');
+            div.innerText = str;
+            return div.innerHTML;
+        }
+        // تحويل النص العادي لـ HTML بفواصل السطر
+        let descHtml = escapeHtml(pDesc).replace(/\n/g, '<br>');
+
+        container.innerHTML = `
+            <div class="product-image-box">
+                <img src="${p.img}" alt="${pName}">
+            </div>
+            <div class="product-info-box">
+                <h1 class="product-title">${pName}</h1>
+                <p class="product-price">${p.price} ${curr}</p>
+                ${pointsTxt}
+                <p style="margin-bottom:20px;">${stockStatus}</p>
+                <p style="line-height:1.9;color:#555;font-size:16px;margin-bottom:30px;">${descHtml}</p>
+                <div style="display:flex;gap:15px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
+                    <div class="qty-container" style="margin:0;display:flex;align-items:center;">
+                        <button class="qty-btn" onclick="increaseQty('prodQty','${p.id}')" ${btnDisabled}>+</button>
+                        <input type="text" id="prodQty" class="qty-input" value="1" readonly style="width:50px;height:40px;font-size:18px;text-align:center;border:1px solid #ccc;">
+                        <button class="qty-btn" onclick="decreaseQty('prodQty')" ${btnDisabled}>-</button>
+                    </div>
+                    <button class="btn-add-large" onclick="addToCart('${p.id}',${p.price},'prodQty')" ${btnDisabled}
+                        style="flex:1;padding:15px;background:#f38c18;color:#1d364a;font-weight:bold;font-size:18px;border:none;border-radius:8px;cursor:pointer;transition:0.3s;">
+                        🛒 ${btnTxt}
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.title = pName + " | الجوري ستور";
+    }
+
+    // ================================================================
+    // ===== عرض محتوى المدونة (قراءة فقط) =====
+    // ================================================================
+    function loadBlogContent() {
+        if (!currentProductId) return;
+
+        let cached = localStorage.getItem('blog_' + currentProductId);
+        if (cached) showBlogContent(cached);
+
+        db.ref('/productBlogs/' + currentProductId).once('value', function(snap) {
+            let content = snap.val();
+            if (content) {
+                localStorage.setItem('blog_' + currentProductId, content);
+                showBlogContent(content);
+            }
+        });
+    }
+
+    function showBlogContent(content) {
+        if (!content || content.trim() === '') return;
+        let section = document.getElementById('productBlogSection');
+        let blogDiv = document.getElementById('productBlogContent');
+        // ⚠️ إصلاح: كان بيحقن محتوى المدونة في الصفحة زي ما هو (innerHTML) من غير
+        // أي تنقية. لو حساب أدمن اتخترق أو اتضاف حساب أدمن مش موثوق، كان يقدر يحط
+        // كود يشتغل (XSS) في صفحة منتج يتأثر بيها كل زائر. دلوقتي بنستخدم DOMPurify
+        // لتنقية المحتوى، مع السماح بالـ iframe عشان فيديوهات يوتيوب/فيسبوك اللي
+        // محرر المدونة بتاع الأدمن بيدرجها تفضل شغالة.
+        let cleanContent = (typeof DOMPurify !== 'undefined')
+            ? DOMPurify.sanitize(content, { ADD_TAGS: ['iframe'], ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'target'] })
+            : content;
+        blogDiv.innerHTML = cleanContent;
+        section.style.display = 'block';
+    }
+
+    // ================================================================
+    // ===== تهيئة الصفحة =====
+    // ================================================================
+document.addEventListener("DOMContentLoaded", () => {
+        loadQoRegions();
+        renderSingleProduct();
+        prefillQuickOrder();
+    });
+
+    function prefillQuickOrder() {
+        let isAuth = localStorage.getItem("eljory_auth") === "true";
+        let user = window.getCurrentUser ? window.getCurrentUser() : null;
+        if (!isAuth || !user) return;
+
+        // تعبئة البيانات
+        let nameInput = document.getElementById("qoName");
+        let phoneInput = document.getElementById("qoPhone");
+        let addressInput = document.getElementById("qoAddress");
+        let regionSelect = document.getElementById("qoRegion");
+        let passInput = document.getElementById("qoPassword");
+
+        if (nameInput) nameInput.value = user.name || "";
+        if (phoneInput) phoneInput.value = user.phone || "";
+
+        // العنوان والمحافظة من الأدرس الأساسي
+        if (user.addresses && user.addresses.length > 0) {
+            let primary = user.addresses.find(a => a.isPrimary) || user.addresses[0];
+            let parts = primary.text.split(" - ");
+            let region = parts.length > 1 ? parts[parts.length - 1].trim() : "";
+            let address = parts.slice(0, parts.length - 1).join(" - ").trim();
+
+            if (addressInput) addressInput.value = address;
+
+            // انتظر لحد ما الـ regions تتحمل وبعدين اختار
+            setTimeout(() => {
+                if (regionSelect && region) {
+                    for (let opt of regionSelect.options) {
+                        if (opt.value === region) {
+                            regionSelect.value = region;
+                            regionSelect.dispatchEvent(new Event("change"));
+                            break;
+                        }
+                    }
+                }
+            }, 500);
+        }
+
+        // تغيير placeholder كلمة المرور
+        if (passInput) {
+            passInput.placeholder = "أدخل كلمة مرورك للتأكيد...";
+        }
+
+        // رسالة ترحيب
+        let msg = document.getElementById("quickOrderMsg");
+        if (msg) {
+            msg.innerText = "👋 أهلاً " + user.name + "! بياناتك اتملت أوتوماتيك.";
+            msg.style.background = "#d4edda";
+            msg.style.color = "#155724";
+            msg.style.display = "block";
+        }
+    }
+    
+    </script>
+
+</body>
+</html>

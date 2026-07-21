@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الأقسام | الجوري ستور</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="site-header"></div>
+<script src="js/header-loader.js"></script>
+
+    <section class="categories-section">
+        <h2 id="catPageTitle">أقسام المتجر</h2>
+        <div class="categories-grid" id="dynamicCategoriesGrid"></div>
+    </section>
+
+    <!-- 1. مكتبات فايربيس -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    
+    <!-- 2. ملفات الاتصال ونواة المتجر (الهيكلة الجديدة) -->
+     <script src="js/firebase-init.js"></script>
+     <script src="js/store-core.js"></script>
+     <script src="script.js"></script>
+     
+</body>
+</html>

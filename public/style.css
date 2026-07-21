@@ -1,0 +1,207 @@
+* { box-sizing: border-box; }
+body { background-color: #f0f8ff; font-family: Arial, sans-serif; margin: 0; padding: 0; overflow-x: hidden; } /* يمنع زحزحة الصفحة بالعرض */
+header { background-color: #ffffff; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; padding: 10px 50px; }
+header .logo img { height: 100px; }
+nav ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 25px; }
+nav ul li a { color: #1d364a; text-decoration: none; font-weight: bold; font-size: 18px; transition: 0.3s; padding-bottom: 20px; }
+nav ul li a:hover { color: #f38c18; }
+
+.dropdown { position: relative; display: inline-block; }
+
+/* إصلاح اختفاء القائمة وتوسيعها */
+.dropdown-content { display: none; position: absolute; background-color: #ffffff; min-width: 260px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); z-index: 1000; border-radius: 5px; top: 40px; overflow: visible !important; border-top: 3px solid #f38c18; padding: 10px 0; }
+html[dir="rtl"] .dropdown-content { right: 0; }
+html[dir="ltr"] .dropdown-content { left: 0; }
+.dropdown-content a { color: #1d364a; padding: 12px 16px; text-decoration: none; display: block; font-size: 16px; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 12px; }
+.dropdown-content a:hover { background-color: #f0f8ff; color: #f38c18; }
+.dropdown:hover .dropdown-content { display: block; }
+.dropdown-content::before { content: ''; position: absolute; top: -15px; left: 0; right: 0; height: 15px; }
+
+/* القائمة الرئيسية (ترتيب العناصر تحت بعض) */
+ul.main-dropdown-list { list-style: none; padding: 0; margin: 0; display: block !important; }
+ul.main-dropdown-list li { position: relative; padding: 0 10px; display: block !important; width: 100%; box-sizing: border-box; }
+ul.main-dropdown-list li a { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; color: #1d364a !important; text-decoration: none; font-size: 16px; font-weight: bold; border-radius: 4px; transition: 0.3s; white-space: nowrap; border-bottom: none; }
+ul.main-dropdown-list li a:hover { background-color: #f8f9fa; color: #f38c18 !important; }
+
+/* القائمة الفرعية الجانبية (تظهر خارج القائمة الرئيسية) */
+.submenu { display: none; position: absolute; top: 0; right: 100% !important; left: auto !important; margin-right: 2px; background-color: #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.1); min-width: 240px; border-radius: 5px; padding: 10px 0; z-index: 1001; }
+html[dir="ltr"] .submenu { right: auto !important; left: 100% !important; margin-left: 2px; }
+.submenu::before { content: ''; position: absolute; top: 0; bottom: 0; right: -15px; width: 15px; }
+html[dir="ltr"] .submenu::before { right: auto; left: -15px; }
+.has-submenu:hover .submenu { display: block; }
+
+.lang-switch button { background-color: transparent; color: #1d364a; border: 2px solid #f38c18; padding: 8px 15px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: 0.3s; }
+.lang-switch button:hover { background-color: #f38c18; color: white; }
+
+.welcome-section { text-align: center; padding-top: 60px; }
+.welcome-section h1 { color: #1d364a; }
+.welcome-section p { color: #333333; font-size: 24px; }
+
+.account-container { display: flex; padding: 40px 50px; gap: 30px; align-items: flex-start; }
+.account-sidebar { background-color: white; padding: 20px; border-radius: 10px; width: 250px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); flex-shrink: 0; }
+.account-sidebar h3 { color: #1d364a; border-bottom: 2px solid #f38c18; padding-bottom: 10px; margin-top: 0; }
+.account-sidebar ul { list-style: none; padding: 0; }
+.account-sidebar ul li { margin: 15px 0; }
+.account-sidebar ul li a { text-decoration: none; color: #1d364a; font-weight: bold; transition: 0.3s; padding-bottom: 0; }
+.account-sidebar ul li a:hover { color: #f38c18; }
+.account-content { flex: 1; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 0; }
+
+.loyalty-header { background-color: #1d364a; color: white; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 30px; }
+.loyalty-header strong { color: #f38c18; font-size: 26px; display: block; margin-top: 10px; }
+.loyalty-rules { background-color: rgba(243, 140, 24, 0.1); border: 1px dashed #f38c18; padding: 10px 20px; margin-top: 15px; border-radius: 5px; display: inline-block; }
+.loyalty-rules p { margin: 0; color: #f38c18; font-weight: bold; font-size: 15px; }
+
+.gifts-grid { display: flex; gap: 20px; margin-top: 15px; flex-wrap: wrap; }
+.gift-card { border: 2px solid #f0f8ff; padding: 20px; border-radius: 10px; text-align: center; width: 200px; transition: 0.3s; }
+.gift-card:hover { border-color: #f38c18; }
+.gift-card h4 { color: #1d364a; margin-top: 0; }
+.gift-card p { color: #f38c18; font-weight: bold; }
+.btn-redeem { background-color: #1d364a; color: white; border: none; padding: 10px; width: 100%; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+.btn-redeem:hover { background-color: #f38c18; }
+
+.orders-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+.orders-table th, .orders-table td { padding: 15px; border-bottom: 1px solid #ddd; }
+html[dir="rtl"] .orders-table th, html[dir="rtl"] .orders-table td { text-align: right; }
+html[dir="ltr"] .orders-table th, html[dir="ltr"] .orders-table td { text-align: left; }
+.orders-table th { background-color: #1d364a; color: white; }
+.status-badge { padding: 5px 10px; border-radius: 5px; color: white; font-size: 14px; font-weight: bold; }
+.status-delivered { background-color: #28a745; }
+.status-processing { background-color: #f38c18; }
+
+.categories-section { padding: 50px; text-align: center; }
+.categories-section h2 { color: #1d364a; border-bottom: 2px solid #f38c18; display: inline-block; padding-bottom: 10px; margin-bottom: 40px; font-size: 28px; }
+.categories-grid { display: flex; justify-content: center; gap: 40px; flex-wrap: wrap; }
+.category-card { background-color: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 320px; overflow: hidden; transition: 0.3s; padding-bottom: 20px; }
+.category-card:hover { transform: translateY(-10px); box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
+.category-card img { width: 100%; height: 200px; object-fit: cover; }
+.category-card h3 { color: #1d364a; margin: 20px 0 10px; }
+.category-card p { color: #666; font-size: 15px; padding: 0 20px; margin-bottom: 25px; }
+.btn-browse { background-color: #1d364a; color: white; text-decoration: none; padding: 10px 25px; border-radius: 5px; font-weight: bold; transition: 0.3s; display: inline-block; }
+.btn-browse:hover { background-color: #f38c18; }
+
+.products-section { text-align: center; padding: 40px 50px; }
+.products-section h2 { color: #1d364a; margin-bottom: 10px; font-size: 28px; }
+.products-section p { color: #666; margin-bottom: 40px; font-size: 18px; }
+.products-grid { display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; }
+.product-card { background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 250px; transition: 0.3s; }
+.product-card:hover { transform: translateY(-10px); }
+.product-card img { width: 100%; border-radius: 8px; }
+.product-card h3 { color: #1d364a; font-size: 18px; margin: 15px 0 10px; }
+.product-card .price { color: #f38c18; font-weight: bold; font-size: 20px; margin-bottom: 15px; }
+
+.qty-container { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 15px; }
+.qty-btn { background-color: #f0f8ff; color: #1d364a; border: 1px solid #1d364a; width: 35px; height: 35px; border-radius: 5px; font-size: 20px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+.qty-btn:hover { background-color: #1d364a; color: white; }
+.qty-input { width: 50px; text-align: center; border: 1px solid #ddd; border-radius: 5px; padding: 5px; font-size: 16px; font-weight: bold; outline: none; }
+
+.product-card .btn-add { background-color: #1d364a; color: white; border: none; padding: 10px; width: 100%; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+.product-card .btn-add:hover { background-color: #f38c18; }
+
+/* --------- تصميم صفحة تسجيل الدخول وإنشاء حساب --------- */
+.auth-section { display: flex; justify-content: center; padding: 60px 20px; }
+.auth-card { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 450px; }
+.auth-card h2 { color: #1d364a; text-align: center; border-bottom: 2px solid #f38c18; padding-bottom: 10px; margin-bottom: 25px; margin-top: 0; }
+.form-group { margin-bottom: 20px; text-align: right; }
+html[dir="ltr"] .form-group { text-align: left; }
+.form-group label { display: block; margin-bottom: 8px; color: #1d364a; font-weight: bold; font-size: 15px; }
+
+/* إصلاح مربعات الإدخال في الإدمن لمنع الزحزحة */
+.form-control, input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; font-family: inherit; font-size: 15px; max-width: 100%; } 
+.form-control:focus { outline: none; border-color: #f38c18; }
+
+.btn-auth { background-color: #1d364a; color: white; border: none; padding: 15px; width: 100%; border-radius: 5px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+.btn-auth:hover { background-color: #f38c18; }
+.auth-switch { text-align: center; margin-top: 20px; font-size: 15px; color: #666; }
+.auth-switch a { color: #f38c18; cursor: pointer; text-decoration: none; font-weight: bold; transition: 0.3s; margin: 0 5px; }
+.auth-switch a:hover { text-decoration: underline; }
+
+/* --------- تصميم بيانات المستخدم في الهيدر --------- */
+.header-actions { display: flex; align-items: center; gap: 15px; }
+.user-info { display: flex; align-items: center; gap: 10px; font-weight: bold; color: #1d364a; font-size: 16px; }
+.btn-login-header { background-color: #1d364a; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; text-decoration: none; font-size: 14px; font-weight: bold; transition: 0.3s; }
+.btn-login-header:hover { background-color: #f38c18; }
+.btn-logout-header { background-color: #d9534f; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.3s; }
+.btn-logout-header:hover { background-color: #c9302c; }
+
+/* --- تنسيق عداد السلة الذكي للأيقونة --- */
+.cart-badge { position: absolute; top: -5px; right: -10px; background-color: #d9534f; color: white; border-radius: 50%; padding: 2px 6px; font-size: 11px; font-weight: bold; display: none; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+html[dir="ltr"] .cart-badge { right: auto; left: -10px; }
+@media (max-width: 768px) {
+    header { flex-direction: column; padding: 10px 15px; gap: 10px; }
+    nav ul { gap: 10px; flex-wrap: wrap; justify-content: center; }
+    #searchInput { min-width: unset; width: 100%; }
+
+    /* صفحة الحساب */
+    .account-container { 
+        flex-direction: column; 
+        padding: 15px; 
+        gap: 15px; 
+    }
+    .account-sidebar { 
+        width: 100%; 
+        padding: 15px;
+    }
+    .account-sidebar ul {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-around;
+        gap: 5px;
+    }
+    .account-sidebar ul li {
+        margin: 0;
+        flex: 1;
+        text-align: center;
+    }
+    .account-sidebar ul li a {
+        display: block;
+        background: #f0f8ff;
+        padding: 10px 5px;
+        border-radius: 8px;
+        font-size: 13px;
+    }
+    .account-sidebar ul li a:hover,
+    .account-sidebar ul li a.active {
+        background: #f38c18;
+        color: white;
+    }
+    .account-content { 
+        padding: 15px; 
+        width: 100%;
+    }
+    .account-sidebar h3 {
+        text-align: center;
+        margin-bottom: 15px;
+    }
+
+    /* جدول الطلبات */
+    .orders-table { font-size: 12px; }
+    .orders-table th, .orders-table td { padding: 8px 5px; }
+
+    /* نقاط الولاء */
+    .gifts-grid { gap: 10px; }
+    .gift-card { width: calc(50% - 10px); padding: 12px; }
+
+    /* المنتجات */
+    .products-grid { gap: 10px; padding: 0 10px; }
+    .product-card { width: calc(50% - 10px); min-width: 0; padding: 10px; }
+    .product-card img { height: 130px; object-fit: cover; }
+    .product-card h3 { font-size: 13px; margin: 8px 0 5px; }
+    .product-card .price { font-size: 15px; margin-bottom: 8px; }
+    .qty-btn { width: 28px; height: 28px; font-size: 16px; }
+    .qty-input { width: 35px; font-size: 13px; }
+    .product-card .btn-add { font-size: 13px; padding: 8px; }
+
+    /* الأقسام */
+    .categories-grid { gap: 15px; padding: 0 10px; }
+    .category-card { width: calc(50% - 10px); }
+    .category-card img { height: 130px; }
+    .category-card h3 { font-size: 15px; margin: 10px 0 5px; }
+    .category-card p { font-size: 12px; padding: 0 10px; margin-bottom: 15px; }
+    .btn-browse { padding: 8px 15px; font-size: 13px; }
+
+    /* السيكشنز العامة */
+    .products-section { padding: 20px 10px; }
+    .products-section h2 { font-size: 20px; }
+    .categories-section { padding: 20px 10px; }
+    .categories-section h2 { font-size: 20px; }
+}

@@ -1,0 +1,2679 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة الجوري ستور | Admin Panel</title>
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0; padding: 0;
+            display: flex;
+            background-color: #f4f6f9;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        body > div:not(.sidebar):not(.main-content):not([id*="Modal"]):not(#multiPrintArea):not(#adminLoadingScreen) {
+            display: none !important;
+        }
+
+        #promo-banner, .promo-banner, header, .header-actions { display: none !important; }
+
+        /* ─── Sidebar ─── */
+        .sidebar {
+            width: 260px; min-width: 260px;
+            background-color: #1d364a; color: white;
+            display: flex; flex-direction: column;
+            height: 100vh; overflow-y: auto;
+            flex-shrink: 0;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        .sidebar h2 {
+            text-align: center; color: #f38c18;
+            padding: 25px 0; border-bottom: 1px solid #2a4d69;
+            margin: 0; font-size: 22px;
+        }
+
+        /* ─── Sidebar Buttons ─── */
+        .menu-btn {
+            background: none; border: none; color: white;
+            padding: 18px 20px; text-align: right;
+            font-size: 16px; cursor: pointer;
+            border-bottom: 1px solid #2a4d69;
+            transition: 0.3s; width: 100%; font-weight: bold;
+        }
+        .menu-btn:hover, .menu-btn.active {
+            background-color: #f38c18; color: #1d364a;
+            border-right: 5px solid #fff;
+        }
+        .has-submenu { display: flex; justify-content: space-between; align-items: center; }
+        .submenu     { display: none; background-color: #122230; }
+        .submenu.open{ display: block; }
+        .sub-btn     { padding-right: 40px; font-size: 14.5px; border-bottom: 1px solid #1a3042; font-weight: normal; }
+        .sub-btn.active { font-weight: bold; }
+
+        /* ⭐ سهم القسم الرئيسي (اللي فيه submenu): بيبص لليمين وهو مقفول،
+           ولما يتفتح (كلاس open بيتحط عليه من toggleSubmenu) بيلف لتحت. */
+        .menu-btn.has-submenu span {
+            display: inline-block;
+            transition: transform 0.25s ease;
+            transform: rotate(90deg);
+        }
+        .menu-btn.has-submenu.open span {
+            transform: rotate(0deg);
+        }
+
+        /* ⭐ تأكيد إضافي (specificity أعلى) إن القسم الرئيسي (has-submenu) بياخد
+           نفس تلوين "active" العادي، حتى لو فيه أي تعارض من قاعدة تانية. */
+        .menu-btn.has-submenu.active {
+            background-color: #f38c18 !important;
+            color: #1d364a !important;
+            border-right: 5px solid #fff !important;
+        }
+
+        /* ─── Main Content ─── */
+        .main-content {
+            flex: 1; padding: 40px;
+            height: 100vh; overflow-y: auto;
+            background-color: #f4f6f9;
+        }
+        .section {
+            display: none; background: white;
+            padding: 40px; border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            min-height: 80vh;
+        }
+        .section.active { display: block; animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0);    }
+        }
+
+        /* ─── Typography & Tables ─── */
+        h3 {
+            color: #1d364a; margin-top: 0;
+            border-bottom: 2px solid #f38c18;
+            padding-bottom: 10px; font-size: 24px; margin-bottom: 25px;
+        }
+        table  { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 15px; border: 1px solid #e0e0e0; text-align: center; font-size: 14px; }
+        th     { background-color: #1d364a; color: white; }
+        tr:hover { background-color: #f9f9f9; }
+
+        /* ─── Buttons ─── */
+        .btn         { background-color: #1d364a; color: white; border: none; padding: 10px 18px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn:hover   { opacity: 0.9; }
+        .btn-green   { background-color: #28a745; }
+        .btn-red     { background-color: #d9534f; margin-right: 5px; }
+        .btn-inactive{ background-color: #6c757d; }
+
+        /* ─── Forms ─── */
+        .form-group           { margin-bottom: 18px; }
+        .form-group label     { display: block; margin-bottom: 8px; font-weight: bold; color: #1d364a; }
+        .form-control         { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-family: inherit; }
+        .form-control:focus   { outline: none; border-color: #f38c18; }
+
+        /* ─── Badges ─── */
+        .badge        { color: white; padding: 6px 12px; border-radius: 20px; font-size: 13px; margin-left: 5px; display: inline-block; margin-bottom: 5px; }
+        .badge-remove { cursor: pointer; color: #ffcccb; margin-right: 8px; font-weight: bold; }
+
+        /* ─── Invoice Print ─── */
+        .invoice-box {
+            background: white; padding: 40px;
+            border-radius: 10px; width: 700px;
+            max-width: 90%; max-height: 90vh; overflow-y: auto;
+        }
+        @media print {
+            body * { visibility: hidden; }
+            #invoiceModal, #invoiceModal * { visibility: visible; }
+            #multiPrintArea, #multiPrintArea * { visibility: visible; }
+            #invoiceModal   { position: absolute; left: 0; top: 0; width: 100%; background: white; }
+            #multiPrintArea { position: absolute; left: 0; top: 0; width: 100%; background: white; }
+            .btn-print, .close-btn { display: none !important; }
+            .page-break { page-break-after: always; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════
+     شاشة تسجيل الدخول
+════════════════════════════════════════════════ -->
+<div id="adminLoginModal"
+     style="display:none; position:fixed; inset:0; background:#1d364a;
+            z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:white; padding:40px; border-radius:12px;
+                width:380px; max-width:90%; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+        <h2 style="text-align:center; color:#1d364a; margin-top:0; margin-bottom:25px;">دخول لوحة التحكم 🔒</h2>
+        <form id="adminLoginForm" onsubmit="return false;">
+            <div class="form-group">
+                <label>البريد الإلكتروني</label>
+                <input type="email" id="adminLoginEmail" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>كلمة المرور</label>
+                <input type="password" id="adminLoginPass" class="form-control" required>
+            </div>
+            <p id="adminLoginError"
+               style="display:none; color:#d9534f; font-size:14px; font-weight:bold;
+                      text-align:center; margin-bottom:15px;"></p>
+            <button type="button" id="adminLoginSubmitBtn"
+                    class="btn btn-green"
+                    style="width:100%; padding:14px; font-size:16px;"
+                    onclick="doAdminLogin()">دخول</button>
+        </form>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     شاشة التحميل
+════════════════════════════════════════════════ -->
+<div id="adminLoadingScreen"
+     style="display:flex; position:fixed; inset:0; background:#1d364a; z-index:99999;
+            justify-content:center; align-items:center; flex-direction:column; gap:20px;">
+    <div style="color:#f38c18; font-size:28px; font-weight:bold;">الجوري ستور</div>
+    <div style="color:white; font-size:16px;">جاري التحقق من الصلاحيات...</div>
+    <div style="width:50px; height:50px; border:5px solid #f38c18; border-top-color:transparent;
+                border-radius:50%; animation:spin 0.8s linear infinite;"></div>
+    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     القائمة الجانبية
+════════════════════════════════════════════════ -->
+<div class="sidebar" id="adminSidebarPanel" style="display:none;">
+    <h2>إدارة الجوري ستور</h2>
+
+    <button class="menu-btn" data-perm="orders" onclick="switchTab('orders')">الطلبات والفواتير</button>
+
+    <button class="menu-btn has-submenu" data-perm="products" onclick="toggleSubmenu('menu-products')">
+        المنتجات والأقسام <span>▼</span>
+    </button>
+    <div id="menu-products" class="submenu" data-perm="products">
+        <button class="menu-btn sub-btn" onclick="switchTab('products')">إدارة المنتجات</button>
+        <button class="menu-btn sub-btn" onclick="switchTab('categories')">إدارة الأقسام</button>
+    </div>
+
+    <button class="menu-btn" data-perm="promos" onclick="switchTab('promos')">العروض وكوبونات الخصم</button>
+
+    <button class="menu-btn" data-perm="warranties" onclick="switchTab('warranties')">الضمانات 🛡️</button>
+
+    <button class="menu-btn has-submenu" data-perm="botsettings" onclick="toggleSubmenu('menu-botsettings')">
+        بوت الواتساب 🤖 <span>▼</span>
+    </button>
+    <div id="menu-botsettings" class="submenu" data-perm="botsettings">
+        <button class="menu-btn sub-btn" onclick="switchTab('botsettings')">⚙️ الإعدادات العامة</button>
+        <button class="menu-btn sub-btn" onclick="switchTab('botquickreplies')">⚡ الردود السريعة</button>
+        <button class="menu-btn sub-btn" onclick="switchTab('botusagelog')">📊 سجل استهلاك التوكنز</button>
+        <button class="menu-btn sub-btn" onclick="switchTab('botbroadcast')">📢 بحث وإرسال جماعي</button>
+    </div>
+
+    <button class="menu-btn has-submenu" data-perm="customers" onclick="toggleSubmenu('menu-customers')">
+        العملاء والمناطق <span>▼</span>
+    </button>
+    <div id="menu-customers" class="submenu" data-perm="customers">
+        <button class="menu-btn sub-btn" onclick="switchTab('customers')">قائمة العملاء</button>
+        <button class="menu-btn sub-btn" onclick="switchTab('regions')">مناطق التوصيل</button>
+    </div>
+
+    <button class="menu-btn has-submenu" data-perm="loyalty" onclick="toggleSubmenu('menu-loyalty')">
+        نظام الولاء والمكافآت 🎁 <span>▼</span>
+    </button>
+    <div id="menu-loyalty" class="submenu" data-perm="loyalty">
+        <button class="menu-btn sub-btn" onclick="switchTab('loyalty-settings')">إعدادات النقاط</button>
+        <button class="menu-btn sub-btn" onclick="switchTab('loyalty-rewards')">متجر المكافآت</button>
+        <button class="menu-btn sub-btn" onclick="switchTab('loyalty-history')">سجل النقاط الشامل</button>
+    </div>
+
+    <button class="menu-btn has-submenu" data-perm="storefront" onclick="toggleSubmenu('menu-storefront')">
+        واجهة المتجر <span>▼</span>
+    </button>
+    <div id="menu-storefront" class="submenu" data-perm="storefront">
+        <button class="menu-btn sub-btn" onclick="switchTab('storefront')">البانرات والسلايدر</button>
+        <button class="menu-btn sub-btn" onclick="switchTab('sections')">السكاشن الاحترافية</button>
+        <button class="menu-btn sub-btn" onclick="switchTab('custom-lists')">القوائم المخصصة</button>
+    </div>
+
+    <button class="menu-btn has-submenu" data-perm="accounting" onclick="toggleSubmenu('menu-accounting')">
+        الحسابات والخزنة 💰 <span>▼</span>
+    </button>
+    <div id="menu-accounting" class="submenu" data-perm="accounting">
+        <button class="menu-btn sub-btn" onclick="switchTab('acc-overview')">📊 نظرة عامة ورأس المال</button>
+        <button class="menu-btn sub-btn" onclick="switchTab('acc-treasury-accounts')">🏦 أرصدة الحسابات</button>
+        <button class="menu-btn sub-btn" onclick="switchTab('acc-treasury-transactions')">💳 حركات الخزنة</button>
+        <button class="menu-btn sub-btn" onclick="switchTab('acc-expenses')">🧾 المصاريف</button>
+        <button class="menu-btn sub-btn" onclick="switchTab('acc-price-history')">📜 سجل تغييرات الأسعار</button>
+        <button class="menu-btn sub-btn" onclick="switchTab('acc-stock-movements')">📦 سجل حركة المخزون واستلام البضاعة</button>
+        <button class="menu-btn sub-btn" onclick="switchTab('acc-reports')">📈 التقارير المالية</button>
+    </div>
+
+    <button class="menu-btn" data-perm="team" onclick="switchTab('team')">فريق العمل 👥</button>
+    <button class="menu-btn" id="menuBtnFoundations" data-manage-admins-only="1" style="display:none;" onclick="switchTab('foundations')">🏛️ أسس الصلاحيات</button>
+    <button class="menu-btn" data-perm="gallery" onclick="openGalleryModal()">🖼️ استوديو الصور</button>
+
+    <button type="button" id="adminLogoutBtn" class="menu-btn"
+            style="background-color:#d9534f; margin-top:auto; color:white;
+                   border-bottom:none; cursor:pointer;">
+        تسجيل خروج 🚪
+    </button>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     المحتوى الرئيسي
+════════════════════════════════════════════════ -->
+<div class="main-content" id="adminMainPanel" style="display:none;">
+
+    <!-- شريط حالة النظام -->
+    <div style="display:flex; justify-content:space-between; align-items:center;
+                background:#eef2f5; padding:15px 25px; border-radius:8px;
+                margin-bottom:25px; border-right:5px solid #1d364a;
+                box-shadow:0 2px 5px rgba(0,0,0,0.02);">
+        <div>
+            <span style="font-weight:bold; color:#1d364a; font-size:15px;">حالة النظام الحالية:</span>
+            <span id="syncStatusBadge"
+                  style="background:#28a745; color:white; padding:4px 10px;
+                         border-radius:12px; font-size:13px; font-weight:bold; margin-right:10px;">
+                متصل بالسيرفر السحابي (Firebase) ☁️
+            </span>
+        </div>
+        <div id="dataIntegrityCheck" style="font-size:13px; color:#555; font-weight:bold;">
+            🔄 جاري فحص سلامة البيانات والمدخلات...
+        </div>
+    </div>
+
+    <!-- ══════════════ قسم الطلبات ══════════════ -->
+    <div id="orders" class="section">
+        <h3>إدارة الطلبات والفواتير</h3>
+        <div style="display:flex; gap:15px; margin-bottom:20px; background:#eef2f5;
+                    padding:20px; border-radius:8px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:200px;">
+                <label style="font-weight:bold; margin-bottom:5px;">رقم الطلب</label>
+                <input type="text" id="filterOrderId" class="form-control"
+                       placeholder="بحث برقم الطلب..." onkeyup="loadAdminOrdersFiltered()">
+            </div>
+            <div style="flex:1; min-width:200px;">
+                <label style="font-weight:bold; margin-bottom:5px;">رقم التليفون</label>
+                <input type="text" id="filterPhone" class="form-control"
+                       placeholder="بحث برقم التليفون..." onkeyup="loadAdminOrdersFiltered()">
+            </div>
+            <div style="flex:1; min-width:200px;">
+                <label style="font-weight:bold; margin-bottom:5px;">حالة الطلب</label>
+                <select id="filterStatus" class="form-control" onchange="loadAdminOrdersFiltered()">
+                    <option value="all">الكل</option>
+                    <option value="Pending">جديد / قيد التنفيذ ⏳</option>
+                    <option value="Shipped">تم الشحن 🚚</option>
+                    <option value="Delivered">تم التوصيل ✅</option>
+                    <option value="Cancelled">ملغي ❌</option>
+                </select>
+            </div>
+            <div style="flex:1; min-width:180px;">
+                <label style="font-weight:bold; margin-bottom:5px;">من تاريخ ووقت</label>
+                <input type="datetime-local" id="filterDateFrom" class="form-control" onchange="loadAdminOrdersFiltered()">
+            </div>
+            <div style="flex:1; min-width:180px;">
+                <label style="font-weight:bold; margin-bottom:5px;">إلى تاريخ ووقت</label>
+                <input type="datetime-local" id="filterDateTo" class="form-control" onchange="loadAdminOrdersFiltered()">
+            </div>
+            <div style="flex:1; min-width:160px;">
+                <label style="font-weight:bold; margin-bottom:5px;">عدد الطلبات في الصفحة</label>
+                <select id="ordersPageSizeSelect" class="form-control" onchange="loadAdminOrdersFiltered()">
+                    <option value="10">10</option>
+                    <option value="20" selected>20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+        </div>
+        <div style="margin-bottom:15px; display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn" style="background:#25d366; font-size:16px; padding:10px 20px;"
+                    onclick="openManualOrderModal()">💬 إنشاء طلب واتساب يدوي</button>
+            <button class="btn btn-green" onclick="printSelectedOrders()"
+                    style="font-size:16px; padding:10px 20px;">🖨️ طباعة الفواتير المحددة</button>
+            <button class="btn" style="background:#28a745; font-size:16px; padding:10px 20px;"
+                    onclick="exportFilteredOrdersCSV()">📥 تنزيل الطلبات الظاهرة (Excel)</button>
+            <button class="btn" style="background:#17a2b8; font-size:16px; padding:10px 20px;"
+                    onclick="exportProductSalesCSV()">📊 شيت مبيعات المنتجات</button>
+        </div>
+        <div id="filterOrderCount" style="margin-bottom:10px;font-size:13px;color:#555;font-weight:bold;"></div>
+        <table id="adminOrdersTable">
+            <thead>
+                <tr>
+                    <th style="width:40px; text-align:center;">
+                        <input type="checkbox" id="selectAllOrders"
+                               onclick="toggleAllOrders(this)"
+                               style="cursor:pointer; width:18px; height:18px;">
+                    </th>
+                    <th>رقم الطلب</th><th>التاريخ</th><th>الوقت</th><th>بيانات العميل</th>
+                    <th>الإجمالي</th><th>الحالة</th><th>الحالة المالية 💰</th><th>آخر تعديل</th>
+                    <th style="min-width:280px;">إجراءات</th>
+                </tr>
+            </thead>
+            <tbody id="adminOrdersBody"></tbody>
+        </table>
+        <div id="adminOrdersPagination" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:20px;"></div>
+    </div>
+
+    <!-- ══════════════ قسم المنتجات ══════════════ -->
+    <div id="products" class="section">
+        <h3>إضافة وتعديل المنتجات</h3>
+
+        <!-- تبويبات الفورم -->
+        <div style="display:flex; gap:0; margin-bottom:0; border-bottom:3px solid #f38c18;">
+            <button id="tabBtnBasic" onclick="switchProductTab('basic')"
+                    style="padding:12px 30px; background:#1d364a; color:white; border:none;
+                           border-radius:8px 8px 0 0; font-size:15px; font-weight:bold;
+                           cursor:pointer; margin-left:5px; transition:0.2s;">
+                📦 البيانات الأساسية
+            </button>
+            <button id="tabBtnBlog" onclick="switchProductTab('blog')"
+                    style="padding:12px 30px; background:#eef2f5; color:#1d364a; border:none;
+                           border-radius:8px 8px 0 0; font-size:15px; font-weight:bold;
+                           cursor:pointer; transition:0.2s;">
+                ✏️ محتوى الصفحة (مدونة)
+            </button>
+        </div>
+
+        <!-- التبويب الأول: البيانات الأساسية -->
+        <div id="tabBasic" style="display:flex; gap:25px; flex-wrap:wrap; background:#f9f9f9;
+                                   padding:25px; border-radius:0 8px 8px 8px; margin-bottom:20px;
+                                   border:1px solid #eee; border-top:none;">
+            <div style="flex:1; min-width:250px;">
+                <div class="form-group"><label>كود المنتج</label><input type="text" id="newProdId" class="form-control"></div>
+                <div class="form-group"><label>الاسم بالعربي</label><input type="text" id="newProdNameAr" class="form-control"></div>
+                <div class="form-group"><label>الاسم بالإنجليزي</label><input type="text" id="newProdNameEn" class="form-control"></div>
+                <div class="form-group"><label>السعر</label><input type="number" id="newProdPrice" class="form-control"></div>
+                <div class="form-group">
+                    <label>سعر التكلفة (اللي بتشتري بيه من التاجر) 💰</label>
+                    <input type="number" id="newProdCost" class="form-control" placeholder="اتركه فارغاً لو البضاعة دي لسه مش مشتراة فعلياً">
+                    <p style="color:#d9534f;font-size:12px;margin-top:4px;line-height:1.6;">⚠️ لو الحقل فاضي، هذا المنتج ومبيعاته <strong>لن يدخلوا في أي حساب مالي</strong> (مبيعات/تكلفة/أرباح/رأس مال) حتى تكتب تكلفته. مناسب للبضاعة اللي بتعرضها بس لسه مش مشتراها من عند التاجر.</p>
+                </div>
+            </div>
+            <div style="flex:1; min-width:250px;">
+                <div class="form-group">
+                    <label>القسم الرئيسي</label>
+                    <select id="newProdCategory" class="form-control" onchange="updateSubCatsDropdown()"></select>
+                </div>
+                <div class="form-group">
+                    <label>القسم الفرعي</label>
+                    <select id="newProdSubCategory" class="form-control"><option value="">-- بدون --</option></select>
+                </div>
+                <div class="form-group"><label>المخزون</label><input type="number" id="newProdStock" class="form-control"></div>
+                <div class="form-group">
+                    <label>مدة الضمان (بالشهور) 🛡️</label>
+                    <input type="number" id="newProdWarranty" class="form-control" placeholder="اتركه فارغاً أو 0 = بدون ضمان" min="0">
+                </div>
+                <div class="form-group">
+                    <label>رابط الصورة</label>
+                    <input type="text" id="newProdImg" class="form-control" value="https://via.placeholder.com/200">
+                    <div style="display:flex; gap:10px; margin-top:10px; margin-bottom:15px;">
+                        <button type="button" onclick="triggerDirectUpload('newProdImg')"
+                                class="btn btn-green" style="flex:1;">📤 رفع صورة من الجهاز</button>
+                        <button type="button" onclick="openGalleryModal('newProdImg')"
+                                class="btn" style="background:#e68a10; flex:1;">🖼️ اختيار من الاستوديو</button>
+                    </div>
+                </div>
+            </div>
+            <div style="flex:1; width:100%; display:flex; gap:20px;">
+                <div class="form-group" style="flex:1;">
+                    <label>وصف المنتج (عربي)</label>
+                    <textarea id="newProdDescAr" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>وصف المنتج (إنجليزي)</label>
+                    <textarea id="newProdDescEn" class="form-control" rows="3"></textarea>
+                </div>
+            </div>
+            <div style="width:100%;">
+                <button class="btn btn-green" id="btnSaveProd" onclick="saveProduct()"
+                        style="width:100%; padding:15px; font-size:18px;">➕ حفظ المنتج</button>
+            </div>
+        </div>
+
+        <!-- التبويب الثاني: محرر المدونة -->
+        <div id="tabBlog" style="display:none; background:#f9f9f9; border-radius:0 8px 8px 8px;
+                                  margin-bottom:20px; border:1px solid #eee; border-top:none; overflow:hidden;">
+            <div style="background:#fdf5e6; padding:15px 25px; border-bottom:1px solid #eee;
+                        display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+                <span style="font-weight:bold; color:#1d364a; font-size:15px;">📝 تعديل محتوى صفحة المنتج:</span>
+                <span id="blogProdIdLabel"
+                      style="background:#1d364a; color:#f38c18; padding:5px 15px;
+                             border-radius:20px; font-size:13px; font-weight:bold;">لم يتم اختيار منتج بعد</span>
+                <span style="color:#888; font-size:13px;">— احفظ البيانات الأساسية أولاً ثم أضف المحتوى</span>
+            </div>
+
+            <!-- شريط أدوات المحرر -->
+            <div style="background:#1d364a; padding:12px 15px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                <select onchange="blogExecCmd('formatBlock',this.value);this.value=''"
+                        style="background:white;color:#1d364a;border:none;border-radius:5px;padding:6px 10px;font-family:inherit;cursor:pointer;">
+                    <option value="">📝 نص</option>
+                    <option value="H2">عنوان كبير</option>
+                    <option value="H3">عنوان متوسط</option>
+                    <option value="H4">عنوان صغير</option>
+                    <option value="P">فقرة</option>
+                    <option value="blockquote">اقتباس</option>
+                </select>
+                <select onchange="blogExecCmd('fontSize',this.value);this.value=''"
+                        style="background:white;color:#1d364a;border:none;border-radius:5px;padding:6px 10px;font-family:inherit;cursor:pointer;">
+                    <option value="">حجم الخط</option>
+                    <option value="2">صغير</option><option value="3">عادي</option>
+                    <option value="4">كبير</option><option value="5">أكبر</option>
+                    <option value="6">ضخم</option><option value="7">ضخم جداً</option>
+                </select>
+                <div style="width:1px;background:rgba(255,255,255,0.2);height:28px;margin:0 4px;"></div>
+                <label style="color:rgba(255,255,255,0.7);font-size:12px;">لون:</label>
+                <input type="color" value="#333333" onchange="blogExecCmd('foreColor',this.value)"
+                       style="width:36px;height:32px;border:none;border-radius:4px;cursor:pointer;padding:2px;">
+                <label style="color:rgba(255,255,255,0.7);font-size:12px;">تظليل:</label>
+                <input type="color" value="#ffffff" onchange="blogExecCmd('hiliteColor',this.value)"
+                       style="width:36px;height:32px;border:none;border-radius:4px;cursor:pointer;padding:2px;">
+                <div style="width:1px;background:rgba(255,255,255,0.2);height:28px;margin:0 4px;"></div>
+                <button onclick="blogExecCmd('bold')"    style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 12px;cursor:pointer;font-weight:900;transition:0.2s;" onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">B</button>
+                <button onclick="blogExecCmd('italic')"  style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 12px;cursor:pointer;font-style:italic;transition:0.2s;" onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">I</button>
+                <button onclick="blogExecCmd('underline')" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 12px;cursor:pointer;text-decoration:underline;transition:0.2s;" onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">U</button>
+                <div style="width:1px;background:rgba(255,255,255,0.2);height:28px;margin:0 4px;"></div>
+                <button onclick="blogExecCmd('justifyRight')"  style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;transition:0.2s;" onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">⬅️</button>
+                <button onclick="blogExecCmd('justifyCenter')" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;transition:0.2s;" onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">↔️</button>
+                <button onclick="blogExecCmd('justifyLeft')"   style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;transition:0.2s;" onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">➡️</button>
+                <div style="width:1px;background:rgba(255,255,255,0.2);height:28px;margin:0 4px;"></div>
+                <button onclick="blogExecCmd('insertUnorderedList')" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;font-size:13px;transition:0.2s;" onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">• قائمة</button>
+                <button onclick="blogExecCmd('insertOrderedList')"   style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;font-size:13px;transition:0.2s;" onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">1. مرقمة</button>
+                <div style="width:1px;background:rgba(255,255,255,0.2);height:28px;margin:0 4px;"></div>
+                <button onclick="openAdminBlogModal('img')"   style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;font-size:13px;transition:0.2s;" onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">🖼️ صورة</button>
+                <button onclick="openAdminBlogModal('video')" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;font-size:13px;transition:0.2s;" onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">🎬 فيديو</button>
+                <button onclick="openAdminBlogModal('link')"  style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;font-size:13px;transition:0.2s;" onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">🔗 رابط</button>
+                <button onclick="blogInsertDivider()"         style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;font-size:13px;transition:0.2s;" onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">— فاصل</button>
+                <div style="width:1px;background:rgba(255,255,255,0.2);height:28px;margin:0 4px;"></div>
+                <button onclick="blogExecCmd('removeFormat')" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;font-size:13px;transition:0.2s;" onmouseover="this.style.background='#f38c18'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">🧹 مسح تنسيق</button>
+            </div>
+
+            <!-- منطقة الكتابة -->
+            <div id="adminBlogEditor" contenteditable="true" dir="rtl"
+                 style="min-height:400px; padding:25px; outline:none; font-size:16px;
+                        line-height:1.9; background:#fff; color:#333; border-top:1px solid #eee;">
+                <p style="color:#aaa;">اختر منتجاً من جدول المنتجات أو احفظ المنتج الجديد أولاً، ثم ابدأ الكتابة هنا...</p>
+            </div>
+
+            <!-- أزرار الحفظ -->
+            <div style="padding:15px 25px; background:#f9f9f9; border-top:1px solid #eee;
+                        display:flex; gap:12px; flex-wrap:wrap;">
+                <button onclick="saveAdminBlogContent()"
+                        style="background:#28a745;color:white;border:none;padding:12px 30px;
+                               border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;flex:1;">
+                    💾 حفظ محتوى الصفحة
+                </button>
+                <button onclick="clearAdminBlogContent()"
+                        style="background:#d9534f;color:white;border:none;padding:12px 20px;
+                               border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;">
+                    🗑️ مسح المحتوى
+                </button>
+                <button onclick="previewAdminBlog()"
+                        style="background:#17a2b8;color:white;border:none;padding:12px 20px;
+                               border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;">
+                    👁️ معاينة
+                </button>
+            </div>
+        </div>
+
+        <!-- فلاتر البحث في المنتجات -->
+        <div style="background:#eef2f5;padding:20px;border-radius:8px;margin-bottom:20px;border:1px solid #dee2e6;">
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+                <div style="flex:2;min-width:200px;">
+                    <label style="font-weight:bold;font-size:13px;color:#1d364a;display:block;margin-bottom:6px;">🔍 بحث بالاسم أو الكود</label>
+                    <input type="text" id="filterProdSearch" class="form-control"
+                           placeholder="اكتب اسم المنتج أو الكود..." oninput="renderAdminProductsFiltered()">
+                </div>
+                <div style="flex:1;min-width:160px;">
+                    <label style="font-weight:bold;font-size:13px;color:#1d364a;display:block;margin-bottom:6px;">📁 القسم الرئيسي</label>
+                    <select id="filterProdMainCat" class="form-control"
+                            onchange="updateFilterSubCats();renderAdminProductsFiltered()">
+                        <option value="">الكل</option>
+                    </select>
+                </div>
+                <div style="flex:1;min-width:160px;">
+                    <label style="font-weight:bold;font-size:13px;color:#1d364a;display:block;margin-bottom:6px;">📂 القسم الفرعي</label>
+                    <select id="filterProdSubCat" class="form-control" onchange="renderAdminProductsFiltered()">
+                        <option value="">الكل</option>
+                    </select>
+                </div>
+                <div style="flex:0 0 auto;">
+                    <button class="btn" style="background:#6c757d;padding:10px 18px;"
+                            onclick="resetProductFilters()">↺ مسح الفلاتر</button>
+                </div>
+            </div>
+            <div style="display:flex;gap:25px;margin-top:12px;flex-wrap:wrap;align-items:center;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:bold;color:#d9534f;">
+                    <input type="checkbox" id="filterOutOfStock" style="width:17px;height:17px;cursor:pointer;" onchange="renderAdminProductsFiltered()">
+                    منتجات نفد مخزونها فقط
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:bold;color:#6c757d;">
+                    <input type="checkbox" id="filterInactive" style="width:17px;height:17px;cursor:pointer;" onchange="renderAdminProductsFiltered()">
+                    منتجات مخفية (inactive) فقط
+                </label>
+            </div>
+            <div id="filterProdCount" style="margin-top:10px;font-size:13px;color:#555;font-weight:bold;"></div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;
+                    border-bottom:2px solid #f38c18;padding-bottom:10px;margin-bottom:20px;">
+            <h3 style="margin:0;border:none;padding:0;">المنتجات الحالية</h3>
+            <div style="display:flex;gap:10px;">
+                <input type="file" id="importProductsFile" accept=".csv" style="display:none;"
+                       onchange="importProductsCSV(event)">
+                <button class="btn" style="background:#17a2b8;"
+                        onclick="document.getElementById('importProductsFile').click()">📤 رفع شيت (Import)</button>
+                <button class="btn" style="background:#28a745;" onclick="exportProductsCSV()">📥 تنزيل شيت (Export)</button>
+            </div>
+        </div>
+        <table>
+            <thead><tr><th>كود</th><th>الاسم</th><th>القسم</th><th>السعر</th><th>💰 التكلفة</th><th>المخزون</th><th>حالة الظهور</th><th style="min-width:140px;">إجراء</th></tr></thead>
+            <tbody id="adminProductsBody"></tbody>
+        </table>
+        <div id="adminProductsPagination" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:20px;"></div>
+    </div>
+
+    <!-- ══════════════ قسم الأقسام ══════════════ -->
+    <div id="categories" class="section">
+        <h3>إدارة الأقسام (الرئيسية والفرعية)</h3>
+        <div style="background:#eef2f5;padding:25px;border-radius:8px;margin-bottom:30px;border:1px solid #dee2e6;">
+            <div style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;">
+                <input type="text" id="newCatId"     placeholder="كود القسم"  class="form-control" style="flex:1;">
+                <input type="text" id="newCatNameAr" placeholder="اسم القسم (عربي)"  class="form-control" style="flex:2;">
+                <input type="text" id="newCatNameEn" placeholder="اسم القسم (إنجليزي)"  class="form-control" style="flex:2;">
+                <select id="newCatParent" class="form-control" style="flex:2;"></select>
+                <input type="number" id="newCatPriority" placeholder="الأولوية" class="form-control" style="flex:1;" value="1" min="1">
+                <label style="display:flex;align-items:center;gap:6px;background:white;padding:0 12px;border-radius:5px;border:1px solid #ccc;white-space:nowrap;">
+                    <input type="checkbox" id="newCatFeatured" style="width:18px;height:18px;cursor:pointer;">
+                    ⭐ مميز (يظهر في تسوق بالفئة)
+                </label>
+                <button class="btn btn-green" onclick="addCategory()" style="flex:1;">➕ إضافة</button>
+            </div>
+            <div id="adminCategoriesList" style="display:flex;flex-direction:column;gap:10px;"></div>
+        </div>
+    </div>
+
+    <!-- ══════════════ قسم العملاء ══════════════ -->
+    <div id="customers" class="section">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;
+                    border-bottom:2px solid #f38c18;padding-bottom:10px;margin-bottom:20px;">
+            <h3 style="margin:0;border:none;padding:0;">قائمة العملاء المسجلين وإحصائياتهم</h3>
+            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                <label style="font-weight:bold;font-size:13px;color:#1d364a;">عدد العملاء في الصفحة</label>
+                <select id="customersPageSizeSelect" class="form-control" style="width:90px;" onchange="renderAdminCustomers()">
+                    <option value="10">10</option>
+                    <option value="20" selected>20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+                <button class="btn" style="background:#28a745;" onclick="exportCustomersCSV()">📥 تصدير البيانات إلى Excel</button>
+            </div>
+        </div>
+        <div id="customersCount" style="margin-bottom:10px;font-size:13px;color:#555;font-weight:bold;"></div>
+        <div style="overflow-x:auto;">
+            <table id="adminCustomersTable" style="font-size:13px;min-width:1100px;table-layout:fixed;">
+                <colgroup>
+                    <col style="width:10%;">
+                    <col style="width:11%;">
+                    <col style="width:19%;">
+                    <col style="width:8%;">
+                    <col style="width:7%;">
+                    <col style="width:6%;">
+                    <col style="width:7%;">
+                    <col style="width:8%;">
+                    <col style="width:6%;">
+                    <col style="width:18%;">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>الكود</th><th>بيانات العميل</th><th>المنطقة والعنوان</th>
+                        <th>تاريخ التسجيل</th><th>وقت التسجيل</th><th>إجمالي الطلبات</th>
+                        <th>التوصيل / الإلغاء</th><th>المدفوعات والرصيد</th>
+                        <th>حالة الحساب</th><th>إجراء</th>
+                    </tr>
+                </thead>
+                <tbody id="adminCustomersBody"></tbody>
+            </table>
+        </div>
+        <div id="customersPaginationBox" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:20px;"></div>
+    </div>
+    <style>
+        #adminCustomersTable th, #adminCustomersTable td {
+            text-align: center !important;
+            vertical-align: middle;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+        #adminCustomersTable td:first-child { word-break: break-all; }
+        #adminCustomersTable td small,
+        #adminCustomersTable td strong { display: inline-block; }
+        #adminCustomersTable td button { margin: 3px auto; }
+    </style>
+
+    <!-- ══════════════ قسم المناطق ══════════════ -->
+    <div id="regions" class="section">
+        <h3>إدارة مناطق التوصيل ومصاريف الشحن 🚚</h3>
+        <div style="background:#fdf5e6;border:1px dashed #f38c18;border-radius:8px;padding:12px 16px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+            <span style="font-size:13px;color:#1d364a;">⚙️ لو عندك مناطق اتعملت قبل تحديث نظام الصلاحيات، اضغط الزرار ده مرة واحدة لترتيب تخزينها (آمن ويمكن الضغط عليه أكتر من مرة).</span>
+            <button class="btn" style="background:#f38c18;color:#1d364a;white-space:nowrap;" onclick="migrateRegionsToKeyedFormat()">🔧 ترحيل المناطق القديمة</button>
+        </div>
+        <div style="display:flex;gap:15px;margin-bottom:20px;background:#eef2f5;
+                    padding:20px;border-radius:8px;flex-wrap:wrap;">
+            <input type="text"   id="newRegionName" class="form-control"
+                   placeholder="اسم المنطقة (مثال: القاهرة...)" style="flex:2;min-width:200px;">
+            <input type="number" id="newRegionFee"  class="form-control"
+                   placeholder="مصاريف الشحن - اكتب 0 للمجاني"  style="flex:1;min-width:150px;">
+            <button class="btn btn-green" onclick="addAdminRegion()" style="flex:1;min-width:150px;">➕ إضافة منطقة</button>
+        </div>
+        <div id="adminRegionsList" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:40px;"></div>
+    </div>
+
+    <!-- ══════════════ قسم بوت الواتساب ══════════════ -->
+    <div id="botsettings" class="section">
+        <h3>إعدادات بوت الواتساب 🤖</h3>
+
+        <div style="background:#eef2f5;padding:20px;border-radius:8px;margin-bottom:25px;display:flex;
+                    justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px;">
+            <div>
+                <strong style="font-size:15px;color:#1d364a;">تفعيل الرد الآلي</strong>
+                <p style="margin:5px 0 0;color:#666;font-size:13px;">لو مقفول، البوت هيستقبل الرسائل بس مش هيرد تلقائي.</p>
+            </div>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                <input type="checkbox" id="botIsActiveToggle" onchange="saveBotIsActive()" style="width:22px;height:22px;">
+                <span id="botIsActiveLabel" style="font-weight:bold;">مفعّل</span>
+            </label>
+        </div>
+
+        <div style="background:#eef2f5;padding:20px;border-radius:8px;margin-bottom:25px;display:flex;
+                    justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px;">
+            <div>
+                <strong style="font-size:15px;color:#1d364a;">إيقاف مؤقت لما ترد بنفسك</strong>
+                <p style="margin:5px 0 0;color:#666;font-size:13px;">لو انت رديت على العميل بنفسك من الواتساب، البوت هيوقف عن الرد على العميل ده تلقائيًا للمدة دي بالدقايق.</p>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <input type="number" id="botPauseMinutes" class="form-control" min="0" step="1"
+                       style="width:100px;" placeholder="30" onchange="saveBotPauseMinutes()">
+                <span style="font-weight:bold;color:#1d364a;">دقيقة</span>
+            </div>
+        </div>
+
+        <div style="background:#eef2f5;padding:20px;border-radius:8px;margin-bottom:25px;">
+            <strong style="font-size:15px;color:#1d364a;">رقمك لاستقبال التنبيهات</strong>
+            <p style="margin:5px 0 10px;color:#666;font-size:13px;">هيتبعتلك عليه تنبيه واتساب لما عميل يتحول لك يدوي، أو لو حصل عطل متكرر في الاتصال بجيميناي. اكتبه بصيغة دولية من غير + أو أصفار (مثال: 201001234567).</p>
+            <input type="text" id="botOwnerNumber" class="form-control" style="max-width:280px;" placeholder="201001234567" onchange="saveBotOwnerNumber()">
+        </div>
+
+        <div style="background:#eef2f5;padding:20px;border-radius:8px;margin-bottom:25px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px;margin-bottom:15px;">
+                <div>
+                    <strong style="font-size:15px;color:#1d364a;">مواعيد الشغل</strong>
+                    <p style="margin:5px 0 0;color:#666;font-size:13px;">لو مفعّلة، البوت هيبعت رسالة "بره مواعيد الشغل" بدل الرد العادي في الأوقات اللي بره النطاق ده.</p>
+                </div>
+                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                    <input type="checkbox" id="botWorkHoursEnabled" onchange="saveBotWorkHours()" style="width:22px;height:22px;">
+                    <span style="font-weight:bold;">مفعّلة</span>
+                </label>
+            </div>
+            <div style="display:flex;align-items:center;gap:15px;flex-wrap:wrap;">
+                <div>
+                    <label style="font-size:13px;color:#666;display:block;margin-bottom:4px;">من الساعة</label>
+                    <input type="time" id="botWorkHoursStart" class="form-control" onchange="saveBotWorkHours()">
+                </div>
+                <div>
+                    <label style="font-size:13px;color:#666;display:block;margin-bottom:4px;">للساعة</label>
+                    <input type="time" id="botWorkHoursEnd" class="form-control" onchange="saveBotWorkHours()">
+                </div>
+            </div>
+            <div style="margin-top:15px;">
+                <label style="font-size:13px;color:#666;display:block;margin-bottom:4px;">رسالة "بره مواعيد الشغل"</label>
+                <textarea id="botOffHoursMessage" class="form-control" rows="2" onchange="saveBotOffHoursMessage()"></textarea>
+            </div>
+        </div>
+
+        <div style="background:#eef2f5;padding:20px;border-radius:8px;margin-bottom:25px;display:flex;
+                    justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px;">
+            <div>
+                <strong style="font-size:15px;color:#1d364a;">أقصى عدد رسائل من نفس العميل في الدقيقة</strong>
+                <p style="margin:5px 0 0;color:#666;font-size:13px;">أي رسائل زيادة عن الرقم ده في نفس الدقيقة من نفس الرقم هيتم تجاهلها، عشان حماية من استهلاك توكنز بالبلاش.</p>
+            </div>
+            <input type="number" id="botRateLimitPerMinute" class="form-control" min="1" step="1"
+                   style="width:100px;" placeholder="5" onchange="saveBotRateLimit()">
+        </div>
+
+        <div style="background:#eef2f5;padding:20px;border-radius:8px;margin-bottom:25px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px;margin-bottom:15px;">
+                <div>
+                    <strong style="font-size:15px;color:#1d364a;">متابعة العملاء الساكتين تلقائيًا</strong>
+                    <p style="margin:5px 0 0;color:#666;font-size:13px;">لو آخر رسالة في المحادثة كانت مننا (بوت أو رد يدوي منك) والعميل ماردش، البوت هيبعتله رسالة متابعة ثابتة مرة واحدة بعد المدة دي. العملاء المتحوّلين لموظف بشري مستبعدين تلقائيًا.</p>
+                </div>
+                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                    <input type="checkbox" id="botFollowUpEnabled" onchange="saveBotFollowUp()" style="width:22px;height:22px;">
+                    <span style="font-weight:bold;">مفعّلة</span>
+                </label>
+            </div>
+            <div style="display:flex;align-items:center;gap:15px;flex-wrap:wrap;margin-bottom:15px;">
+                <div>
+                    <label style="font-size:13px;color:#666;display:block;margin-bottom:4px;">تتفعل بعد</label>
+                    <select id="botFollowUpHours" class="form-control" onchange="saveBotFollowUp()">
+                        <option value="4">4 ساعات</option>
+                        <option value="8">8 ساعات</option>
+                        <option value="12">12 ساعة</option>
+                        <option value="14">14 ساعة</option>
+                        <option value="20">20 ساعة</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label style="font-size:13px;color:#666;display:block;margin-bottom:4px;">نص رسالة المتابعة</label>
+                <textarea id="botFollowUpMessage" class="form-control" rows="2" onchange="saveBotFollowUp()"></textarea>
+            </div>
+        </div>
+
+        <div style="background:#eaf4ff;border:1px solid #1d6fd6;border-radius:8px;padding:18px;margin-bottom:20px;">
+            <strong style="color:#1d364a;">ℹ️ الحاجة الوحيدة اللي البوت بيعملها أوتوماتيك ومش محتاج تكتبها</strong>
+            <p style="margin:8px 0 0;color:#444;font-size:13.5px;line-height:1.9;">
+                <strong>التحويل لك لما مايعرفش:</strong> لو العميل سأل سؤال والمعلومة مش مكتوبة صريحة تحت، البوت هيبعتله رسالة تحويل ثابتة ("هحولك لأحد زملائنا...") ويسكت تمامًا مع العميل ده لحد ما ترد انت بنفسك يدويًا من الموبايل - ده بيحصل أوتوماتيك من غير أي تعليمة منك، وده بيمنعه يختلق معلومات غلط.
+            </p>
+            <p style="margin:10px 0 0;color:#444;font-size:13.5px;line-height:1.9;">
+                <strong>كل حاجة تانية (طول الرد، متى يديله كل التفاصيل والعروض، ومتى يختصر) بالكامل تحت تحكمك انت</strong> — اكتبها بنفسك في التعليمات تحت زي ما عايزها بالظبط. مثلاً ممكن تكتب: "أول رد على سؤال السعر ادّي فيه كل المواصفات والعروض كاملة، لكن الردود اللي بعد كده خليها مختصرة ومباشرة."
+            </p>
+        </div>
+
+        <div style="background:#fdf5e6;border:1px solid #f38c18;border-radius:8px;padding:20px;margin-bottom:25px;">
+            <label style="font-weight:bold;color:#1d364a;display:block;margin-bottom:10px;">
+                تعليمات عامة للبوت (System Prompt)
+            </label>
+            <p style="margin:0 0 12px;color:#666;font-size:13px;">
+                ده أسلوب الرد وشخصية البوت وطول ردوده. البوت مبقاش بيقرا الأسعار والمخزون والخصومات
+                تلقائيًا — اكتب كل اللي عايز البوت يعرفه هنا يدويًا، بما في ذلك إمتى يبقى رده مفصّل
+                وإمتى يبقى مختصر (البوت مش هيحدد ده من نفسه، القرار بالكامل ليك).
+            </p>
+            <details style="margin-bottom:12px;background:white;border:1px solid #eee;border-radius:6px;padding:10px 14px;">
+                <summary style="cursor:pointer;font-weight:bold;color:#1d364a;">📋 مثال لشكل منظّم تقدر تكتب بيه (اضغط للفتح)</summary>
+                <pre style="white-space:pre-wrap;font-family:inherit;font-size:13px;color:#333;line-height:1.8;margin-top:10px;">أنت مساعد مبيعات لمتجر الجوري ستور لبيع واقيات شاشات أكريليك. ردودك بلهجة مصرية عامية ودودة.
+
+أسلوب الرد:
+- أول رد على سؤال عن السعر: ادّي فيه السعر + كل المواصفات (الخامة، السمك، الضمان) + العروض الحالية كاملة.
+- أي رد بعد كده في نفس المحادثة: خليه مختصر ومباشر من غير تكرار المواصفات تاني إلا لو العميل سأل عنها تحديدًا.
+
+المنتج:
+- الخامة: أكريليك تركي مستورد، سمك 3 مللي.
+- الضمان: 12 شهر.
+- التركيب: سهل، بيتثبت بأحزمة أمان من الخلف.
+
+الأسعار (حسب المقاس بالبوصة):
+- 32 بوصة: 350 جنيه
+- 43 بوصة: 450 جنيه
+- 55 بوصة: 550 جنيه
+(عدّل الأرقام دي لأسعارك الفعلية)
+
+العروض الحالية:
+- توصيل وتركيب مجاني داخل القاهرة والجيزة.
+
+سياسة التعامل مع الاعتراض على السعر:
+- وضّح إننا مستوردين يد أولى وإن ده استثمار بيحمي الشاشة من كسر أغلى بكتير.</pre>
+            </details>
+            <textarea id="botSystemPrompt" class="form-control" rows="12"
+                      style="width:100%;font-family:inherit;line-height:1.6;"
+                      placeholder="مثال: أنت مساعد ذكي لمتجر الجوري ستور..."></textarea>
+            <button class="btn btn-green" style="margin-top:12px;" onclick="saveBotSystemPrompt()">💾 حفظ التعليمات</button>
+            <span id="botSaveStatus" style="margin-right:10px;color:#2e7d32;font-weight:bold;"></span>
+        </div>
+
+        <div style="background:#fdecea;border:1px solid #d9534f;border-radius:8px;padding:18px;">
+            <strong style="color:#d9534f;">⚠️ ملحوظة مهمة</strong>
+            <p style="margin:8px 0 0;color:#444;font-size:13.5px;line-height:1.8;">
+                البوت <strong>لا يقرأ أي بيانات تلقائيًا</strong> من المنتجات أو العروض أو مناطق الشحن أو أي جزء تاني في الموقع.
+                كل رد بيبعته البوت مبني حصريًا على النص المكتوب فوق في "تعليمات عامة للبوت (System Prompt)".
+                لو عايز البوت يعرف سعر منتج معيّن أو كود خصم أو منطقة شحن، لازم تكتبها بنفسك هنا يدويًا.
+            </p>
+        </div>
+    </div>
+
+    <!-- ══════════════ قسم الردود السريعة الجاهزة (فرعي تحت بوت الواتساب) ══════════════ -->
+    <div id="botquickreplies" class="section">
+        <h3>الردود السريعة الجاهزة ⚡</h3>
+
+        <div style="background:#eaf7ec;border:1px solid #28a745;border-radius:8px;padding:20px;margin-bottom:25px;">
+            <label style="font-weight:bold;color:#1d364a;display:block;margin-bottom:6px;">
+                ⚡ توفير كامل للتوكن على الأسئلة المتكررة
+            </label>
+            <p style="margin:0 0 15px;color:#444;font-size:13px;line-height:1.8;">
+                لو رسالة العميل فيها أي كلمة من الكلمات المفتاحية تحت، البوت هيرد بالنص الجاهز اللي تكتبه
+                <strong>على طول من غير ما يكلم الذكاء الاصطناعي خالص</strong> - يعني توفير 100% من التكلفة
+                على الأسئلة دي (مثالي للأسئلة المتكررة الثابتة زي: مواعيد الشغل، العنوان، سياسة الاستبدال...).
+                <br>💡 تقدر تكتب أكتر من كلمة مفتاحية لنفس الرد في خانة واحدة، مفصولين بفاصلة (مثال: <code>65, ٦٥</code>) عشان تغطي أكتر من صياغة لنفس المعنى برد واحد بس.
+                <br>⚠️ الرد هنا بيتبعت <strong>بالحرف زي ما كتبته بالظبط</strong> من غير أي تعديل أو إبداع من البوت.
+            </p>
+            <div id="quickRepliesList" style="display:flex;flex-direction:column;gap:10px;margin-bottom:15px;"></div>
+            <div style="background:white;padding:15px;border-radius:8px;border:1px dashed #28a745;">
+                <input type="hidden" id="editingQuickReplyId" value="">
+                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+                    <input type="text" id="newQuickReplyTrigger" class="form-control"
+                           placeholder="كلمة أو أكتر مفصولين بفاصلة (مثال: 65, ٦٥)" style="flex:1;min-width:180px;">
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;position:relative;">
+                    <label style="font-weight:bold;color:#1d364a;font-size:13.5px;white-space:nowrap;">نوع المطابقة:</label>
+                    <select id="newQuickReplyMatchType" class="form-control" style="flex:1;max-width:260px;">
+                        <option value="contains">شامل (يحتوي على الكلمة)</option>
+                        <option value="exact_word">مطابقة تامة (كلمة مستقلة)</option>
+                        <option value="exact_message">مطابقة الرسالة كاملة</option>
+                    </select>
+                    <span onclick="toggleQuickReplyMatchInfo()"
+                          style="cursor:pointer;background:#f38c18;color:#1d364a;width:22px;height:22px;border-radius:50%;
+                                 display:inline-flex;align-items:center;justify-content:center;font-weight:bold;font-size:13px;flex:0 0 auto;"
+                          title="اضغط لشرح أنواع المطابقة">!</span>
+
+                    <div id="quickReplyMatchInfoBox" style="display:none;position:absolute;top:36px;right:0;left:0;z-index:20;
+                         background:#1d364a;color:white;border-radius:8px;padding:16px 18px;font-size:13px;line-height:1.9;
+                         box-shadow:0 8px 20px rgba(0,0,0,.25);">
+                        <div style="margin-bottom:12px;">
+                            <strong style="color:#f38c18;">🟢 شامل:</strong> الكلمة تتفعّل لو موجودة في أي مكان من رسالة العميل، حتى لو جوه كلمة أطول.
+                            <br><span style="color:#cfd8e3;">مثال: كلمة "غالي" تتفعّل مع "ده غالي أوي" ومع "مش غاليه عليا" كمان.</span>
+                        </div>
+                        <div style="margin-bottom:12px;">
+                            <strong style="color:#f38c18;">🟡 مطابقة تامة (كلمة مستقلة):</strong> الكلمة لازم تيجي منفصلة بذاتها، مش ملتصقة بحروف تانية.
+                            <br><span style="color:#cfd8e3;">مثال: كلمة "غالي" تتفعّل مع "ده غالي أوي" لكن مش مع "مش غاليه عليا".</span>
+                        </div>
+                        <div>
+                            <strong style="color:#f38c18;">🔴 مطابقة الرسالة كاملة:</strong> رسالة العميل كلها لازم تطابق الكلمة بالظبط (بنتجاهل علامات الترقيم زي ؟ و !).
+                            <br><span style="color:#cfd8e3;">مثال: كلمة "غالي عليا" تتفعّل مع "غالي عليا؟" لكن مش مع "غالي عليا أوي".</span>
+                        </div>
+                        <div style="text-align:left;margin-top:12px;">
+                            <button onclick="toggleQuickReplyMatchInfo()" class="btn" style="background:#f38c18;color:#1d364a;padding:5px 14px;font-size:12px;">فهمت ✖</button>
+                        </div>
+                    </div>
+                </div>
+                <textarea id="newQuickReplyText" class="form-control" rows="4"
+                          style="width:100%;font-family:inherit;line-height:1.7;margin-bottom:10px;"
+                          placeholder="الرد الجاهز الحرفي... اكتبه براحتك، تقدر تسيب أسطر ومسافات وإيموجيز 🌸 زي ما عايز بالظبط"></textarea>
+                <div style="display:flex;gap:10px;">
+                    <button class="btn btn-green" id="quickReplySaveBtn" onclick="saveQuickReply()" style="flex:1;">➕ إضافة</button>
+                    <button class="btn btn-red" id="quickReplyCancelBtn" onclick="cancelEditQuickReply()" style="display:none;flex:0 0 auto;">✖ إلغاء التعديل</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════ قسم سجل استهلاك التوكنز (فرعي تحت بوت الواتساب) ══════════════ -->
+    <div id="botusagelog" class="section">
+        <h3>سجل استهلاك التوكنز (تكلفة جيميناي) 📊</h3>
+
+        <div style="background:#eaf4ff;border:1px solid #1d6fd6;border-radius:8px;padding:15px 18px;margin-bottom:20px;font-size:13.5px;color:#444;line-height:1.8;">
+            كل حركة رد فيها البوت على عميل بتتسجل هنا سطر بسطر: لو رد سريع جاهز التوكنز بتبقى 0 (توفير كامل)،
+            ولو رد ذكاء اصطناعي بيظهر عدد التوكنز الفعلي اللي استهلكه (توكنز الطلب + توكنز الرد) زي ما جيميناي بيرجعه بالظبط.
+        </div>
+
+        <div id="botUsageSummaryCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:15px;margin-bottom:20px;"></div>
+
+        <div id="topQuickRepliesBox" style="background:white;border:1px solid #ddd;border-radius:8px;padding:18px;margin-bottom:25px;"></div>
+
+        <div style="display:flex;gap:15px;margin-bottom:20px;background:#eef2f5;padding:20px;border-radius:8px;flex-wrap:wrap;align-items:flex-end;">
+            <div style="flex:1;min-width:160px;">
+                <label style="font-weight:bold;margin-bottom:5px;display:block;">رقم التليفون</label>
+                <input type="text" id="filterUsagePhone" class="form-control" placeholder="بحث برقم..." oninput="renderBotUsageLog()">
+            </div>
+            <div style="flex:1;min-width:160px;">
+                <label style="font-weight:bold;margin-bottom:5px;display:block;">نوع الحركة</label>
+                <select id="filterUsageType" class="form-control" onchange="renderBotUsageLog()">
+                    <option value="all">الكل</option>
+                    <option value="ai">رد ذكاء اصطناعي (Gemini)</option>
+                    <option value="quick_reply">رد سريع جاهز (0 توكن)</option>
+                </select>
+            </div>
+            <div style="flex:1;min-width:160px;">
+                <label style="font-weight:bold;margin-bottom:5px;display:block;">من تاريخ</label>
+                <input type="date" id="filterUsageFrom" class="form-control" onchange="renderBotUsageLog()">
+            </div>
+            <div style="flex:1;min-width:160px;">
+                <label style="font-weight:bold;margin-bottom:5px;display:block;">إلى تاريخ</label>
+                <input type="date" id="filterUsageTo" class="form-control" onchange="renderBotUsageLog()">
+            </div>
+            <div style="flex:1;min-width:160px;">
+                <label style="font-weight:bold;margin-bottom:5px;display:block;">عدد الحركات في الصفحة</label>
+                <select id="usagePageSizeSelect" class="form-control" onchange="renderBotUsageLog()">
+                    <option value="10">10</option>
+                    <option value="20" selected>20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+            <div style="flex:0 0 auto;">
+                <button class="btn" style="background:#28a745;" onclick="exportBotUsageLogCSV()">📥 تصدير Excel</button>
+            </div>
+        </div>
+        <div id="filterUsageCount" style="margin-bottom:10px;font-size:13px;color:#555;font-weight:bold;"></div>
+        <table>
+            <thead>
+                <tr>
+                    <th>التاريخ والوقت</th><th>رقم العميل</th><th>نوع الحركة</th><th>الموديل</th>
+                    <th>توكنز الطلب</th><th>توكنز الرد</th><th>🧠 توكنز تفكير مخفية</th><th>الإجمالي</th>
+                </tr>
+            </thead>
+            <tbody id="botUsageLogBody"></tbody>
+        </table>
+        <div id="botUsageLogPagination" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:20px;"></div>
+    </div>
+
+    <!-- ══════════════ قسم البحث في المحادثات والإرسال الجماعي ══════════════ -->
+    <div id="botbroadcast" class="section">
+        <h3>بحث في المحادثات وإرسال جماعي 📢</h3>
+
+        <div style="background:#fdecea;border:1px solid #d9534f;border-radius:8px;padding:15px 18px;margin-bottom:20px;">
+            <strong style="color:#a23b38;">⚠️ تنبيه مهم:</strong>
+            <p style="margin:6px 0 0;color:#555;font-size:13px;line-height:1.8;">
+                واتساب بيراقب الإرسال الجماعي وممكن يوقف الرقم لو استخدمته بكثرة أو لعدد كبير جدًا مرة واحدة.
+                الرسائل بتتبعت واحدة واحدة بفاصل زمني عشوائي (نص دقيقة لدقيقة ونص تقريبًا) لحمايتك، فالإرسال هياخد وقت -
+                متبعتش لعدد كبير جدًا من العملاء دفعة واحدة.
+            </p>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+            <input type="text" id="broadcastSearchInput" class="form-control" style="flex:1;min-width:220px;"
+                   placeholder="دور بكلمة (مثلاً: 75) في كل المحادثات المسجّلة...">
+            <button class="btn" style="background:#1d364a;" onclick="searchConversations()">🔍 بحث</button>
+        </div>
+
+        <div id="broadcastSearchResultsCount" style="margin-bottom:10px;font-size:13px;color:#555;font-weight:bold;"></div>
+        <div id="broadcastSearchResults" style="display:flex;flex-direction:column;gap:8px;margin-bottom:25px;"></div>
+
+        <div id="broadcastSendBox" style="display:none;background:#eef2f5;padding:20px;border-radius:8px;">
+            <label style="font-weight:bold;color:#1d364a;display:block;margin-bottom:8px;">
+                الرسالة اللي هتتبعت لـ <span id="broadcastSelectedCount">0</span> عميل محدد
+            </label>
+            <textarea id="broadcastMessageText" class="form-control" rows="4" placeholder="اكتب الرسالة هنا..."></textarea>
+            <button class="btn" style="background:#28a745;margin-top:12px;" onclick="sendBroadcastToSelected()">📤 إرسال للمحددين</button>
+        </div>
+
+        <div id="broadcastQueueStatus" style="margin-top:20px;"></div>
+    </div>
+
+    <!-- مودال معاينة المحادثة الكاملة -->
+    <div id="conversationModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this) closeConversationModal()">
+        <div style="background:white;border-radius:10px;max-width:600px;width:100%;max-height:80vh;display:flex;flex-direction:column;">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:15px 20px;border-bottom:1px solid #ddd;">
+                <strong id="conversationModalTitle" style="color:#1d364a;"></strong>
+                <button onclick="closeConversationModal()" style="border:none;background:none;font-size:22px;cursor:pointer;color:#888;">✖</button>
+            </div>
+            <div id="conversationModalBody" style="padding:20px;overflow-y:auto;flex:1;"></div>
+        </div>
+    </div>
+
+    <!-- ══════════════ قسم البروموكود ══════════════ -->
+    <div id="promos" class="section">
+        <h3>إنشاء برومو كود جديد ذكي</h3>
+        <div style="display:flex;gap:25px;flex-wrap:wrap;background:#fdf5e6;
+                    padding:25px;border-radius:8px;border:1px solid #f38c18;">
+            <div style="flex:1;min-width:300px;">
+                <div class="form-group"><label>كود الخصم</label><input type="text" id="promoCode" class="form-control" style="text-transform:uppercase;"></div>
+                <div class="form-group">
+                    <label>نوع الخصم</label>
+                    <select id="promoType" class="form-control" onchange="togglePromoValue()">
+                        <option value="percent">نسبة مئوية (%)</option>
+                        <option value="fixed">مبلغ ثابت (ج.م)</option>
+                        <option value="shipping">توصيل مجاني</option>
+                    </select>
+                </div>
+                <div class="form-group" id="promoValueGroup"><label>قيمة الخصم</label><input type="number" id="promoValue" class="form-control"></div>
+                <div class="form-group"><label>النص على المنتج</label><input type="text" id="promoLabel" class="form-control"></div>
+            </div>
+            <div style="flex:1;min-width:300px;">
+                <div style="display:flex;gap:15px;">
+                    <div class="form-group" style="flex:1;"><label>وقت البدء</label><input type="datetime-local" id="promoStart" class="form-control"></div>
+                    <div class="form-group" style="flex:1;"><label>وقت الانتهاء</label><input type="datetime-local" id="promoEnd" class="form-control"></div>
+                </div>
+                <div class="form-group">
+                    <label>يطبق على:</label>
+                    <select id="promoScope" class="form-control" onchange="togglePromoScope()">
+                        <option value="all">جميع المنتجات</option>
+                        <option value="specific">منتجات محددة فقط</option>
+                    </select>
+                </div>
+                <div id="specificProductsBox" style="display:none;background:white;padding:20px;border-radius:5px;border:1px solid #ccc;margin-bottom:15px;">
+                    <label style="font-size:14px;font-weight:bold;">إضافة يدوي:</label>
+                    <div style="display:flex;gap:10px;margin-bottom:15px;">
+                        <select id="promoSelectProd" class="form-control" style="flex:2;"></select>
+                        <button class="btn" onclick="addProdToPromo()" style="flex:1;">إضافة للمجموعة</button>
+                    </div>
+                    <label style="font-size:14px;font-weight:bold;">أو رفع شيت (أكواد المنتجات):</label>
+                    <input type="file" id="promoFile" accept=".csv,.txt" class="form-control" onchange="uploadPromoFile(event)">
+                    <div style="margin-top:20px;">
+                        <strong>المنتجات المشمولة في العرض:</strong>
+                        <div id="promoSelectedList" style="margin-top:10px;min-height:50px;border:1px dashed #ccc;padding:15px;border-radius:5px;"></div>
+                    </div>
+                </div>
+                <div style="background:white;padding:15px;border-radius:8px;border:1px solid #ddd;margin-bottom:15px;">
+                    <label style="font-weight:bold;color:#1d364a;display:block;margin-bottom:12px;">🔒 قيود الاستخدام</label>
+                    <div style="display:flex;gap:15px;flex-wrap:wrap;">
+                        <div class="form-group" style="flex:1;min-width:150px;margin-bottom:0;">
+                            <label style="font-size:13px;">الحد الأقصى للاستخدام الكلي</label>
+                            <input type="number" id="promoMaxTotal" class="form-control" placeholder="فارغ = بلا حد" min="1">
+                        </div>
+                        <div class="form-group" style="flex:1;min-width:150px;margin-bottom:0;">
+                            <label style="font-size:13px;">الحد لكل عميل</label>
+                            <input type="number" id="promoMaxPerUser" class="form-control" placeholder="فارغ = بلا حد" min="1">
+                        </div>
+                        <div class="form-group" style="flex:1;min-width:150px;margin-bottom:0;">
+                            <label style="font-size:13px;">الحد الأدنى لقيمة الفاتورة</label>
+                            <input type="number" id="promoMinOrder" class="form-control" placeholder="فارغ = بدون حد أدنى" min="0">
+                        </div>
+                        <div class="form-group" id="promoMaxDiscountGroup" style="flex:1;min-width:150px;margin-bottom:0;display:none;">
+                            <label style="font-size:13px;">الحد الأقصى لقيمة الخصم (ج.م)</label>
+                            <input type="number" id="promoMaxDiscount" class="form-control" placeholder="فارغ = بدون حد أقصى" min="0">
+                        </div>
+                    </div>
+                    <div style="margin-top:12px;">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:bold;color:#1d364a;">
+                            <input type="checkbox" id="promoNewUsersOnly" style="width:18px;height:18px;cursor:pointer;">
+                            للعملاء الجدد فقط (اللي مطلبوش أي طلب قبل كده)
+                        </label>
+                    </div>
+                </div>
+                <button class="btn btn-green" onclick="savePromo()"
+                        style="width:100%;padding:15px;margin-top:10px;font-size:18px;">
+                    حفظ وتفعيل البروموكود 🚀
+                </button>
+            </div>
+        </div>
+        <h3 style="margin-top:40px;">الكوبونات النشطة والسابقة</h3>
+        <table>
+            <thead><tr><th>الكود</th><th>النوع</th><th>القيمة</th><th>البداية</th><th>النهاية</th><th>يطبق على</th><th>القيود</th><th>الاستخدام</th><th>الحالة</th><th style="min-width:110px;">إجراء</th></tr></thead>
+            <tbody id="adminPromosBody"></tbody>
+        </table>
+    </div>
+
+    <!-- ══════════════ إعدادات الولاء ══════════════ -->
+    <!-- ══════════════ قسم الضمانات ══════════════ -->
+    <div id="warranties" class="section">
+        <h3>إدارة الضمانات 🛡️</h3>
+
+        <!-- تبويبات الضمانات الثلاثة -->
+        <div style="display:flex;gap:0;margin-bottom:0;border-bottom:3px solid #f38c18;flex-wrap:wrap;">
+            <button id="wtyTabBtnLog" onclick="wtySwitchAdminTab('log')"
+                    style="padding:12px 26px;background:#1d364a;color:white;border:none;
+                           border-radius:8px 8px 0 0;font-size:15px;font-weight:bold;
+                           cursor:pointer;margin-left:5px;margin-bottom:-3px;transition:0.2s;">
+                📊 سجل الضمانات
+            </button>
+            <button id="wtyTabBtnAccount" onclick="wtySwitchAdminTab('account')"
+                    style="padding:12px 26px;background:#eef2f5;color:#1d364a;border:none;
+                           border-radius:8px 8px 0 0;font-size:15px;font-weight:bold;
+                           cursor:pointer;margin-left:5px;margin-bottom:-3px;transition:0.2s;">
+                📝 صفحة "ضماناتي" (حساب العميل)
+            </button>
+            <button id="wtyTabBtnActivation" onclick="wtySwitchAdminTab('activation')"
+                    style="padding:12px 26px;background:#eef2f5;color:#1d364a;border:none;
+                           border-radius:8px 8px 0 0;font-size:15px;font-weight:bold;
+                           cursor:pointer;margin-bottom:-3px;transition:0.2s;">
+                🎫 صفحة تفعيل الضمان
+            </button>
+        </div>
+
+        <!-- ══════════════ تاب ١: سجل الضمانات ══════════════ -->
+        <div id="wtyTabLog" style="background:#f9f9f9;padding:25px;border-radius:0 8px 8px 8px;
+                                    border:1px solid #eee;border-top:none;">
+
+            <div style="background:#fdf5e6;padding:20px;border-radius:8px;border:1px solid #f38c18;margin-bottom:25px;display:flex;gap:15px;align-items:flex-end;flex-wrap:wrap;">
+                <div class="form-group" style="margin-bottom:0;flex:1;min-width:220px;">
+                    <label>مهلة تفعيل الضمان (بالأيام) من تاريخ "تم التوصيل"</label>
+                    <input type="number" id="warrantyGraceDaysInput" class="form-control" value="3" min="1">
+                </div>
+                <button class="btn btn-green" onclick="saveWarrantySettings()" style="padding:12px 25px;">💾 حفظ المهلة</button>
+            </div>
+
+            <div style="display:flex;gap:15px;margin-bottom:20px;background:#eef2f5;padding:20px;border-radius:8px;flex-wrap:wrap;align-items:flex-end;">
+                <div style="flex:1;min-width:160px;">
+                    <label style="font-weight:bold;margin-bottom:5px;display:block;">اسم العميل</label>
+                    <input type="text" id="filterWtyName" class="form-control" oninput="renderAdminWarranties()">
+                </div>
+                <div style="flex:1;min-width:160px;">
+                    <label style="font-weight:bold;margin-bottom:5px;display:block;">رقم التليفون</label>
+                    <input type="text" id="filterWtyPhone" class="form-control" oninput="renderAdminWarranties()">
+                </div>
+                <div style="flex:1;min-width:160px;">
+                    <label style="font-weight:bold;margin-bottom:5px;display:block;">حالة الضمان</label>
+                    <select id="filterWtyStatus" class="form-control" onchange="renderAdminWarranties()">
+                        <option value="all">الكل</option>
+                        <option value="not_activated">في انتظار التفعيل</option>
+                        <option value="active">مفعّل</option>
+                        <option value="expired_grace">انتهت مهلة التفعيل</option>
+                        <option value="order_cancelled">الطلب ملغي</option>
+                    </select>
+                </div>
+                <div style="flex:1;min-width:160px;">
+                    <label style="font-weight:bold;margin-bottom:5px;display:block;">من شهر (بداية الضمان)</label>
+                    <input type="month" id="filterWtyFrom" class="form-control" onchange="renderAdminWarranties()">
+                </div>
+                <div style="flex:1;min-width:160px;">
+                    <label style="font-weight:bold;margin-bottom:5px;display:block;">لحد شهر (بداية الضمان)</label>
+                    <input type="month" id="filterWtyTo" class="form-control" onchange="renderAdminWarranties()">
+                </div>
+                <div style="flex:0 0 auto;">
+                    <button class="btn" style="background:#28a745;" onclick="exportWarrantiesCSV()">📥 تصدير Excel</button>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>رقم الطلب</th><th>اسم العميل</th><th>التليفون</th><th>قيمة الفاتورة</th>
+                        <th>تاريخ التسليم</th><th>حالة الضمان</th><th>تاريخ التفعيل</th><th>ينتهي في</th><th>باقي كام يوم</th>
+                    </tr>
+                </thead>
+                <tbody id="adminWarrantiesBody"></tbody>
+            </table>
+        </div>
+
+        <!-- ══════════════ تاب ٢: محرر محتوى صفحة "ضماناتي" للعميل (داخل حسابه) ══════════════ -->
+        <div id="wtyTabAccount" style="display:none;background:#f9f9f9;padding:25px;border-radius:0 8px 8px 8px;
+                                        border:1px solid #eee;border-top:none;">
+            <div style="background:#f9f9f9;border-radius:12px;border:1px solid #eee;overflow:hidden;">
+                <div style="background:#1d364a;padding:14px 20px;">
+                    <strong style="color:#f38c18;font-size:15px;">📝 محتوى صفحة "ضماناتي" اللي بيشوفه العميل</strong>
+                    <span style="color:rgba(255,255,255,.7);font-size:12.5px;margin-right:10px;">هيظهر فوق قائمة ضماناته في حسابه</span>
+                </div>
+
+                <!-- شريط أدوات كامل (نفس أدوات محرر مدونة المنتج بالكامل: عناوين، حجم خط،
+                     ألوان، محاذاة، قوائم، صور/فيديو/روابط، فاصل، مسح تنسيق) -->
+                <div style="background:#1d364a;padding:10px 15px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;border-top:1px solid rgba(255,255,255,.1);">
+                    <select onchange="wtyPageExecCmd('formatBlock',this.value);this.value=''"
+                            style="background:white;color:#1d364a;border:none;border-radius:5px;padding:6px 10px;font-family:inherit;cursor:pointer;">
+                        <option value="">📝 نص</option>
+                        <option value="H2">عنوان كبير</option>
+                        <option value="H3">عنوان متوسط</option>
+                        <option value="H4">عنوان صغير</option>
+                        <option value="P">فقرة</option>
+                        <option value="blockquote">اقتباس</option>
+                    </select>
+                    <select onchange="wtyPageExecCmd('fontSize',this.value);this.value=''"
+                            style="background:white;color:#1d364a;border:none;border-radius:5px;padding:6px 10px;font-family:inherit;cursor:pointer;">
+                        <option value="">حجم الخط</option>
+                        <option value="2">صغير</option><option value="3">عادي</option>
+                        <option value="4">كبير</option><option value="5">أكبر</option>
+                        <option value="6">ضخم</option><option value="7">ضخم جداً</option>
+                    </select>
+                    <div style="width:1px;background:rgba(255,255,255,0.2);height:28px;margin:0 4px;"></div>
+                    <label style="color:rgba(255,255,255,0.7);font-size:12px;">لون:</label>
+                    <input type="color" value="#333333" onchange="wtyPageExecCmd('foreColor',this.value)"
+                           title="لون الخط"
+                           style="width:36px;height:32px;border:none;border-radius:4px;cursor:pointer;padding:2px;">
+                    <label style="color:rgba(255,255,255,0.7);font-size:12px;">تظليل:</label>
+                    <input type="color" value="#ffffff" onchange="wtyPageExecCmd('hiliteColor',this.value)"
+                           title="تظليل الخلفية"
+                           style="width:36px;height:32px;border:none;border-radius:4px;cursor:pointer;padding:2px;">
+                    <div style="width:1px;background:rgba(255,255,255,0.2);height:28px;margin:0 4px;"></div>
+                    <button onclick="wtyPageExecCmd('bold')"      style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 12px;cursor:pointer;font-weight:900;">B</button>
+                    <button onclick="wtyPageExecCmd('italic')"    style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 12px;cursor:pointer;font-style:italic;">I</button>
+                    <button onclick="wtyPageExecCmd('underline')" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 12px;cursor:pointer;text-decoration:underline;">U</button>
+                    <div style="width:1px;background:rgba(255,255,255,0.2);height:28px;margin:0 4px;"></div>
+                    <button onclick="wtyPageExecCmd('justifyRight')"  style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;">⬅️</button>
+                    <button onclick="wtyPageExecCmd('justifyCenter')" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;">↔️</button>
+                    <button onclick="wtyPageExecCmd('justifyLeft')"   style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;">➡️</button>
+                    <div style="width:1px;background:rgba(255,255,255,0.2);height:28px;margin:0 4px;"></div>
+                    <button onclick="wtyPageExecCmd('insertUnorderedList')" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;font-size:13px;">• قائمة</button>
+                    <button onclick="wtyPageExecCmd('insertOrderedList')"   style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;font-size:13px;">1. مرقمة</button>
+                    <div style="width:1px;background:rgba(255,255,255,0.2);height:28px;margin:0 4px;"></div>
+                    <button onclick="openAdminBlogModal('img','warrantyPageEditor')"   style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;font-size:13px;">🖼️ صورة</button>
+                    <button onclick="openAdminBlogModal('video','warrantyPageEditor')" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;font-size:13px;">🎬 فيديو</button>
+                    <button onclick="openAdminBlogModal('link','warrantyPageEditor')"  style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;font-size:13px;">🔗 رابط</button>
+                    <button onclick="wtyPageExecCmd('insertHTML','<hr style=&quot;border:none;border-top:2px solid #f38c18;margin:20px 0;&quot;>')" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;font-size:13px;">— فاصل</button>
+                    <div style="width:1px;background:rgba(255,255,255,0.2);height:28px;margin:0 4px;"></div>
+                    <button onclick="wtyPageExecCmd('removeFormat')" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;font-size:13px;">🧹 مسح تنسيق</button>
+                </div>
+
+                <div id="warrantyPageEditor" contenteditable="true" dir="rtl"
+                     style="min-height:160px;padding:20px;outline:none;font-size:15px;line-height:1.9;background:#fff;color:#333;">
+                    <p style="color:#aaa;">اكتب هنا الرسالة اللي عايز العميل يشوفها فوق صفحة ضماناته... مثال: أهلاً بيك، ده مكان تقدر تتابع منه كل ضماناتك مع الجوري ستور.</p>
+                </div>
+
+                <div style="padding:15px 20px;background:#eef2f5;border-top:1px solid #ddd;">
+                    <label style="font-weight:bold;color:#1d364a;font-size:13px;display:block;margin-bottom:10px;">🔘 زرار مرفق (اختياري) — هيظهر تحت الرسالة</label>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <input type="text" id="warrantyBtnText" class="form-control" placeholder="نص الزرار (مثال: تواصل معنا واتساب)" style="flex:1;min-width:200px;">
+                        <input type="text" id="warrantyBtnLink" class="form-control" placeholder="رابط الزرار (مثال: https://wa.me/201100395049)" style="flex:1;min-width:200px;">
+                    </div>
+                </div>
+
+                <div style="padding:15px 20px;background:#f9f9f9;border-top:1px solid #eee;">
+                    <button onclick="saveWarrantyPageContent()"
+                            style="background:#28a745;color:white;border:none;padding:12px 30px;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;">
+                        💾 حفظ محتوى صفحة ضماناتي
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════════ تاب ٣: محرر محتوى صفحة تفعيل الضمان (warranty.html) ══════════════ -->
+        <div id="wtyTabActivation" style="display:none;background:#f9f9f9;padding:25px;border-radius:0 8px 8px 8px;
+                                           border:1px solid #eee;border-top:none;">
+            <div style="background:#f9f9f9;border-radius:12px;border:1px solid #eee;overflow:hidden;">
+                <div style="background:#1d364a;padding:14px 20px;">
+                    <strong style="color:#f38c18;font-size:15px;">🎫 محتوى صفحة تفعيل الضمان اللي بيفتحها العميل من الفاتورة (QR)</strong>
+                    <span style="color:rgba(255,255,255,.7);font-size:12.5px;margin-right:10px;">اللوجو والعنوان والنص التمهيدي وزرارات الثقة تحت</span>
+                </div>
+
+                <div style="padding:20px;background:white;border-bottom:1px solid #eee;display:flex;gap:20px;flex-wrap:wrap;">
+                    <div class="form-group" style="flex:1;min-width:250px;margin-bottom:0;">
+                        <label>🖼️ رابط لوجو صفحة التفعيل</label>
+                        <input type="text" id="wtyActLogoImg" class="form-control" placeholder="logo.png">
+                        <div style="display:flex;gap:10px;margin-top:10px;">
+                            <button type="button" onclick="triggerDirectUpload('wtyActLogoImg')" class="btn btn-green" style="flex:1;">📤 رفع صورة</button>
+                            <button type="button" onclick="openGalleryModal('wtyActLogoImg')" class="btn" style="background:#e68a10;flex:1;">🖼️ من الاستوديو</button>
+                        </div>
+                    </div>
+                    <div class="form-group" style="flex:1;min-width:250px;margin-bottom:0;">
+                        <label>📌 عنوان الصفحة الرئيسي</label>
+                        <input type="text" id="wtyActTitle" class="form-control" placeholder="🛡️ تفعيل ضمان منتجاتك">
+                    </div>
+                </div>
+
+                <div style="padding:20px;background:white;border-bottom:1px solid #eee;">
+                    <label style="font-weight:bold;color:#1d364a;font-size:13px;display:block;margin-bottom:10px;">✏️ النص التمهيدي (تحت العنوان)</label>
+                    <!-- شريط أدوات كامل (نفس أدوات محرر مدونة المنتج بالكامل) -->
+                    <div style="background:#1d364a;padding:10px 15px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;border-radius:6px 6px 0 0;">
+                        <select onchange="wtyActExecCmd('formatBlock',this.value);this.value=''"
+                                style="background:white;color:#1d364a;border:none;border-radius:5px;padding:6px 10px;font-family:inherit;cursor:pointer;">
+                            <option value="">📝 نص</option>
+                            <option value="H2">عنوان كبير</option>
+                            <option value="H3">عنوان متوسط</option>
+                            <option value="H4">عنوان صغير</option>
+                            <option value="P">فقرة</option>
+                            <option value="blockquote">اقتباس</option>
+                        </select>
+                        <select onchange="wtyActExecCmd('fontSize',this.value);this.value=''"
+                                style="background:white;color:#1d364a;border:none;border-radius:5px;padding:6px 10px;font-family:inherit;cursor:pointer;">
+                            <option value="">حجم الخط</option>
+                            <option value="2">صغير</option><option value="3">عادي</option>
+                            <option value="4">كبير</option><option value="5">أكبر</option>
+                            <option value="6">ضخم</option><option value="7">ضخم جداً</option>
+                        </select>
+                        <div style="width:1px;background:rgba(255,255,255,0.2);height:28px;margin:0 4px;"></div>
+                        <label style="color:rgba(255,255,255,0.7);font-size:12px;">لون:</label>
+                        <input type="color" value="#333333" onchange="wtyActExecCmd('foreColor',this.value)"
+                               title="لون الخط"
+                               style="width:36px;height:32px;border:none;border-radius:4px;cursor:pointer;padding:2px;">
+                        <label style="color:rgba(255,255,255,0.7);font-size:12px;">تظليل:</label>
+                        <input type="color" value="#ffffff" onchange="wtyActExecCmd('hiliteColor',this.value)"
+                               title="تظليل الخلفية"
+                               style="width:36px;height:32px;border:none;border-radius:4px;cursor:pointer;padding:2px;">
+                        <div style="width:1px;background:rgba(255,255,255,0.2);height:28px;margin:0 4px;"></div>
+                        <button onclick="wtyActExecCmd('bold')"      style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 12px;cursor:pointer;font-weight:900;">B</button>
+                        <button onclick="wtyActExecCmd('italic')"    style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 12px;cursor:pointer;font-style:italic;">I</button>
+                        <button onclick="wtyActExecCmd('underline')" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 12px;cursor:pointer;text-decoration:underline;">U</button>
+                        <div style="width:1px;background:rgba(255,255,255,0.2);height:28px;margin:0 4px;"></div>
+                        <button onclick="wtyActExecCmd('justifyRight')"  style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;">⬅️</button>
+                        <button onclick="wtyActExecCmd('justifyCenter')" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;">↔️</button>
+                        <button onclick="wtyActExecCmd('justifyLeft')"   style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;">➡️</button>
+                        <div style="width:1px;background:rgba(255,255,255,0.2);height:28px;margin:0 4px;"></div>
+                        <button onclick="wtyActExecCmd('insertUnorderedList')" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;font-size:13px;">• قائمة</button>
+                        <button onclick="wtyActExecCmd('insertOrderedList')"   style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;font-size:13px;">1. مرقمة</button>
+                        <div style="width:1px;background:rgba(255,255,255,0.2);height:28px;margin:0 4px;"></div>
+                        <button onclick="openAdminBlogModal('img','wtyActSubtitleEditor')"   style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;font-size:13px;">🖼️ صورة</button>
+                        <button onclick="openAdminBlogModal('video','wtyActSubtitleEditor')" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;font-size:13px;">🎬 فيديو</button>
+                        <button onclick="openAdminBlogModal('link','wtyActSubtitleEditor')"  style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;font-size:13px;">🔗 رابط</button>
+                        <button onclick="wtyActExecCmd('insertHTML','<hr style=&quot;border:none;border-top:2px solid #f38c18;margin:20px 0;&quot;>')" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;font-size:13px;">— فاصل</button>
+                        <div style="width:1px;background:rgba(255,255,255,0.2);height:28px;margin:0 4px;"></div>
+                        <button onclick="wtyActExecCmd('removeFormat')" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:6px 10px;cursor:pointer;font-size:13px;">🧹 مسح تنسيق</button>
+                    </div>
+                    <div id="wtyActSubtitleEditor" contenteditable="true" dir="rtl"
+                         style="min-height:100px;padding:15px;outline:none;font-size:14.5px;line-height:1.8;background:#fff;color:#333;border:1px solid #ddd;border-top:none;border-radius:0 0 6px 6px;">
+                        <p style="color:#aaa;">إحنا في الجوري ستور بنوثّق ضمان كل منتج بشرائك عشان تضمن حقك بالكامل وقت ما تحتاج الصيانة...</p>
+                    </div>
+                </div>
+
+                <div style="padding:20px;background:white;border-bottom:1px solid #eee;">
+                    <label style="font-weight:bold;color:#1d364a;font-size:13px;display:block;margin-bottom:10px;">🔒 شريط زرارات الثقة (٣ عناصر أسفل الصفحة)</label>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <input type="text" id="wtyActTrust1" class="form-control" placeholder="🔒 بياناتك في أمان تام" style="flex:1;min-width:180px;">
+                        <input type="text" id="wtyActTrust2" class="form-control" placeholder="🛡️ ضمان موثّق" style="flex:1;min-width:180px;">
+                        <input type="text" id="wtyActTrust3" class="form-control" placeholder="⚡ تفعيل فوري" style="flex:1;min-width:180px;">
+                    </div>
+                </div>
+
+                <div style="padding:20px;background:white;border-bottom:1px solid #eee;">
+                    <label style="font-weight:bold;color:#1d364a;font-size:13px;display:block;margin-bottom:10px;">✅ نص شاشة النجاح بعد التفعيل</label>
+                    <input type="text" id="wtyActSuccessMsg" class="form-control" placeholder="تم تفعيل ضمانك بنجاح!">
+                    <label style="font-weight:bold;color:#1d364a;font-size:13px;display:block;margin:12px 0 8px;">🔗 نص زرار الذهاب لصفحة الحساب</label>
+                    <input type="text" id="wtyActSuccessBtnText" class="form-control" placeholder="اذهب لصفحة &quot;ضماناتي&quot;">
+                </div>
+
+                <div style="padding:15px 20px;background:#f9f9f9;">
+                    <button onclick="saveWarrantyActivationPageContent()"
+                            style="background:#28a745;color:white;border:none;padding:12px 30px;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;">
+                        💾 حفظ محتوى صفحة التفعيل
+                    </button>
+                    <button onclick="resetWarrantyActivationPageContent()"
+                            style="background:#d9534f;color:white;border:none;padding:12px 20px;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;margin-right:10px;">
+                        ↺ استعادة الافتراضي
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="loyalty-settings" class="section">
+        <h3>إعدادات نظام الولاء والنقاط 🎁</h3>
+        <div style="background:white;padding:25px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.05);margin-bottom:25px;border:1px solid #1d364a;">
+            <h4 style="margin-top:0;color:#f38c18;">تاريخ انتهاء صلاحية النقاط لجميع العملاء</h4>
+            <div id="expiryPeriodsList" style="margin-bottom:12px;"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#f9f9f9;padding:15px;border-radius:8px;border:1px solid #ddd;">
+                <div>
+                    <label style="font-size:12px;color:#555;display:block;margin-bottom:4px;">نقاط مكتسبة من شهر</label>
+                    <select id="periodEarnFrom" class="form-control" style="width:120px;">
+                        <option value="1">يناير</option><option value="2">فبراير</option>
+                        <option value="3">مارس</option><option value="4">أبريل</option>
+                        <option value="5">مايو</option><option value="6">يونيو</option>
+                        <option value="7">يوليو</option><option value="8">أغسطس</option>
+                        <option value="9">سبتمبر</option><option value="10">أكتوبر</option>
+                        <option value="11">نوفمبر</option><option value="12">ديسمبر</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:12px;color:#555;display:block;margin-bottom:4px;">لحد شهر</label>
+                    <select id="periodEarnTo" class="form-control" style="width:120px;">
+                        <option value="1">يناير</option><option value="2">فبراير</option>
+                        <option value="3">مارس</option><option value="4">أبريل</option>
+                        <option value="5">مايو</option><option value="6">يونيو</option>
+                        <option value="7">يوليو</option><option value="8">أغسطس</option>
+                        <option value="9">سبتمبر</option><option value="10">أكتوبر</option>
+                        <option value="11">نوفمبر</option><option value="12">ديسمبر</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:12px;color:#555;display:block;margin-bottom:4px;">تنتهي شهر</label>
+                    <select id="periodExpireMonth" class="form-control" style="width:120px;">
+                        <option value="1">يناير</option><option value="2">فبراير</option>
+                        <option value="3">مارس</option><option value="4">أبريل</option>
+                        <option value="5">مايو</option><option value="6">يونيو</option>
+                        <option value="7">يوليو</option><option value="8">أغسطس</option>
+                        <option value="9">سبتمبر</option><option value="10">أكتوبر</option>
+                        <option value="11">نوفمبر</option><option value="12">ديسمبر</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:12px;color:#555;display:block;margin-bottom:4px;">يوم</label>
+                    <select id="periodExpireDay" class="form-control" style="width:80px;"></select>
+                </div>
+                <div style="align-self:flex-end;">
+                    <button onclick="addExpiryPeriod()" class="btn btn-green" style="padding:10px 16px;">➕ إضافة</button>
+                </div>
+            </div>
+            <p style="color:gray;font-size:13px;margin-top:8px;">
+                مثال: من <strong>يناير</strong> لـ <strong>يونيو</strong> تنتهي <strong>1 ديسمبر</strong> — ومن <strong>يوليو</strong> لـ <strong>ديسمبر</strong> تنتهي <strong>1 يونيو</strong>
+            </p>
+        </div>
+        <div style="display:flex;gap:20px;margin-bottom:25px;">
+            <label style="background:#eef2f5;padding:20px;border-radius:8px;flex:1;cursor:pointer;border:2px solid transparent;" id="labelSysGlobal">
+                <input type="radio" name="loyaltySystem" id="loyaltySysGlobal" value="global" onchange="toggleLoyaltyView()">
+                <strong>النظام الأول (ديناميك):</strong><br>نقاط بناءً على إجمالي المبلغ المدفوع.
+            </label>
+            <label style="background:#eef2f5;padding:20px;border-radius:8px;flex:1;cursor:pointer;border:2px solid transparent;" id="labelSysProduct">
+                <input type="radio" name="loyaltySystem" id="loyaltySysProduct" value="product" onchange="toggleLoyaltyView()">
+                <strong>النظام الثاني (مخصص):</strong><br>نقاط محددة لكل منتج على حدة.
+            </label>
+        </div>
+        <div id="loyaltyGlobalSettings" style="display:none;background:#fdf5e6;padding:25px;border-radius:8px;margin-bottom:25px;">
+            <h4>إعدادات النظام الديناميك</h4>
+            <div style="display:flex;gap:15px;align-items:center;font-size:16px;flex-wrap:wrap;">
+                كل <input type="number" id="loyaltyGlobalSpent" class="form-control" style="width:120px;">
+                جنيه مدفوع، يحصل العميل على
+                <input type="number" id="loyaltyGlobalEarn" class="form-control" style="width:120px;"> نقطة.
+            </div>
+        </div>
+        <button class="btn btn-green" onclick="saveLoyaltySettings()"
+                style="width:100%;padding:18px;font-size:18px;margin-bottom:30px;">
+            💾 حفظ الإعدادات الأساسية للولاء
+        </button>
+        <div id="loyaltyProductSettings" style="display:none;">
+            <h3 style="border-bottom:2px solid #1d364a;padding-bottom:10px;">تحديد النقاط لكل منتج</h3>
+            <table>
+                <thead><tr><th>صورة المنتج</th><th>اسم المنتج</th><th>السعر</th><th style="width:200px;">النقاط المكتسبة</th><th>إجراء</th></tr></thead>
+                <tbody id="loyaltyProductsBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ══════════════ متجر المكافآت ══════════════ -->
+    <div id="loyalty-rewards" class="section">
+        <h3>إدارة متجر المكافآت والهدايا 🛍️</h3>
+        <p style="color:gray;font-size:15px;margin-bottom:20px;">برمج الهدايا التي سيراها العميل ويمكنه استبدال نقاطه بها.</p>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;background:#eef2f5;padding:25px;border-radius:8px;margin-bottom:25px;border:1px solid #ccc;">
+            <div style="flex:1;min-width:250px;">
+                <div class="form-group"><label>اسم المكافأة (يظهر للعميل)</label><input type="text" id="rewardName" class="form-control"></div>
+                <div class="form-group"><label>التكلفة بالنقاط</label><input type="number" id="rewardCost" class="form-control"></div>
+                <div class="form-group">
+                    <label>نوع المكافأة</label>
+                    <select id="rewardType" class="form-control" onchange="toggleRewardFields()">
+                        <option value="discount">كود خصم (مبلغ ثابت)</option>
+                        <option value="shipping">كود شحن مجاني</option>
+                        <option value="gift">هدية خارجية (عينية)</option>
+                    </select>
+                </div>
+            </div>
+            <div style="flex:1;min-width:250px;">
+                <div class="form-group" id="rewardDiscountGroup"><label>قيمة الخصم (ج.م)</label><input type="number" id="rewardDiscountVal" class="form-control"></div>
+                <div class="form-group" id="rewardGiftDescGroup" style="display:none;"><label>وصف الهدية</label><textarea id="rewardGiftDesc" class="form-control" rows="2"></textarea></div>
+                <div class="form-group" id="rewardGiftImgGroup" style="display:none;">
+                    <label>رابط صورة الهدية</label>
+                    <input type="text" id="rewardGiftImg" class="form-control">
+                    <div style="display:flex;gap:10px;margin-top:10px;">
+                        <button type="button" onclick="triggerDirectUpload('rewardGiftImg')" class="btn btn-green" style="flex:1;">📤 رفع</button>
+                        <button type="button" onclick="openGalleryModal('rewardGiftImg')"    class="btn" style="background:#e68a10;flex:1;">🖼️ استوديو</button>
+                    </div>
+                </div>
+                <button class="btn btn-green" onclick="saveReward()"
+                        style="width:100%;padding:15px;margin-top:25px;font-size:18px;background-color:#f38c18;color:#1d364a;">
+                    ➕ إضافة المكافأة للمتجر
+                </button>
+            </div>
+        </div>
+        <table>
+            <thead><tr><th>اسم المكافأة</th><th>النوع</th><th>التكلفة</th><th>التفاصيل</th><th>إجراء</th></tr></thead>
+            <tbody id="adminRewardsBody"></tbody>
+        </table>
+    </div>
+
+    <!-- ══════════════ سجل النقاط ══════════════ -->
+    <div id="loyalty-history" class="section">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <h3 style="margin:0;border:none;">سجل حركات النقاط الشامل 📊</h3>
+            <button class="btn" style="background:#28a745;" onclick="exportGlobalPointsCSV()">📥 تصدير السجل (Excel)</button>
+        </div>
+        <div style="display:flex;gap:15px;margin-bottom:20px;background:#eef2f5;padding:20px;border-radius:8px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:150px;"><label style="font-weight:bold;margin-bottom:5px;">اسم العميل</label><input type="text" id="filterPtsName" class="form-control" onkeyup="renderGlobalPoints()"></div>
+            <div style="flex:1;min-width:150px;"><label style="font-weight:bold;margin-bottom:5px;">رقم التليفون</label><input type="text" id="filterPtsPhone" class="form-control" onkeyup="renderGlobalPoints()"></div>
+            <div style="flex:1;min-width:150px;"><label style="font-weight:bold;margin-bottom:5px;">رقم الطلب / التفاصيل</label><input type="text" id="filterPtsReason" class="form-control" onkeyup="renderGlobalPoints()"></div>
+            <div style="flex:1;min-width:150px;"><label style="font-weight:bold;margin-bottom:5px;">التاريخ</label><input type="text" id="filterPtsDate" class="form-control" onkeyup="renderGlobalPoints()"></div>
+        </div>
+        <div style="max-height:500px;overflow-y:auto;border:1px solid #ccc;border-radius:8px;">
+            <table style="margin-top:0;">
+                <thead style="position:sticky;top:0;z-index:1;">
+                    <tr><th>التاريخ</th><th>بيانات العميل</th><th>النوع</th><th>النقاط</th><th>التفاصيل</th></tr>
+                </thead>
+                <tbody id="globalPointsBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ══════════════ السكاشن الاحترافية ══════════════ -->
+    <div id="sections" class="section">
+        <h3>إدارة السكاشن الاحترافية 🖼️</h3>
+        <div id="sectionFormBox" style="background:#fdf5e6;padding:25px;border-radius:12px;border:1px solid #f38c18;margin-bottom:30px;">
+            <input type="hidden" id="editingSectionId" value="">
+            <div class="form-group" style="margin-bottom:20px;">
+                <label style="font-size:16px;font-weight:bold;color:#1d364a;">① اختر شكل السيكشن (Layout)</label>
+                <div id="layoutPicker" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;"></div>
+            </div>
+            <div style="display:flex;gap:20px;flex-wrap:wrap;">
+                <div style="flex:1;min-width:220px;">
+                    <div class="form-group"><label>عنوان السيكشن</label><input type="text" id="secTitle" class="form-control" placeholder="مثال: عروض الصيف"></div>
+                    <div class="form-group"><label>إظهار العنوان؟</label><select id="secShowTitle" class="form-control"><option value="1">نعم</option><option value="0">لا</option></select></div>
+                    <div class="form-group"><label>إظهار منتجات تحت السيكشن؟</label><select id="secShowProducts" class="form-control" onchange="toggleSecProductsBox()"><option value="0">لا</option><option value="1">نعم</option></select></div>
+                    <div id="secProductsBox" style="display:none;background:white;padding:15px;border-radius:8px;border:1px solid #ddd;margin-bottom:15px;">
+                        <div class="form-group" style="margin-bottom:10px;">
+                            <label>مصدر المنتجات</label>
+                            <select id="secLinkType" class="form-control" onchange="updateSecLinkUI()">
+                                <option value="none">-- اختر --</option>
+                                <option value="category">قسم رئيسي</option>
+                                <option value="subcategory">قسم فرعي</option>
+                                <option value="customList">قائمة مخصصة</option>
+                            </select>
+                        </div>
+                        <div id="secLinkValueBox" style="display:none;">
+                            <div class="form-group" id="secLinkCategoryBox" style="display:none;"><label>اختر القسم</label><select id="secLinkCategorySelect" class="form-control" onchange="document.getElementById('secLinkValue').value=this.value"></select></div>
+                            <div class="form-group" id="secLinkSubcategoryBox" style="display:none;"><label>اختر القسم الفرعي</label><select id="secLinkSubcategorySelect" class="form-control" onchange="document.getElementById('secLinkValue').value=this.value"></select></div>
+                            <div class="form-group" id="secLinkCustomListBox" style="display:none;"><label>اختر القائمة المخصصة</label><select id="secLinkCustomListSelect" class="form-control" onchange="document.getElementById('secLinkValue').value=this.value"></select></div>
+                            <input type="hidden" id="secLinkValue">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;"><label>أقصى عدد منتجات تظهر</label><input type="number" id="secMaxProducts" class="form-control" value="8" min="1" max="50"></div>
+                    </div>
+                    <div class="form-group"><label>لون الخلفية (اختياري)</label><input type="color" id="secBgColor" value="#ffffff" style="width:100%;height:45px;border:1px solid #ddd;border-radius:5px;cursor:pointer;"></div>
+                    <div class="form-group">
+                        <label>صورة خلفية السيكشن (اختياري)</label>
+                        <input type="text" id="secBgImg" class="form-control" placeholder="رابط صورة الخلفية...">
+                        <div style="display:flex;gap:10px;margin-top:10px;">
+                            <button type="button" onclick="triggerDirectUpload('secBgImg')" class="btn btn-green" style="flex:1;">📤 رفع صورة</button>
+                            <button type="button" onclick="openGalleryModal('secBgImg')" class="btn" style="background:#e68a10;flex:1;">🖼️ من الاستوديو</button>
+                            <button type="button" onclick="document.getElementById('secBgImg').value='';" class="btn btn-red" style="flex:0 0 auto;">✖ مسح</button>
+                        </div>
+                        <p style="color:gray;font-size:12px;margin-top:6px;">لو اخترت صورة، هيتم عرضها كخلفية خلف السيكشن بالكامل. تفضّل على لون الخلفية لو الاتنين متحددين.</p>
+                    </div>
+                    <div class="form-group">
+                        <label>درجة وضوح الخلفية من فوق 🔼 <span id="secBgOpacityTopVal" style="color:#f38c18;font-weight:bold;">85%</span></label>
+                        <input type="range" id="secBgOpacityTop" min="0" max="100" value="85" step="1"
+                               style="width:100%;cursor:pointer;"
+                               oninput="document.getElementById('secBgOpacityTopVal').innerText=this.value+'%'">
+                        <p style="color:gray;font-size:12px;margin-top:2px;">0% = تعتيم كامل من فوق — 100% = الصورة ظاهرة بوضوح كامل من فوق.</p>
+                    </div>
+                    <div class="form-group">
+                        <label>درجة وضوح الخلفية من تحت 🔽 <span id="secBgOpacityBottomVal" style="color:#f38c18;font-weight:bold;">15%</span></label>
+                        <input type="range" id="secBgOpacityBottom" min="0" max="100" value="15" step="1"
+                               style="width:100%;cursor:pointer;"
+                               oninput="document.getElementById('secBgOpacityBottomVal').innerText=this.value+'%'">
+                        <p style="color:gray;font-size:12px;margin-top:6px;">القيمة دي بتتحكم في وضوح الصورة عند أسفل الخلفية. لو عايز التعتيم يزيد لما تنزل تحت، خلي القيمة دي أقل من قيمة "فوق".</p>
+                    </div>
+                    <div class="form-group">
+                        <label>نقطة توقف الخلفية من فوق (px) 🎯 <span id="secBgAnchorVal" style="color:#f38c18;font-weight:bold;">260px</span></label>
+                        <input type="range" id="secBgAnchor" min="120" max="600" value="260" step="10"
+                               style="width:100%;cursor:pointer;"
+                               oninput="document.getElementById('secBgAnchorVal').innerText=this.value+'px'">
+                        <p style="color:gray;font-size:12px;margin-top:6px;">حدد المكان اللي عايز حافة الخلفية السفلية تقف عنده بالظبط (مثلاً عند السهم أو منتصف كارت المنتج) — النقطة دي ثابتة مهما غيرت السلايدر اللي بعده.</p>
+                    </div>
+                    <div class="form-group">
+                        <label>ارتفاع الخلفية للأعلى (px)  ️ <span id="secBgHeightVal" style="color:#f38c18;font-weight:bold;">260px</span></label>
+                        <input type="range" id="secBgHeight" min="60" max="600" value="260" step="10"
+                               style="width:100%;cursor:pointer;"
+                               oninput="document.getElementById('secBgHeightVal').innerText=this.value+'px'">
+                        <p style="color:gray;font-size:12px;margin-top:6px;">كل ما زودت القيمة دي، الخلفية بتمتد لفوق أكتر (على شاشات الكمبيوتر)، لكن حافتها السفلية تفضل ثابتة في مكانها.</p>
+                    </div>
+
+                    <div class="form-group" style="background:#fff7ed;padding:15px;border-radius:8px;border:1px dashed #f38c18;">
+                        <label style="color:#f38c18;">📱 صورة خلفية الموبايل (اختياري)</label>
+                        <input type="text" id="secBgImgMobile" class="form-control" placeholder="رابط صورة خلفية للموبايل...">
+                        <div style="display:flex;gap:10px;margin-top:10px;">
+                            <button type="button" onclick="triggerDirectUpload('secBgImgMobile')" class="btn btn-green" style="flex:1;">📤 رفع صورة</button>
+                            <button type="button" onclick="openGalleryModal('secBgImgMobile')" class="btn" style="background:#e68a10;flex:1;">🖼️ من الاستوديو</button>
+                            <button type="button" onclick="document.getElementById('secBgImgMobile').value='';" class="btn btn-red" style="flex:0 0 auto;">✖ مسح</button>
+                        </div>
+                        <p style="color:gray;font-size:12px;margin-top:6px;">لو سبتها فاضية هيتم استخدام نفس صورة خلفية الكمبيوتر على الموبايل. المقاس المفضل: 800×900 بكسل (عمودية).</p>
+
+                        <div style="margin-top:15px;">
+                            <label>نقطة توقف الخلفية 📱 <span id="secBgAnchorMobileVal" style="color:#f38c18;font-weight:bold;">180px</span></label>
+                            <input type="range" id="secBgAnchorMobile" min="80" max="400" value="180" step="10"
+                                   style="width:100%;cursor:pointer;"
+                                   oninput="document.getElementById('secBgAnchorMobileVal').innerText=this.value+'px'">
+                        </div>
+                        <div style="margin-top:10px;">
+                            <label>ارتفاع الخلفية للأعلى 📱 <span id="secBgHeightMobileVal" style="color:#f38c18;font-weight:bold;">180px</span></label>
+                            <input type="range" id="secBgHeightMobile" min="60" max="400" value="180" step="10"
+                                   style="width:100%;cursor:pointer;"
+                                   oninput="document.getElementById('secBgHeightMobileVal').innerText=this.value+'px'">
+                        </div>
+                        <p style="color:gray;font-size:12px;margin-top:6px;">القيم دي بتتحكم في خلفية الموبايل بس، منفصلة تماماً عن قيم الكمبيوتر اللي فوق.</p>
+                    </div>
+                    <div class="form-group"><label>أولوية الترتيب</label><input type="number" id="secPriority" class="form-control" value="1" min="1"></div>
+                </div>
+                <div style="flex:2;min-width:280px;">
+                    <label style="font-weight:bold;color:#1d364a;font-size:15px;margin-bottom:10px;display:block;">② أضف صور السيكشن</label>
+                    <div id="secImagesContainer" style="display:flex;flex-direction:column;gap:15px;"></div>
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:20px;">
+                <button class="btn btn-green" onclick="saveSection()" style="flex:1;padding:15px;font-size:17px;" id="secSaveBtn">➕ حفظ السيكشن</button>
+                <button class="btn btn-red"   onclick="cancelEditSection()" id="secCancelBtn" style="display:none;padding:15px;font-size:17px;">✖ إلغاء التعديل</button>
+            </div>
+        </div>
+        <h3 style="border-bottom:2px solid #f38c18;padding-bottom:10px;">السكاشن النشطة حالياً</h3>
+        <table>
+            <thead><tr><th>الشكل</th><th>العنوان</th><th>الصور</th><th>المنتجات</th><th>الترتيب</th><th>الحالة</th><th>إجراء</th></tr></thead>
+            <tbody id="adminSectionsBody"></tbody>
+        </table>
+    </div>
+
+    <!-- ══════════════ البانرات ══════════════ -->
+    <div id="storefront" class="section">
+        <h3>إدارة البانرات والسلايدر الإعلاني 🖼️</h3>
+        <div style="background:#fdf5e6;border:1px dashed #f38c18;border-radius:8px;padding:12px 16px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+            <span style="font-size:13px;color:#1d364a;">⚙️ لو عندك بانرات اتعملت قبل تحديث نظام الصلاحيات، اضغط الزرار ده مرة واحدة لترتيب تخزينها (آمن ويمكن الضغط عليه أكتر من مرة).</span>
+            <button class="btn" style="background:#f38c18;color:#1d364a;white-space:nowrap;" onclick="migrateBannersToKeyedFormat()">🔧 ترحيل البانرات القديمة</button>
+        </div>
+        <div style="display:flex;gap:25px;flex-wrap:wrap;background:#f9f9f9;padding:25px;border-radius:8px;margin-bottom:30px;border:1px solid #eee;">
+            <div style="flex:1;min-width:250px;">
+                <div class="form-group"><label>عنوان البانر</label><input type="text" id="bannerTitle" class="form-control" placeholder="مثال: عروض الصيف"></div>
+                <div class="form-group">
+                    <label>🖥️ صورة الكمبيوتر — المقاس المفضل: 1600×500 بكسل (صورة أفقية عريضة)</label>
+                    <input type="text" id="bannerImg" class="form-control" value="">
+                    <div style="display:flex;gap:10px;margin-top:10px;">
+                        <button type="button" onclick="triggerDirectUpload('bannerImg')" class="btn btn-green" style="flex:1;">📤 رفع صورة</button>
+                        <button type="button" onclick="openGalleryModal('bannerImg')"    class="btn" style="background:#e68a10;flex:1;">🖼️ من الاستوديو</button>
+                    </div>
+                </div>
+                <div class="form-group" style="background:#fff7ed;padding:10px;border-radius:6px;border:1px dashed #f38c18;">
+                    <label style="color:#f38c18;">📱 صورة الموبايل (اختياري) — المقاس المفضل: 800×420 بكسل — لو سبتها فاضية هيتم استخدام صورة الكمبيوتر</label>
+                    <input type="text" id="bannerImgMobile" class="form-control" value="">
+                    <div style="display:flex;gap:10px;margin-top:10px;">
+                        <button type="button" onclick="triggerDirectUpload('bannerImgMobile')" class="btn btn-green" style="flex:1;">📤 رفع صورة</button>
+                        <button type="button" onclick="openGalleryModal('bannerImgMobile')"    class="btn" style="background:#e68a10;flex:1;">🖼️ من الاستوديو</button>
+                    </div>
+                </div>
+            </div>
+            <div style="flex:1;min-width:250px;">
+                <div class="form-group"><label>نوع التوجيه عند النقر</label><select id="bannerLinkType" class="form-control" onchange="updateBannerLinkPlaceholder()"><option value="product">منتج (كود المنتج)</option><option value="category">قسم (كود القسم)</option><option value="external">رابط خارجي</option></select></div>
+                <div class="form-group"><label>قيمة التوجيه</label><input type="text" id="bannerLinkValue" class="form-control" placeholder="اكتب كود المنتج هنا..."></div>
+                <div class="form-group"><label>أولوية الترتيب في السلايدر</label><input type="number" id="bannerPriority" class="form-control" value="1" min="1"></div>
+            </div>
+            <button class="btn btn-green" onclick="saveBanner()" style="width:100%;padding:15px;font-size:18px;">➕ حفظ وتفعيل البانر</button>
+        </div>
+        <h3>البانرات النشطة حالياً</h3>
+        <table>
+            <thead><tr><th>الصورة</th><th>العنوان</th><th>التوجيه</th><th>الترتيب</th><th>الحالة</th><th>إجراء</th></tr></thead>
+            <tbody id="adminBannersBody"></tbody>
+        </table>
+    </div>
+
+    <!-- ══════════════ القوائم المخصصة ══════════════ -->
+    <div id="custom-lists" class="section">
+        <h3>إدارة القوائم المخصصة 📋</h3>
+        <div style="background:#fdf5e6;border:1px dashed #f38c18;border-radius:8px;padding:12px 16px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+            <span style="font-size:13px;color:#1d364a;">⚙️ لو عندك قوائم اتعملت قبل تحديث نظام الصلاحيات، اضغط الزرار ده مرة واحدة لترتيب تخزينها (آمن ويمكن الضغط عليه أكتر من مرة).</span>
+            <button class="btn" style="background:#f38c18;color:#1d364a;white-space:nowrap;" onclick="migrateCustomListsToKeyedFormat()">🔧 ترحيل القوائم القديمة</button>
+        </div>
+        <div style="background:#eef2f5;padding:25px;border-radius:10px;margin-bottom:30px;border:1px solid #ccc;">
+            <div style="display:flex;gap:15px;flex-wrap:wrap;margin-bottom:15px;">
+                <div class="form-group" style="flex:1;min-width:200px;">
+                    <label>اسم القائمة</label>
+                    <input type="text" id="newListName" class="form-control" placeholder="مثال: عروض الإكسسوارات">
+                </div>
+                <div style="display:flex;align-items:flex-end;">
+                    <button class="btn btn-green" onclick="createCustomList()" style="padding:12px 25px;">➕ إنشاء قائمة</button>
+                </div>
+            </div>
+            <div id="editListBox" style="display:none;background:white;padding:20px;border-radius:8px;border:1px solid #ddd;">
+                <h4 id="editListTitle" style="margin-top:0;color:#1d364a;"></h4>
+                <div style="margin-bottom:15px;">
+                    <label style="font-weight:bold;margin-bottom:5px;display:block;">🔍 ابحث وأضف منتجات للقائمة</label>
+                    <input type="text" id="listProductSearch" class="form-control"
+                           placeholder="اكتب اسم أو كود المنتج..." oninput="listSearchProducts()" style="margin-bottom:8px;">
+                    <div id="listProductResults" style="border:1px solid #eee;border-radius:5px;max-height:200px;overflow-y:auto;display:none;background:white;position:relative;z-index:10;"></div>
+                </div>
+                <div style="margin-bottom:15px;padding:12px;background:#fdf5e6;border:1px dashed #f38c18;border-radius:5px;">
+                    <label style="font-weight:bold;margin-bottom:5px;display:block;">📤 أو ارفع شيت CSV</label>
+                    <input type="file" id="listCSVInput" accept=".csv,.txt" class="form-control" onchange="importListFromCSV(event)">
+                </div>
+                <div>
+                    <label style="font-weight:bold;margin-bottom:8px;display:block;">📦 المنتجات في القائمة:</label>
+                    <div id="listProductsContainer" style="min-height:60px;border:1px dashed #ccc;border-radius:5px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;"></div>
+                </div>
+                <div style="margin-top:15px;display:flex;gap:10px;">
+                    <button class="btn btn-green" onclick="saveCurrentList()" style="flex:1;padding:12px;">💾 حفظ القائمة</button>
+                    <button class="btn btn-red"   onclick="closeEditList()"    style="flex:1;padding:12px;">إلغاء</button>
+                </div>
+            </div>
+        </div>
+        <h3 style="border-bottom:2px solid #f38c18;padding-bottom:10px;">القوائم الموجودة</h3>
+        <table>
+            <thead><tr><th>الكود</th><th>اسم القائمة</th><th>عدد المنتجات</th><th>الحالة</th><th>إجراء</th></tr></thead>
+            <tbody id="adminCustomListsBody"></tbody>
+        </table>
+    </div>
+
+    <!-- ══════════════ الحسابات والخزنة 💰 — نظرة عامة ورأس المال ══════════════ -->
+    <div id="acc-overview" class="section">
+        <h3>📊 نظرة عامة ورأس المال</h3>
+        <div id="treasuryOverviewGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-bottom:30px;"></div>
+        <div style="background:#eef2f5;padding:20px;border-radius:10px;border:1px solid #dee2e6;">
+            <h4 style="margin-top:0;color:#1d364a;">🏦 تفاصيل أرصدة الحسابات</h4>
+            <div id="treasuryOverviewAccounts" style="display:flex;flex-wrap:wrap;gap:12px;"></div>
+        </div>
+        <p style="color:gray;font-size:13px;margin-top:20px;line-height:1.8;">
+            💡 رأس المال = إجمالي أرصدة كل الحسابات (كاش/بنوك/محافظ) + قيمة المخزون الحالي بسعر التكلفة (المنتجات اللي مكتوبلها تكلفة فقط) + قيمة البضاعة المحجوزة في الطلبات اللي لسه قيد التنفيذ/تم شحنها (لسه ما اتسلمتش ولا اتلغتش)، وده ظاهر كبطاقة منفصلة تحت — لأن البضاعة دي خرجت من عداد المخزون العادي لحظة عمل الطلب لكنها لسه فعلياً ملك المتجر.<br>
+            المنتجات اللي لسه من غير سعر تكلفة مش بتدخل في حساب قيمة المخزون ولا رأس المال، لحد ما تكتب تكلفتها.
+        </p>
+    </div>
+
+    <!-- ══════════════ الحسابات والخزنة 💰 — أرصدة الحسابات ══════════════ -->
+    <div id="acc-treasury-accounts" class="section">
+        <h3>🏦 إدارة حسابات الخزنة (كاش / بنوك / محافظ)</h3>
+        <div style="display:flex;gap:15px;margin-bottom:25px;background:#eef2f5;padding:20px;border-radius:8px;flex-wrap:wrap;align-items:flex-end;">
+            <div class="form-group" style="flex:2;min-width:200px;margin-bottom:0;">
+                <label>اسم الحساب</label>
+                <input type="text" id="newTreasAccName" class="form-control" placeholder="مثال: فودافون كاش، بنك QNB، كاش نقدي...">
+            </div>
+            <div class="form-group" style="flex:1;min-width:160px;margin-bottom:0;">
+                <label>نوع الحساب</label>
+                <select id="newTreasAccType" class="form-control">
+                    <option value="cash">كاش نقدي 💵</option>
+                    <option value="bank">حساب بنكي 🏦</option>
+                    <option value="wallet">محفظة إلكترونية 📱</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex:1;min-width:160px;margin-bottom:0;">
+                <label>الرصيد الافتتاحي</label>
+                <input type="number" id="newTreasAccOpening" class="form-control" value="0">
+            </div>
+            <button class="btn btn-green" onclick="addTreasuryAccount()" style="flex:0 0 auto;padding:12px 25px;">➕ إضافة حساب</button>
+        </div>
+        <table>
+            <thead><tr><th>اسم الحساب</th><th>النوع</th><th>الرصيد الحالي</th><th>الحالة</th><th style="min-width:200px;">إجراء</th></tr></thead>
+            <tbody id="adminTreasuryAccountsBody"></tbody>
+        </table>
+    </div>
+
+    <!-- ══════════════ الحسابات والخزنة 💰 — حركات الخزنة ══════════════ -->
+    <div id="acc-treasury-transactions" class="section">
+        <h3>💳 حركات الخزنة (إيداع / سحب / تحويل)</h3>
+        <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:3px solid #f38c18;flex-wrap:wrap;">
+            <button id="treasTxTabBtnDeposit" onclick="treasSwitchTxForm('deposit')" class="btn" style="border-radius:8px 8px 0 0;margin-left:5px;">💰 إيداع</button>
+            <button id="treasTxTabBtnWithdraw" onclick="treasSwitchTxForm('withdraw')" class="btn" style="border-radius:8px 8px 0 0;margin-left:5px;background:#eef2f5;color:#1d364a;">➖ سحب</button>
+            <button id="treasTxTabBtnTransfer" onclick="treasSwitchTxForm('transfer')" class="btn" style="border-radius:8px 8px 0 0;background:#eef2f5;color:#1d364a;">🔄 تحويل بين حسابين</button>
+        </div>
+
+        <div id="treasFormDeposit" style="background:#f9f9f9;padding:20px;border-radius:0 8px 8px 8px;border:1px solid #eee;margin-bottom:25px;display:flex;gap:15px;flex-wrap:wrap;align-items:flex-end;">
+            <div class="form-group" style="flex:1;min-width:180px;margin-bottom:0;"><label>الحساب</label><select id="depTreasAccount" class="form-control"></select></div>
+            <div class="form-group" style="flex:1;min-width:140px;margin-bottom:0;"><label>المبلغ</label><input type="number" id="depTreasAmount" class="form-control"></div>
+            <div class="form-group" style="flex:2;min-width:200px;margin-bottom:0;"><label>السبب / البيان</label><input type="text" id="depTreasReason" class="form-control" placeholder="مثال: إيداع رأس مال إضافي"></div>
+            <button class="btn btn-green" onclick="treasSubmitDeposit()" style="flex:0 0 auto;padding:12px 22px;">💾 تسجيل الإيداع</button>
+        </div>
+
+        <div id="treasFormWithdraw" style="display:none;background:#f9f9f9;padding:20px;border-radius:0 8px 8px 8px;border:1px solid #eee;margin-bottom:25px;display:flex;gap:15px;flex-wrap:wrap;align-items:flex-end;">
+            <div class="form-group" style="flex:1;min-width:180px;margin-bottom:0;"><label>الحساب</label><select id="wdTreasAccount" class="form-control"></select></div>
+            <div class="form-group" style="flex:1;min-width:140px;margin-bottom:0;"><label>المبلغ</label><input type="number" id="wdTreasAmount" class="form-control"></div>
+            <div class="form-group" style="flex:2;min-width:200px;margin-bottom:0;"><label>السبب / البيان</label><input type="text" id="wdTreasReason" class="form-control" placeholder="مثال: سحب شخصي"></div>
+            <button class="btn btn-red" onclick="treasSubmitWithdraw()" style="flex:0 0 auto;padding:12px 22px;">➖ تسجيل السحب</button>
+        </div>
+
+        <div id="treasFormTransfer" style="display:none;background:#f9f9f9;padding:20px;border-radius:0 8px 8px 8px;border:1px solid #eee;margin-bottom:25px;display:flex;gap:15px;flex-wrap:wrap;align-items:flex-end;">
+            <div class="form-group" style="flex:1;min-width:180px;margin-bottom:0;"><label>من حساب</label><select id="trFromAccount" class="form-control"></select></div>
+            <div class="form-group" style="flex:1;min-width:180px;margin-bottom:0;"><label>إلى حساب</label><select id="trToAccount" class="form-control"></select></div>
+            <div class="form-group" style="flex:1;min-width:140px;margin-bottom:0;"><label>المبلغ</label><input type="number" id="trAmount" class="form-control"></div>
+            <div class="form-group" style="flex:2;min-width:200px;margin-bottom:0;"><label>السبب / البيان</label><input type="text" id="trReason" class="form-control" placeholder="مثال: تحويل من الكاش للبنك"></div>
+            <button class="btn" style="background:#17a2b8;flex:0 0 auto;padding:12px 22px;" onclick="treasSubmitTransfer()">🔄 تنفيذ التحويل</button>
+        </div>
+
+        <div style="display:flex;gap:15px;margin-bottom:20px;background:#eef2f5;padding:20px;border-radius:8px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:160px;">
+                <label style="font-weight:bold;margin-bottom:5px;display:block;">الحساب</label>
+                <select id="filterTxAccount" class="form-control" onchange="renderTreasuryTransactions()"><option value="">الكل</option></select>
+            </div>
+            <div style="flex:1;min-width:160px;">
+                <label style="font-weight:bold;margin-bottom:5px;display:block;">نوع الحركة</label>
+                <select id="filterTxType" class="form-control" onchange="renderTreasuryTransactions()">
+                    <option value="all">الكل</option>
+                    <option value="deposit">إيداع يدوي</option>
+                    <option value="withdraw">سحب يدوي</option>
+                    <option value="transfer_in">تحويل وارد</option>
+                    <option value="transfer_out">تحويل صادر</option>
+                    <option value="sale_revenue">إيراد بيع</option>
+                    <option value="sale_reversal">عكس بيع (إلغاء)</option>
+                    <option value="expense">مصروف</option>
+                    <option value="stock_purchase">شراء بضاعة 📦</option>
+                </select>
+            </div>
+            <div style="flex:1;min-width:160px;">
+                <label style="font-weight:bold;margin-bottom:5px;display:block;">من تاريخ</label>
+                <input type="date" id="filterTxFrom" class="form-control" onchange="renderTreasuryTransactions()">
+            </div>
+            <div style="flex:1;min-width:160px;">
+                <label style="font-weight:bold;margin-bottom:5px;display:block;">إلى تاريخ</label>
+                <input type="date" id="filterTxTo" class="form-control" onchange="renderTreasuryTransactions()">
+            </div>
+            <div style="flex:0 0 auto;min-width:120px;">
+                <label style="font-weight:bold;margin-bottom:5px;display:block;">عدد الصفوف بالصفحة</label>
+                <select id="treasuryTxPageSizeSelect" class="form-control" onchange="renderTreasuryTransactions()">
+                    <option value="10">10</option>
+                    <option value="20" selected>20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+            <div style="flex:0 0 auto;align-self:flex-end;">
+                <button class="btn" style="background:#28a745;" onclick="exportTreasuryTransactionsCSV()">📥 تصدير Excel</button>
+            </div>
+        </div>
+        <div id="filterTxCount" style="margin-bottom:10px;font-size:13px;color:#555;font-weight:bold;"></div>
+        <table>
+            <thead><tr><th>التاريخ</th><th>الحساب</th><th>النوع</th><th>المبلغ</th><th>البيان</th><th>مرتبط بـ</th><th>بواسطة</th></tr></thead>
+            <tbody id="adminTreasuryTxBody"></tbody>
+        </table>
+        <div id="treasuryTxPaginationBox" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:20px;"></div>
+    </div>
+
+    <!-- ══════════════ الحسابات والخزنة 💰 — المصاريف ══════════════ -->
+    <div id="acc-expenses" class="section">
+        <h3>🧾 تسجيل المصاريف</h3>
+        <div style="background:#fdf5e6;padding:25px;border-radius:8px;border:1px solid #f38c18;margin-bottom:25px;">
+            <div style="display:flex;gap:15px;flex-wrap:wrap;">
+                <div class="form-group" style="flex:2;min-width:200px;"><label>وصف المصروف</label><input type="text" id="expTitle" class="form-control" placeholder="مثال: إيجار المحل - شهر يوليو"></div>
+                <div class="form-group" style="flex:1;min-width:160px;"><label>الفئة</label>
+                    <select id="expCategory" class="form-control">
+                        <option value="rent">إيجار</option>
+                        <option value="salaries">رواتب</option>
+                        <option value="shipping">شحن وتوصيل</option>
+                        <option value="marketing">تسويق وإعلانات</option>
+                        <option value="utilities">فواتير ومرافق</option>
+                        <option value="other">أخرى</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex:1;min-width:160px;"><label>تاريخ المصروف</label><input type="date" id="expDate" class="form-control"></div>
+            </div>
+            <label style="font-weight:bold;color:#1d364a;display:block;margin:10px 0 8px;">💳 يتسحب من (حساب واحد أو أكتر)</label>
+            <div id="expAllocationsBox" style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px;"></div>
+            <button type="button" class="btn" style="background:#6c757d;margin-bottom:15px;" onclick="expAddAllocationRow()">➕ إضافة حساب آخر للسحب منه</button>
+            <div style="font-weight:bold;color:#1d364a;margin-bottom:15px;">إجمالي المصروف: <span id="expTotalPreview" style="color:#f38c18;">0</span> ج.م</div>
+            <button class="btn btn-green" onclick="saveExpense()" style="width:100%;padding:15px;font-size:17px;">💾 حفظ المصروف وخصمه من الخزنة</button>
+        </div>
+
+        <div style="display:flex;gap:15px;margin-bottom:20px;background:#eef2f5;padding:20px;border-radius:8px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:160px;"><label style="font-weight:bold;margin-bottom:5px;display:block;">الفئة</label>
+                <select id="filterExpCategory" class="form-control" onchange="renderExpenses()">
+                    <option value="all">الكل</option>
+                    <option value="rent">إيجار</option><option value="salaries">رواتب</option>
+                    <option value="shipping">شحن وتوصيل</option><option value="marketing">تسويق وإعلانات</option>
+                    <option value="utilities">فواتير ومرافق</option><option value="other">أخرى</option>
+                </select>
+            </div>
+            <div style="flex:1;min-width:160px;"><label style="font-weight:bold;margin-bottom:5px;display:block;">من تاريخ</label><input type="date" id="filterExpFrom" class="form-control" onchange="renderExpenses()"></div>
+            <div style="flex:1;min-width:160px;"><label style="font-weight:bold;margin-bottom:5px;display:block;">إلى تاريخ</label><input type="date" id="filterExpTo" class="form-control" onchange="renderExpenses()"></div>
+            <div style="flex:0 0 auto;align-self:flex-end;"><button class="btn" style="background:#28a745;" onclick="exportExpensesCSV()">📥 تصدير Excel</button></div>
+        </div>
+        <div id="filterExpCount" style="margin-bottom:10px;font-size:13px;color:#555;font-weight:bold;"></div>
+        <table>
+            <thead><tr><th>التاريخ</th><th>الوصف</th><th>الفئة</th><th>الإجمالي</th><th>تفاصيل السحب</th><th>إجراء</th></tr></thead>
+            <tbody id="adminExpensesBody"></tbody>
+        </table>
+    </div>
+
+    <!-- ══════════════ الحسابات والخزنة 💰 ══════════════ -->
+    <div id="acc-price-history" class="section">
+        <h3>📜 سجل تغييرات أسعار المنتجات (بيع وتكلفة)</h3>
+        <p style="color:gray;font-size:13.5px;margin-top:-15px;margin-bottom:20px;">
+            كل مرة تحفظ منتج وتغيّر سعر البيع أو سعر التكلفة، بيتسجل هنا سطر تلقائي بالتاريخ والقيمة القديمة والجديدة —
+            حتى لو أول مرة تكتب فيها سعر تكلفة لمنتج كان من غير تكلفة أصلاً.
+        </p>
+        <div style="display:flex;gap:15px;margin-bottom:20px;background:#eef2f5;padding:20px;border-radius:8px;flex-wrap:wrap;align-items:flex-end;">
+            <div style="flex:2;min-width:220px;">
+                <label style="font-weight:bold;margin-bottom:5px;display:block;">🔍 بحث بالاسم أو كود المنتج</label>
+                <input type="text" id="filterPHProduct" class="form-control" oninput="renderAdminPriceHistory()" placeholder="اكتب اسم أو كود المنتج...">
+            </div>
+            <div style="flex:1;min-width:150px;">
+                <label style="font-weight:bold;margin-bottom:5px;display:block;">نوع التغيير</label>
+                <select id="filterPHType" class="form-control" onchange="renderAdminPriceHistory()">
+                    <option value="all">الكل</option>
+                    <option value="price">سعر البيع فقط</option>
+                    <option value="cost">سعر التكلفة فقط</option>
+                </select>
+            </div>
+            <div style="flex:1;min-width:160px;">
+                <label style="font-weight:bold;margin-bottom:5px;display:block;">من تاريخ</label>
+                <input type="date" id="filterPHFrom" class="form-control" onchange="renderAdminPriceHistory()">
+            </div>
+            <div style="flex:1;min-width:160px;">
+                <label style="font-weight:bold;margin-bottom:5px;display:block;">إلى تاريخ</label>
+                <input type="date" id="filterPHTo" class="form-control" onchange="renderAdminPriceHistory()">
+            </div>
+            <div style="flex:0 0 auto;min-width:120px;">
+                <label style="font-weight:bold;margin-bottom:5px;display:block;">عدد الصفوف بالصفحة</label>
+                <select id="priceHistoryPageSizeSelect" class="form-control" onchange="renderAdminPriceHistory()">
+                    <option value="10">10</option>
+                    <option value="20" selected>20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+            <div style="flex:0 0 auto;">
+                <button class="btn" style="background:#28a745;" onclick="exportPriceHistoryCSV()">📥 تصدير Excel</button>
+            </div>
+        </div>
+        <div id="filterPHCount" style="margin-bottom:10px;font-size:13px;color:#555;font-weight:bold;"></div>
+        <table>
+            <thead>
+                <tr>
+                    <th>التاريخ والوقت</th><th>كود المنتج</th><th>اسم المنتج</th>
+                    <th>نوع التغيير</th><th>القيمة القديمة</th><th>القيمة الجديدة</th><th>الفرق</th>
+                </tr>
+            </thead>
+            <tbody id="adminPriceHistoryBody"></tbody>
+        </table>
+        <div id="priceHistoryPaginationBox" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:20px;"></div>
+    </div>
+
+    <!-- ══════════════ الحسابات والخزنة 💰 — سجل حركة المخزون واستلام البضاعة ══════════════ -->
+    <div id="acc-stock-movements" class="section">
+        <h3>📦 سجل حركة المخزون (دخول/خروج) واستلام دفعات بضاعة جديدة</h3>
+        <p style="color:gray;font-size:13.5px;margin-top:-15px;margin-bottom:20px;line-height:1.8;">
+            لتسجيل دخول بضاعة جديدة فعلياً واستلامها (وخصم قيمتها من الخزنة)، روح تاب "إدارة المنتجات" وادوس زرار
+            <strong>"📦 استلام كمية"</strong> جنب أي منتج. هنا بس بتشوف السجل الكامل لكل حركات الدخول (استلام/إلغاء طلبات)
+            والخروج (بيع فعلي) لكل منتج.
+        </p>
+        <div style="display:flex;gap:15px;margin-bottom:20px;background:#eef2f5;padding:20px;border-radius:8px;flex-wrap:wrap;align-items:flex-end;">
+            <div style="flex:2;min-width:220px;">
+                <label style="font-weight:bold;margin-bottom:5px;display:block;">🔍 بحث بالاسم أو كود المنتج</label>
+                <input type="text" id="filterStockProduct" class="form-control" oninput="renderStockMovements()" placeholder="اكتب اسم أو كود المنتج...">
+            </div>
+            <div style="flex:1;min-width:150px;">
+                <label style="font-weight:bold;margin-bottom:5px;display:block;">نوع الحركة</label>
+                <select id="filterStockType" class="form-control" onchange="renderStockMovements()">
+                    <option value="all">الكل</option>
+                    <option value="in">دخول ⬇️</option>
+                    <option value="out">خروج ⬆️</option>
+                </select>
+            </div>
+            <div style="flex:1;min-width:160px;">
+                <label style="font-weight:bold;margin-bottom:5px;display:block;">من تاريخ</label>
+                <input type="date" id="filterStockFrom" class="form-control" onchange="renderStockMovements()">
+            </div>
+            <div style="flex:1;min-width:160px;">
+                <label style="font-weight:bold;margin-bottom:5px;display:block;">إلى تاريخ</label>
+                <input type="date" id="filterStockTo" class="form-control" onchange="renderStockMovements()">
+            </div>
+            <div style="flex:0 0 auto;min-width:120px;">
+                <label style="font-weight:bold;margin-bottom:5px;display:block;">عدد الصفوف بالصفحة</label>
+                <select id="stockMovPageSizeSelect" class="form-control" onchange="renderStockMovements()">
+                    <option value="10">10</option>
+                    <option value="20" selected>20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+            <div style="flex:0 0 auto;">
+                <button class="btn" style="background:#28a745;" onclick="exportStockMovementsCSV()">📥 تصدير Excel</button>
+            </div>
+        </div>
+        <div id="filterStockCount" style="margin-bottom:10px;font-size:13px;color:#555;font-weight:bold;"></div>
+        <table>
+            <thead>
+                <tr>
+                    <th>التاريخ</th><th>المنتج</th><th>النوع</th><th>الكمية</th>
+                    <th>تكلفة الوحدة</th><th>الإجمالي</th><th>البيان</th>
+                </tr>
+            </thead>
+            <tbody id="adminStockMovementsBody"></tbody>
+        </table>
+        <div id="stockMovPaginationBox" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:20px;"></div>
+    </div>
+
+    <!-- ══════════════ التقارير المالية 📈 ══════════════ -->
+    <div id="acc-reports" class="section">
+        <h3>📈 التقارير المالية</h3>
+
+        <!-- فلتر الفترة الزمنية العام + شريط تنقل سريع ثابت -->
+        <div style="position:sticky;top:0;z-index:50;background:white;padding:15px 0 15px;border-bottom:2px solid #f38c18;margin-bottom:25px;">
+            <div style="display:flex;gap:15px;flex-wrap:wrap;align-items:flex-end;background:#eef2f5;padding:18px;border-radius:8px;">
+                <div class="form-group" style="margin-bottom:0;flex:1;min-width:160px;">
+                    <label>من تاريخ</label>
+                    <input type="date" id="repFrom" class="form-control" onchange="renderReportsAll()">
+                </div>
+                <div class="form-group" style="margin-bottom:0;flex:1;min-width:160px;">
+                    <label>إلى تاريخ</label>
+                    <input type="date" id="repTo" class="form-control" onchange="renderReportsAll()">
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn" style="background:#6c757d;" onclick="repSetQuickRange(7)">آخر 7 أيام</button>
+                    <button class="btn" style="background:#6c757d;" onclick="repSetQuickRange(30)">آخر 30 يوم</button>
+                    <button class="btn" style="background:#6c757d;" onclick="repSetQuickRange(90)">آخر 3 شهور</button>
+                    <button class="btn" style="background:#6c757d;" onclick="repSetQuickRange(365)">آخر سنة</button>
+                </div>
+                <button class="btn btn-green" onclick="exportFullReportCSV()" style="margin-right:auto;">📥 تصدير التقرير الكامل Excel</button>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">
+                <a href="#repSecSummary" class="btn" style="background:#1d364a;padding:8px 16px;font-size:13px;">💰 الملخص المالي</a>
+                <a href="#repSecTreasury" class="btn" style="background:#1d364a;padding:8px 16px;font-size:13px;">🏦 حركة الخزنة</a>
+                <a href="#repSecExpenses" class="btn" style="background:#1d364a;padding:8px 16px;font-size:13px;">🧾 المصاريف</a>
+                <a href="#repSecProducts" class="btn" style="background:#1d364a;padding:8px 16px;font-size:13px;">🏆 أفضل المنتجات</a>
+            </div>
+        </div>
+
+        <!-- ① الملخص المالي العام -->
+        <div id="repSecSummary" style="scroll-margin-top:150px;margin-bottom:50px;">
+            <h4 style="color:#1d364a;border-right:5px solid #f38c18;padding-right:12px;margin-bottom:18px;">💰 الملخص المالي العام</h4>
+            <div id="repSummaryCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:15px;margin-bottom:20px;"></div>
+            <div style="background:white;border:1px solid #eee;border-radius:10px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.04);">
+                <canvas id="repRevenueChart" height="90"></canvas>
+            </div>
+        </div>
+
+        <!-- ② حركة الخزنة -->
+        <div id="repSecTreasury" style="scroll-margin-top:150px;margin-bottom:50px;">
+            <h4 style="color:#1d364a;border-right:5px solid #f38c18;padding-right:12px;margin-bottom:18px;">🏦 حركة الخزنة (لكل حساب خلال الفترة)</h4>
+            <div style="background:white;border:1px solid #eee;border-radius:10px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.04);margin-bottom:20px;">
+                <canvas id="repTreasuryChart" height="90"></canvas>
+            </div>
+            <table>
+                <thead><tr><th>الحساب</th><th>إجمالي الداخل ⬇️</th><th>إجمالي الخارج ⬆️</th><th>صافي الحركة</th></tr></thead>
+                <tbody id="repTreasuryTableBody"></tbody>
+            </table>
+            <div id="repTreasuryPaginationBox" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:15px;"></div>
+        </div>
+
+        <!-- ③ المصاريف حسب الفئة -->
+        <div id="repSecExpenses" style="scroll-margin-top:150px;margin-bottom:50px;">
+            <h4 style="color:#1d364a;border-right:5px solid #f38c18;padding-right:12px;margin-bottom:18px;">🧾 المصاريف حسب الفئة</h4>
+            <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;">
+                <div style="flex:1;min-width:280px;max-width:380px;background:white;border:1px solid #eee;border-radius:10px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.04);">
+                    <canvas id="repExpensesChart"></canvas>
+                </div>
+                <div style="flex:2;min-width:280px;">
+                    <table>
+                        <thead><tr><th>الفئة</th><th>الإجمالي</th><th>النسبة</th></tr></thead>
+                        <tbody id="repExpensesTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ④ أفضل المنتجات -->
+        <div id="repSecProducts" style="scroll-margin-top:150px;margin-bottom:30px;">
+            <h4 style="color:#1d364a;border-right:5px solid #f38c18;padding-right:12px;margin-bottom:18px;display:inline-block;">🏆 أفضل المنتجات مبيعًا وربحًا</h4>
+            <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;align-items:center;">
+                <button id="repTopModeQty"    class="btn" style="background:#1d364a;" onclick="repSetTopMode('qty')">📦 الأكثر مبيعًا (كمية)</button>
+                <button id="repTopModeProfit" class="btn" style="background:#eef2f5;color:#1d364a;" onclick="repSetTopMode('profit')">💵 الأعلى ربحًا</button>
+                <div style="margin-right:auto;display:flex;align-items:center;gap:8px;">
+                    <label style="font-weight:bold;font-size:13px;color:#1d364a;">عدد الصفوف بالصفحة</label>
+                    <select id="repTopProductsPageSizeSelect" class="form-control" style="width:90px;" onchange="renderReportsTopProducts()">
+                        <option value="10">10</option>
+                        <option value="20" selected>20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+            <div style="background:white;border:1px solid #eee;border-radius:10px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.04);margin-bottom:20px;">
+                <canvas id="repTopProductsChart" height="100"></canvas>
+            </div>
+            <p style="color:gray;font-size:12.5px;margin-top:-10px;margin-bottom:12px;">💡 الشارت بيعرض أفضل 10 بس للوضوح، أما الجدول تحت فبيعرض كل المنتجات مع ترقيم صفحات.</p>
+            <table>
+                <thead><tr><th>المنتج</th><th>الكمية المباعة</th><th>الإيراد</th><th>التكلفة</th><th>الربح</th></tr></thead>
+                <tbody id="repTopProductsTableBody"></tbody>
+            </table>
+            <div id="repTopProductsPaginationBox" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:15px;"></div>
+        </div>
+    </div>
+
+    <!-- ══════════════ فريق العمل ══════════════ -->
+    <div id="team" class="section">
+        <h3>إدارة فريق العمل والصلاحيات 👥</h3>
+        <div style="background:white;padding:25px;border-radius:8px;border:1px solid #1d364a;margin-bottom:30px;">
+            <p style="color:gray;font-size:14px;">أضف بريد إلكتروني وكلمة مرور لأي فرد في فريقك، وحدد له "أساس الصلاحيات" (الفئة) اللي هيحدد أي تابات يقدر يشوفها ويعدّل فيها.</p>
+            <div style="display:flex;gap:20px;flex-wrap:wrap;">
+                <div class="form-group" style="flex:1;min-width:250px;">
+                    <label>البريد الإلكتروني للمدير الجديد</label>
+                    <input type="email" id="newAdminEmail" class="form-control" placeholder="ahmed@jory.com">
+                </div>
+                <div class="form-group" style="flex:1;min-width:250px;">
+                    <label>كلمة المرور (6 أحرف على الأقل)</label>
+                    <input type="password" id="newAdminPass" class="form-control" placeholder="******">
+                </div>
+                <div class="form-group" style="flex:1;min-width:250px;">
+                    <label>أساس الصلاحيات (الفئة)</label>
+                    <select id="newAdminFoundation" class="form-control"></select>
+                </div>
+            </div>
+            <button class="btn btn-green" onclick="addNewAdmin(event)"
+                    style="width:100%;padding:15px;font-size:18px;margin-top:10px;">
+                ➕ إضافة المدير وفتح الصلاحيات
+            </button>
+        </div>
+        <h3>المديرين الحاليين في النظام</h3>
+        <table>
+            <thead><tr><th>البريد الإلكتروني</th><th>تاريخ الإضافة</th><th>أساس الصلاحيات</th><th>الحالة</th><th>إجراء</th></tr></thead>
+            <tbody id="adminListBody"></tbody>
+        </table>
+    </div>
+
+    <!-- ══════════════ أسس الصلاحيات (Permission Foundations) ══════════════ -->
+    <div id="foundations" class="section">
+        <h3>🏛️ أسس الصلاحيات (الفئات)</h3>
+        <p style="color:gray;font-size:14px;margin-top:-15px;">
+            اعمل هنا "أساس" (فئة) زي "تسويق" أو "سوبر أدمن"، وحدد لكل تاب في اللوحة أي صلاحيات تديها لهذه الفئة من (مشاهدة / إضافة / تعديل / حذف) — تقدر تفعّل أكتر من صلاحية مع بعض بحرية (مثلاً: مشاهدة + تعديل بس من غير إضافة أو حذف)، وبعدين روح لصفحة "فريق العمل" واختار لكل أدمن الفئة بتاعته.
+        </p>
+        <div id="foundationFormBox" style="background:#fdf5e6;padding:25px;border-radius:12px;border:1px solid #f38c18;margin-bottom:30px;">
+            <input type="hidden" id="editingFoundationId" value="">
+            <div class="form-group">
+                <label>اسم الفئة (الأساس)</label>
+                <input type="text" id="foundationName" class="form-control" placeholder="مثال: تسويق، خدمة عملاء، سوبر أدمن...">
+            </div>
+            <div class="form-group" style="background:white;padding:12px;border-radius:8px;border:1px dashed #d9534f;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#d9534f;">
+                    <input type="checkbox" id="foundationCanManageAdmins" style="width:18px;height:18px;cursor:pointer;">
+                    🔑 هذه الفئة تقدر تدي صلاحيات لأدمنز تانيين، تنشئ فئات جديدة، أو توقف/تمسح أي أدمن (صلاحية إدارة الفريق الكاملة)
+                </label>
+            </div>
+            <h4 style="margin:20px 0 10px;color:#1d364a;">صلاحيات كل قسم في اللوحة</h4>
+            <table>
+                <thead><tr><th style="text-align:right;">القسم</th><th>👁️ مشاهدة</th><th>➕ إضافة</th><th>✏️ تعديل</th><th>🗑️ حذف</th></tr></thead>
+                <tbody id="foundationPermsBody"></tbody>
+            </table>
+            <div style="display:flex;gap:10px;margin-top:20px;">
+                <button class="btn btn-green" id="foundationSaveBtn" onclick="saveFoundation()" style="flex:1;padding:15px;font-size:17px;">➕ حفظ الفئة</button>
+                <button class="btn btn-red" id="foundationCancelBtn" onclick="cancelEditFoundation()" style="display:none;padding:15px;font-size:17px;">✖ إلغاء التعديل</button>
+            </div>
+        </div>
+        <h3 style="border-bottom:2px solid #f38c18;padding-bottom:10px;">الفئات الموجودة</h3>
+        <table>
+            <thead><tr><th>اسم الفئة</th><th>إدارة الفريق؟</th><th>ملخص الصلاحيات</th><th>إجراء</th></tr></thead>
+            <tbody id="adminFoundationsBody"></tbody>
+        </table>
+    </div>
+
+</div><!-- /main-content -->
+
+<!-- ════════════════════════════════════════════════
+     Modal اختيار حساب استلام إيراد الطلب (عند تم التوصيل)
+════════════════════════════════════════════════ -->
+<div id="deliveryAccountModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);
+     justify-content:center;align-items:center;z-index:3000;">
+  <div style="background:white;padding:25px;border-radius:10px;width:450px;max-width:92%;">
+    <h3 style="color:#1d364a;border-bottom:2px solid #28a745;padding-bottom:10px;">💰 استلام قيمة الطلب</h3>
+    <p style="color:#555;font-size:14px;">هذا الطلب هيتحسب مالياً الآن. اختار الحساب اللي هتستلم فيه قيمة الفاتورة:</p>
+    <input type="hidden" id="deliveryModalOrderId">
+    <div class="form-group">
+        <label>الحساب المستلم</label>
+        <select id="deliveryModalAccount" class="form-control"></select>
+    </div>
+    <div id="deliveryModalNoAccountsMsg" style="display:none;color:#d9534f;font-weight:bold;font-size:13px;margin-bottom:10px;">
+        ⚠️ لا يوجد أي حساب خزنة مضاف بعد. أضف حساب أولاً من تاب "أرصدة الحسابات" ثم أعد المحاولة.
+    </div>
+    <div style="display:flex;gap:10px;margin-top:15px;">
+        <button class="btn btn-green" onclick="confirmDeliveryAccount()" style="flex:1;padding:12px;">✅ تأكيد الاستلام والتوصيل</button>
+        <button class="btn btn-red" onclick="closeDeliveryAccountModal()" style="flex:1;padding:12px;">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     Modal الفاتورة
+════════════════════════════════════════════════ -->
+<div id="invoiceModal"
+     style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+            background:rgba(0,0,0,0.7); justify-content:center; align-items:center;
+            z-index:1000; font-family:'Segoe UI',Tahoma,Arial,sans-serif; direction:rtl;">
+    <div style="position:relative; max-height:95vh; overflow-y:auto; background:transparent;
+                width:1000px; max-width:95%; display:flex; flex-direction:column; align-items:center;">
+        <div class="no-print" style="width:100%; text-align:left; margin-bottom:10px;">
+            <button onclick="printSingleInvoice()"
+                    style="background:#1d364a;color:white;border:none;padding:10px 20px;cursor:pointer;border-radius:5px;font-size:16px;font-weight:bold;">
+                🖨️ طباعة الفاتورة
+            </button>
+            <button onclick="document.getElementById('invoiceModal').style.display='none'"
+                    style="background:#d9534f;color:white;border:none;padding:10px 20px;cursor:pointer;border-radius:5px;font-size:16px;font-weight:bold;margin-right:10px;">
+                ✖ إغلاق
+            </button>
+        </div>
+        <div id="printArea" style="width:100%; background:white; padding:20px;">
+            <!-- المحتوى بيتبنى ديناميكياً من دالة generateInvoiceTemplate() في admin.js عند فتح الفاتورة -->
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     Modal تعديل العميل
+    ════════════════════════════════════════════════ -->
+<div id="editCustomerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:1000;">
+    <div style="background:white; padding:30px; border-radius:10px; width:500px; max-width:90%;">
+        <h3 style="margin-top:0; color:#1d364a;">⚙️ تعديل بيانات العميل</h3>
+        <input type="hidden" id="editCustPhoneKey">
+        <div class="form-group"><label>الاسم</label><input type="text" id="editCustName" class="form-control"></div>
+        <div class="form-group"><label>رقم التليفون</label><input type="text" id="editCustPhone" class="form-control" disabled></div>
+        <div class="form-group"><label>البريد الإلكتروني</label><input type="text" id="editCustEmail" class="form-control"></div>
+        <div class="form-group"><label>العنوان الأساسي</label><input type="text" id="editCustAddress" class="form-control"></div>
+        <div class="form-group"><label>رصيد النقاط الحالي</label><input type="number" id="editCustPoints" class="form-control"></div>
+        <div style="background:#fdf5e6; border:1px dashed #f38c18; border-radius:8px; padding:12px; margin-bottom:18px;">
+            <button type="button" class="btn" style="width:100%; padding:10px; font-size:14px; background:#f38c18; color:#1d364a;" onclick="adminResetCustomerPassword()">🔑 توليد كلمة مرور جديدة (بعد التأكد من هوية العميل)</button>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:25px;">
+            <button class="btn btn-green" onclick="saveCustomerEdit()" style="flex:1; padding:12px; font-size:16px;">💾 حفظ التعديلات</button>
+            <button class="btn btn-red"   onclick="closeCustomerModals()" style="flex:1; padding:12px; font-size:16px;">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     Modal سجل نقاط العميل
+════════════════════════════════════════════════ -->
+<div id="historyCustomerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:1000;">
+    <div style="background:white; padding:30px; border-radius:10px; width:750px; max-width:90%; max-height:90vh; overflow-y:auto;">
+        <h3 style="margin-top:0; color:#1d364a; border-bottom:2px solid #f38c18; padding-bottom:10px;" id="historyCustNameTitle">📜 سجل حركات النقاط</h3>
+        <table style="width:100%; text-align:right; border-collapse:collapse; margin-top:15px;">
+            <thead><tr><th style="padding:10px;background:#1d364a;color:white;">التاريخ</th><th style="padding:10px;background:#1d364a;color:white;">النوع</th><th style="padding:10px;background:#1d364a;color:white;">النقاط</th><th style="padding:10px;background:#1d364a;color:white;">تفاصيل الأوردر</th></tr></thead>
+            <tbody id="historyCustBody"></tbody>
+        </table>
+        <button class="btn btn-red" onclick="closeCustomerModals()" style="width:100%; margin-top:25px; padding:12px; font-size:16px;">✖ إغلاق السجل</button>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     Modal تعديل القسم
+════════════════════════════════════════════════ -->
+<div id="editCategoryModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:1000;">
+    <div style="background:white; padding:30px; border-radius:10px; width:500px; max-width:90%;">
+        <h3 style="margin-top:0; color:#1d364a;">⚙️ تعديل بيانات القسم</h3>
+        <input type="hidden" id="editCatId">
+        <div class="form-group"><label>الاسم بالعربي</label><input type="text" id="editCatNameAr" class="form-control"></div>
+        <div class="form-group"><label>الاسم بالإنجليزي</label><input type="text" id="editCatNameEn" class="form-control"></div>
+        <div class="form-group">
+            <label>رابط صورة القسم</label>
+            <input type="text" id="editCatImg" class="form-control" placeholder="https://...">
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <button type="button" onclick="triggerDirectUpload('editCatImg')" class="btn btn-green" style="flex:1;">📤 رفع</button>
+                <button type="button" onclick="openGalleryModal('editCatImg')"    class="btn" style="background:#e68a10; flex:1;">🖼️ استوديو</button>
+            </div>
+        </div>
+        <div class="form-group"><label>أولوية الظهور</label><input type="number" id="editCatPriority" class="form-control" placeholder="مثال: 1, 2, 3..."></div>
+        <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="editCatFeatured" style="width:18px;height:18px;cursor:pointer;">
+            <label style="margin:0;">⭐ قسم مميز (يظهر في تسوق بالفئة بالصفحة الرئيسية)</label>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:25px;">
+            <button class="btn btn-green" onclick="saveCategoryEdit()"  style="flex:1; padding:12px; font-size:16px;">💾 حفظ التعديلات</button>
+            <button class="btn btn-red"   onclick="closeCategoryModal()" style="flex:1; padding:12px; font-size:16px;">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     Modal تعديل المنطقة
+════════════════════════════════════════════════ -->
+<div id="editRegionModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:1000;">
+    <div style="background:white; padding:30px; border-radius:10px; width:400px; max-width:90%;">
+        <h3 style="margin-top:0; color:#1d364a;">🚚 تعديل بيانات المنطقة</h3>
+        <input type="hidden" id="editRegionIndex">
+        <div class="form-group"><label>اسم المنطقة</label><input type="text" id="editRegionName" class="form-control"></div>
+        <div class="form-group"><label>مصاريف الشحن (ج.م)</label><input type="number" id="editRegionFee" class="form-control" placeholder="اكتب 0 للشحن المجاني"></div>
+        <div style="display:flex; gap:10px; margin-top:25px;">
+            <button class="btn btn-green" onclick="saveRegionEdit()"  style="flex:1; padding:12px; font-size:16px;">💾 حفظ</button>
+            <button class="btn btn-red"   onclick="closeRegionModal()" style="flex:1; padding:12px; font-size:16px;">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     Modal تعديل البانر
+════════════════════════════════════════════════ -->
+<div id="editBannerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:1000;">
+    <div style="background:white; padding:30px; border-radius:10px; width:500px; max-width:92%; max-height:90vh; overflow-y:auto;">
+        <h3 style="margin-top:0; color:#1d364a; border-bottom:2px solid #f38c18; padding-bottom:10px;">🖼️ تعديل البانر</h3>
+        <input type="hidden" id="editBannerId">
+        <div class="form-group"><label>عنوان البانر</label><input type="text" id="editBannerTitle" class="form-control"></div>
+
+        <div class="form-group">
+            <label>🖥️ صورة الكمبيوتر</label>
+            <input type="text" id="editBannerImg" class="form-control">
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <button type="button" onclick="triggerDirectUpload('editBannerImg')" class="btn btn-green" style="flex:1;">📤 رفع صورة</button>
+                <button type="button" onclick="openGalleryModal('editBannerImg')"    class="btn" style="background:#e68a10; flex:1;">🖼️ من الاستوديو</button>
+            </div>
+        </div>
+
+        <div class="form-group" style="background:#fff7ed;padding:10px;border-radius:6px;border:1px dashed #f38c18;">
+            <label style="color:#f38c18;">📱 صورة الموبايل (اختياري)</label>
+            <input type="text" id="editBannerImgMobile" class="form-control">
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <button type="button" onclick="triggerDirectUpload('editBannerImgMobile')" class="btn btn-green" style="flex:1;">📤 رفع صورة</button>
+                <button type="button" onclick="openGalleryModal('editBannerImgMobile')"    class="btn" style="background:#e68a10; flex:1;">🖼️ من الاستوديو</button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>نوع التوجيه عند النقر</label>
+            <select id="editBannerLinkType" class="form-control" onchange="updateEditBannerLinkPlaceholder()">
+                <option value="product">منتج (كود المنتج)</option>
+                <option value="category">قسم (كود القسم)</option>
+                <option value="external">رابط خارجي</option>
+            </select>
+        </div>
+        <div class="form-group"><label>قيمة التوجيه</label><input type="text" id="editBannerLinkValue" class="form-control"></div>
+        <div class="form-group"><label>أولوية الترتيب في السلايدر</label><input type="number" id="editBannerPriority" class="form-control" min="1"></div>
+
+        <div style="display:flex; gap:10px; margin-top:20px;">
+            <button class="btn btn-green" onclick="saveBannerEdit()"  style="flex:1; padding:12px; font-size:16px;">💾 حفظ التعديلات</button>
+            <button class="btn btn-red"   onclick="closeBannerModal()" style="flex:1; padding:12px; font-size:16px;">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     Modal استوديو الصور
+════════════════════════════════════════════════ -->
+<div id="galleryModal"
+     style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+            background:rgba(0,0,0,0.8); justify-content:center; align-items:center;
+            z-index:6000; direction:rtl; font-family:'Segoe UI',Tahoma,Arial,sans-serif;">
+    <div style="background:white; width:90%; max-width:1000px; border-radius:8px; padding:20px;
+                max-height:90vh; overflow-y:auto; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center;
+                    border-bottom:2px solid #eee; padding-bottom:10px; margin-bottom:20px;">
+            <h2 style="color:#1d364a; margin:0;">🖼️ استوديو الصور (El Jory Gallery)</h2>
+            <button onclick="closeGalleryModal()"
+                    style="background:#d9534f;color:white;border:none;padding:8px 15px;cursor:pointer;border-radius:5px;font-weight:bold;">
+                ✖ إغلاق
+            </button>
+        </div>
+        <div style="background:#fdf5e6;border:1px dashed #f38c18;border-radius:8px;padding:10px 14px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+            <span style="font-size:12.5px;color:#1d364a;">⚙️ لو عندك صور اتضافت للاستوديو قبل تحديث نظام الصلاحيات، اضغط الزرار ده مرة واحدة لترتيب تخزينها (آمن ويمكن الضغط عليه أكتر من مرة).</span>
+            <button class="btn" style="background:#f38c18;color:#1d364a;white-space:nowrap;padding:6px 14px;font-size:12.5px;" onclick="migrateGalleryToKeyedFormat()">🔧 ترحيل الاستوديو القديم</button>
+        </div>
+        <div style="margin-bottom:20px; background:#fdf5e6; padding:20px; border-radius:8px;
+                    border:2px dashed #e68a10; text-align:center;">
+            <input type="file" id="uploadGalleryInput" accept="image/*" style="display:none;"
+                   onchange="uploadToGallery(event)">
+            <button id="galleryUploadBtn" onclick="document.getElementById('uploadGalleryInput').click()"
+                    style="background:#1d364a;color:white;border:none;padding:12px 25px;
+                           cursor:pointer;border-radius:5px;font-size:16px;font-weight:bold;">
+                ➕ اختر صورة لرفعها للاستوديو
+            </button>
+            <p style="font-size:13px; color:#555; margin-top:10px;">(السيستم يقوم بضغط الصور تلقائياً لتوفير المساحة)</p>
+        </div>
+        <div id="galleryGridArea"
+             style="display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:15px;"></div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     عناصر مساعدة
+════════════════════════════════════════════════ -->
+<input type="file" id="directUploadInput" accept="image/*" style="display:none;"
+       onchange="handleDirectUpload(event)">
+<div id="multiPrintArea" style="display:none;"></div>
+
+<!-- ════════════════════════════════════════════════
+     Firebase SDK
+════════════════════════════════════════════════ -->
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+<script src="js/firebase-init.js"></script>
+
+<!-- ════════════════════════════════════════════════
+     Chart.js (للرسوم البيانية في تاب التقارير المالية)
+════════════════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- ════════════════════════════════════════════════
+     كود الأدمن (كل الجافاسكريبت هنا)
+════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════
+     كود الأدمن (مقسّم لملفات أصغر حسب الوظيفة)
+     ⚠️ الترتيب مهم: admin-utils.js أول واحد (فيه الدوال المشتركة
+     وصلاحيات الفريق)، و admin-dashboard.js آخر واحد (فيه التنقل بين
+     التابات + تسجيل الدخول + محرك المزامنة اللي بينادي على دوال باقي الملفات)
+════════════════════════════════════════════════ -->
+<script src="js/admin/admin-utils.js"></script>
+<script src="js/admin/admin-categories.js"></script>
+<script src="js/admin/admin-products.js"></script>
+<script src="js/admin/admin-accounting.js"></script>
+<script src="js/admin/admin-customers.js"></script>
+<script src="js/admin/admin-orders.js"></script>
+<script src="js/admin/admin-coupons.js"></script>
+<script src="js/admin/admin-warranties.js"></script>
+<script src="js/admin/admin-loyalty.js"></script>
+<script src="js/admin/admin-storefront.js"></script>
+<script src="js/admin/admin-team.js"></script>
+<script src="js/admin/admin-reports.js"></script>
+<script src="js/admin/admin-botsettings.js"></script>
+<script src="js/admin/admin-dashboard.js"></script>
+
+<!-- ════════════════════════════════════════════════
+     Modals محرر المدونة
+════════════════════════════════════════════════ -->
+
+<!-- Modal إضافة صورة للمدونة -->
+<div id="adminModalImg" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:5000; justify-content:center; align-items:center;">
+    <div style="background:white; border-radius:12px; padding:30px; width:460px; max-width:92%; box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+        <h3 style="color:#1d364a; margin-top:0; border-bottom:2px solid #f38c18; padding-bottom:10px;">🖼️ إضافة صورة</h3>
+        <div class="form-group"><label>رابط الصورة (URL)</label><input type="text" id="adminImgUrl" class="form-control" placeholder="https://..."></div>
+        <div class="form-group">
+            <label>أو اختر من جهازك أو الاستوديو</label>
+            <div style="display:flex; gap:10px;">
+                <button type="button" onclick="document.getElementById('adminImgFile').click()" class="btn btn-green" style="flex:1; padding:10px;">📤 رفع من الجهاز</button>
+                <button type="button" onclick="openGalleryModal('adminImgUrl')" class="btn" style="background:#e68a10; flex:1; padding:10px;">🖼️ من الاستوديو</button>
+            </div>
+            <input type="file" id="adminImgFile" accept="image/*" style="display:none;" onchange="adminBlogHandleUpload(event)">
+        </div>
+        <div class="form-group">
+            <label>محاذاة الصورة</label>
+            <select id="adminImgAlign" class="form-control">
+                <option value="center">وسط</option>
+                <option value="right">يمين</option>
+                <option value="left">يسار</option>
+                <option value="full">عرض كامل</option>
+            </select>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button class="btn btn-green btn-insert-confirm" onclick="adminInsertImage()" style="flex:1; padding:10px;">إدراج الصورة</button>
+            <button class="btn" style="flex:1; padding:10px; background:#e0e0e0; color:#333;" onclick="closeAdminBlogModal('adminModalImg')">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal إضافة فيديو للمدونة -->
+<div id="adminModalVideo" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:5000; justify-content:center; align-items:center;">
+    <div style="background:white; border-radius:12px; padding:30px; width:460px; max-width:92%; box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+        <h3 style="color:#1d364a; margin-top:0; border-bottom:2px solid #f38c18; padding-bottom:10px;">🎬 إضافة فيديو</h3>
+        <div class="form-group"><label>رابط يوتيوب أو Facebook أو mp4 مباشر</label><input type="text" id="adminVideoUrl" class="form-control" placeholder="https://www.youtube.com/watch?v=..."></div>
+        <p style="font-size:12px; color:#888; margin:0 0 15px 0;">يدعم: YouTube, Facebook Video, روابط mp4</p>
+        <div style="display:flex; gap:10px;">
+            <button class="btn btn-green" onclick="adminInsertVideo()" style="flex:1; padding:10px;">إدراج الفيديو</button>
+            <button class="btn" style="flex:1; padding:10px; background:#e0e0e0; color:#333;" onclick="closeAdminBlogModal('adminModalVideo')">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal إضافة رابط للمدونة -->
+<div id="adminModalLink" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:5000; justify-content:center; align-items:center;">
+    <div style="background:white; border-radius:12px; padding:30px; width:460px; max-width:92%; box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+        <h3 style="color:#1d364a; margin-top:0; border-bottom:2px solid #f38c18; padding-bottom:10px;">🔗 إضافة رابط</h3>
+        <div class="form-group"><label>نص الرابط</label><input type="text" id="adminLinkText" class="form-control" placeholder="اضغط هنا"></div>
+        <div class="form-group"><label>الرابط (URL)</label><input type="text" id="adminLinkUrl" class="form-control" placeholder="https://..."></div>
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button class="btn btn-green" onclick="adminInsertLink()" style="flex:1; padding:10px;">إدراج الرابط</button>
+            <button class="btn" style="flex:1; padding:10px; background:#e0e0e0; color:#333;" onclick="closeAdminBlogModal('adminModalLink')">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     Modal إنشاء طلب واتساب يدوي
+════════════════════════════════════════════════ -->
+<div id="manualOrderModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6);
+     justify-content:center; align-items:center; z-index:2000;">
+  <div style="background:white; padding:25px; border-radius:10px; width:750px; max-width:96%; max-height:92vh; overflow-y:auto;">
+    <h3 style="color:#1d364a; border-bottom:2px solid #25d366; padding-bottom:10px;">💬 إنشاء طلب واتساب يدوي</h3>
+
+    <!-- نوع العميل -->
+    <div style="display:flex; gap:20px; margin-bottom:18px;">
+        <label style="background:#eef2f5; padding:12px 20px; border-radius:8px; flex:1; cursor:pointer; border:2px solid transparent;" id="moLabelExisting">
+            <input type="radio" name="moCustomerType" value="existing" checked onchange="moToggleCustomerType()"> عميل حالي
+        </label>
+        <label style="background:#eef2f5; padding:12px 20px; border-radius:8px; flex:1; cursor:pointer; border:2px solid transparent;" id="moLabelNew">
+            <input type="radio" name="moCustomerType" value="new" onchange="moToggleCustomerType()"> عميل جديد
+        </label>
+    </div>
+
+    <!-- بحث لايف عن عميل حالي -->
+    <div id="moExistingBox">
+        <div style="position:relative;">
+            <input type="text" id="moSearchPhone" class="form-control" placeholder="اكتب رقم تليفون العميل... (بحث لايف)"
+                   oninput="moLiveSearchCustomer()" autocomplete="off">
+            <div id="moCustomerResults"
+                 style="display:none; position:absolute; top:100%; right:0; left:0; background:white;
+                        border:1px solid #ddd; border-radius:0 0 8px 8px; max-height:220px; overflow-y:auto; z-index:50;
+                        box-shadow:0 8px 20px rgba(0,0,0,.12);"></div>
+        </div>
+        <div id="moExistingResult" style="display:none; background:#eef2f5; padding:12px; border-radius:8px; margin-top:10px;"></div>
+    </div>
+
+    <!-- بيانات عميل جديد -->
+    <div id="moNewBox" style="display:none;">
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
+            <input type="text" id="moNewName" class="form-control" placeholder="اسم العميل بالكامل" style="flex:1; min-width:200px;">
+            <input type="text" id="moNewPhone" class="form-control" placeholder="رقم التليفون" style="flex:1; min-width:200px;">
+        </div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
+            <select id="moNewRegion" class="form-control" style="flex:1; min-width:200px;" onchange="moOnNewRegionChange()"><option value="">-- اختر المنطقة --</option></select>
+            <input type="text" id="moNewAddress" class="form-control" placeholder="العنوان بالتفصيل" style="flex:2; min-width:200px;">
+        </div>
+        <div style="background:#fdf5e6; border:1px dashed #f38c18; border-radius:8px; padding:12px; margin-bottom:10px;">
+            <label style="font-size:13px; font-weight:bold; color:#1d364a;">🔑 الكود السري لتفعيل الحساب (هيتطبع في الفاتورة)</label>
+            <div style="display:flex; gap:10px; margin-top:6px;">
+                <input type="text" id="moSecretCode" class="form-control" style="flex:1; letter-spacing:3px; font-weight:bold; text-align:center;" maxlength="6">
+                <button type="button" class="btn" style="background:#6c757d; white-space:nowrap;" onclick="moRegenerateSecretCode()">🔄 توليد جديد</button>
+            </div>
+            <p style="color:gray; font-size:12px; margin-top:6px;">هيستخدمه العميل مع رقم تليفونه في صفحة تفعيل الضمان عشان يعمل باسورد لحسابه.</p>
+        </div>
+    </div>
+
+    <hr style="margin:20px 0; border:none; border-top:1px solid #eee;">
+
+    <!-- بحث لايف عن منتج بالاسم أو الكود -->
+    <label style="font-weight:bold; color:#1d364a; display:block; margin-bottom:8px;">📦 منتجات الطلب</label>
+    <div style="position:relative; margin-bottom:15px;">
+        <input type="text" id="moProdSearch" class="form-control" placeholder="ابحث بالاسم أو كود المنتج... (بحث لايف)"
+               oninput="moLiveSearchProduct()" autocomplete="off">
+        <div id="moProdResults"
+             style="display:none; position:absolute; top:100%; right:0; left:0; background:white;
+                    border:1px solid #ddd; border-radius:0 0 8px 8px; max-height:280px; overflow-y:auto; z-index:50;
+                    box-shadow:0 8px 20px rgba(0,0,0,.12);"></div>
+    </div>
+    <div id="moItemsBox" style="margin-bottom:15px;"></div>
+
+    <!-- الشحن والحالة -->
+    <div style="display:flex; gap:15px; flex-wrap:wrap; background:#eef2f5; padding:15px; border-radius:8px; margin-bottom:15px;">
+        <div class="form-group" style="flex:1; min-width:150px; margin-bottom:0;">
+            <label>مصاريف الشحن <small style="color:gray;font-weight:normal;">(بتتسحب أوتوماتيك من المنطقة، وتقدر تغيّرها)</small></label>
+            <input type="number" id="moShipping" class="form-control" value="0" onchange="moUpdateTotal()">
+        </div>
+        <div class="form-group" style="flex:1; min-width:180px; margin-bottom:0;">
+            <label>حالة الطلب</label>
+            <select id="moOrderStatus" class="form-control" onchange="moToggleAccountBox()">
+                <option value="Delivered" selected>تم التوصيل ✅ (استلمها العميل بالفعل)</option>
+                <option value="Pending">قيد التنفيذ ⏳ (لسه هتتشحن)</option>
+                <option value="Shipped">تم الشحن 🚚</option>
+            </select>
+        </div>
+        <div class="form-group" id="moDepositAccountBox" style="flex:1; min-width:180px; margin-bottom:0;">
+            <label>💰 استلمت الفلوس في حساب</label>
+            <select id="moDepositAccount" class="form-control"></select>
+        </div>
+    </div>
+    <div style="font-weight:bold; font-size:18px; color:#1d364a; margin-bottom:15px;">
+        الإجمالي: <span id="moTotalPreview" style="color:#f38c18;">0</span> ج.م
+    </div>
+
+    <div style="display:flex; gap:10px;">
+        <button class="btn btn-green" id="moSaveBtn" onclick="saveManualOrder()" style="flex:1; padding:14px; font-size:16px;">💾 حفظ الطلب وطباعة الفاتورة</button>
+        <button class="btn btn-red" onclick="closeManualOrderModal()" style="flex:1; padding:14px; font-size:16px;">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     Modal تعديل الطلب (منتجات/كميات/شحن)
+════════════════════════════════════════════════ -->
+<div id="editOrderModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6);
+     justify-content:center; align-items:center; z-index:2000;">
+  <div style="background:white; padding:25px; border-radius:10px; width:700px; max-width:95%; max-height:90vh; overflow-y:auto;">
+    <h3 style="color:#1d364a; border-bottom:2px solid #f38c18; padding-bottom:10px;">✏️ تعديل الطلب <span id="editOrderIdLabel"></span></h3>
+    <input type="hidden" id="editOrderId">
+    <div id="editOrderItemsBox" style="margin:15px 0;"></div>
+    <div style="display:flex; gap:10px; margin-bottom:15px;">
+        <select id="editOrderAddProdSelect" class="form-control" style="flex:2;"></select>
+        <button class="btn btn-green" onclick="editOrderAddProduct()" style="flex:1;">➕ إضافة منتج للطلب</button>
+    </div>
+    <div style="background:#eef2f5; padding:15px; border-radius:8px; margin-bottom:15px;">
+        <div class="form-group"><label>مصاريف الشحن</label><input type="number" id="editOrderShipping" class="form-control" onchange="updateEditOrderTotal()"></div>
+        <div style="font-weight:bold; font-size:18px; color:#1d364a;">الإجمالي الجديد: <span id="editOrderTotalPreview" style="color:#f38c18;">0</span> ج.م</div>
+    </div>
+    <div style="display:flex; gap:10px;">
+        <button class="btn btn-green" onclick="saveOrderEdit()" style="flex:1; padding:12px;">💾 حفظ التعديلات</button>
+        <button class="btn btn-red" onclick="closeEditOrderModal()" style="flex:1; padding:12px;">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     Modal تعديل البروموكود
+════════════════════════════════════════════════ -->
+<div id="editPromoModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:2000;">
+  <div style="background:white; padding:25px; border-radius:10px; width:500px; max-width:92%; max-height:90vh; overflow-y:auto;">
+    <h3 style="color:#1d364a; border-bottom:2px solid #f38c18; padding-bottom:10px;">⚙️ تعديل البروموكود <span id="editPromoCodeLabel" style="color:#f38c18;"></span></h3>
+    <input type="hidden" id="editPromoCode">
+    <div class="form-group">
+        <label>نوع الخصم</label>
+        <select id="editPromoType" class="form-control" onchange="toggleEditPromoValue()">
+            <option value="percent">نسبة مئوية (%)</option>
+            <option value="fixed">مبلغ ثابت (ج.م)</option>
+            <option value="shipping">توصيل مجاني</option>
+        </select>
+    </div>
+    <div class="form-group" id="editPromoValueGroup"><label>قيمة الخصم</label><input type="number" id="editPromoValue" class="form-control"></div>
+    <div class="form-group" id="editPromoMaxDiscountGroup" style="display:none;"><label>الحد الأقصى لقيمة الخصم (ج.م)</label><input type="number" id="editPromoMaxDiscount" class="form-control" placeholder="فارغ = بدون حد أقصى"></div>
+    <div class="form-group"><label>الحد الأدنى لقيمة الفاتورة</label><input type="number" id="editPromoMinOrder" class="form-control" placeholder="فارغ = بدون حد أدنى"></div>
+    <div class="form-group"><label>النص على المنتج</label><input type="text" id="editPromoLabel" class="form-control"></div>
+    <div style="display:flex;gap:15px;">
+        <div class="form-group" style="flex:1;"><label>وقت البدء</label><input type="datetime-local" id="editPromoStart" class="form-control"></div>
+        <div class="form-group" style="flex:1;"><label>وقت الانتهاء</label><input type="datetime-local" id="editPromoEnd" class="form-control"></div>
+    </div>
+    <div style="display:flex;gap:15px;">
+        <div class="form-group" style="flex:1;"><label>الحد الأقصى للاستخدام الكلي</label><input type="number" id="editPromoMaxTotal" class="form-control" placeholder="فارغ = بلا حد"></div>
+        <div class="form-group" style="flex:1;"><label>الحد لكل عميل</label><input type="number" id="editPromoMaxPerUser" class="form-control" placeholder="فارغ = بلا حد"></div>
+    </div>
+    <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="editPromoNewUsersOnly" style="width:18px;height:18px;cursor:pointer;">
+        <label style="margin:0;">للعملاء الجدد فقط (اللي مطلبوش أي طلب قبل كده)</label>
+    </div>
+    <p style="color:gray;font-size:12px;">ملحوظة: تعديل الكود مش متاح من هنا، ولا تعديل المنتجات المحددة (لو الكوبون scope: منتجات محددة) — لو محتاج تغييرهم احذف الكود واعمل واحد جديد.</p>
+    <div style="display:flex; gap:10px; margin-top:20px;">
+        <button class="btn btn-green" onclick="savePromoEdit()" style="flex:1; padding:12px; font-size:16px;">💾 حفظ التعديلات</button>
+        <button class="btn btn-red"   onclick="closeEditPromoModal()" style="flex:1; padding:12px; font-size:16px;">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     Modal استلام كمية بضاعة جديدة (Receive Stock)
+════════════════════════════════════════════════ -->
+<div id="receiveStockModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6);
+     justify-content:center; align-items:center; z-index:2500;">
+  <div style="background:white; padding:25px; border-radius:10px; width:480px; max-width:94%; max-height:90vh; overflow-y:auto;">
+    <h3 style="color:#1d364a; border-bottom:2px solid #795548; padding-bottom:10px;">📦 استلام كمية بضاعة جديدة</h3>
+    <div style="background:#eef2f5;padding:12px 15px;border-radius:8px;margin-bottom:18px;">
+        <strong style="color:#1d364a;" id="rstProdName">—</strong><br>
+        <small style="color:#555;">المخزون الحالي: <strong id="rstCurrentStock">0</strong> — سعر التكلفة الحالي: <strong id="rstCurrentCost">—</strong></small>
+    </div>
+    <div class="form-group">
+        <label>الكمية المستلمة الآن (هتُضاف للمخزون الحالي، مش تستبدله)</label>
+        <input type="number" id="rstQty" class="form-control" min="1" placeholder="مثال: 4" oninput="rstUpdateTotal()">
+    </div>
+    <div class="form-group">
+        <label>سعر تكلفة الوحدة في هذه الدفعة</label>
+        <input type="number" id="rstUnitCost" class="form-control" min="0" step="0.01" oninput="rstUpdateTotal()">
+    </div>
+    <label style="font-weight:bold;color:#1d364a;display:block;margin-bottom:8px;">💰 يتسحب من (حساب واحد أو أكتر)</label>
+    <div id="rstAllocationsBox" style="display:flex;flex-direction:column;gap:10px;margin-bottom:10px;"></div>
+    <button type="button" class="btn" style="background:#6c757d;margin-bottom:15px;width:100%;" onclick="rstAddAllocationRow()">➕ إضافة حساب آخر للدفع منه</button>
+    <div style="display:flex;justify-content:space-between;background:#f0f8ff;padding:10px 14px;border-radius:6px;margin-bottom:15px;font-size:14px;">
+        <span>المطلوب دفعه (الكمية × السعر): <strong id="rstRequiredTotal">0</strong> ج.م</span>
+        <span>الموزّع على الحسابات: <strong id="rstAllocatedTotal">0</strong> ج.م</span>
+    </div>
+    <p style="color:gray;font-size:12.5px;line-height:1.7;">
+        ⚠️ لو سعر التكلفة اللي كتبته مختلف عن التكلفة المحفوظة حالياً للمنتج، هنسألك تحدد التكلفة النهائية
+        (التكلفة الجديدة بالكامل، أو متوسط مرجّح بين القديمة والجديدة) قبل ما نكمل.
+    </p>
+    <div style="display:flex; gap:10px; margin-top:15px;">
+        <button class="btn btn-green" onclick="submitReceiveStock()" style="flex:1; padding:12px; font-size:16px;">✅ تأكيد الاستلام</button>
+        <button class="btn btn-red"   onclick="closeReceiveStockModal()" style="flex:1; padding:12px; font-size:16px;">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     Modal اختيار التكلفة النهائية (لما التكلفة الجديدة تختلف عن القديمة)
+════════════════════════════════════════════════ -->
+<div id="stockCostChoiceModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65);
+     justify-content:center; align-items:center; z-index:2600;">
+  <div style="background:white; padding:25px; border-radius:10px; width:460px; max-width:94%;">
+    <h3 style="color:#1d364a; border-bottom:2px solid #f38c18; padding-bottom:10px;">⚖️ تحديد سعر التكلفة النهائي</h3>
+    <p style="color:#555;font-size:14px;margin-bottom:18px;">
+        سعر تكلفة الدفعة الجديدة مختلف عن التكلفة المحفوظة حالياً للمنتج. اختر التكلفة اللي عايز تُحفظ للمنتج من دلوقتي:
+    </p>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+        <button onclick="chooseNewCostForReceive()" class="btn" style="background:#1d364a;padding:15px;text-align:right;">
+            استخدم التكلفة الجديدة بالكامل: <strong id="rstChoiceNewCost" style="color:#f38c18;">—</strong>
+        </button>
+        <button onclick="chooseAvgCostForReceive()" class="btn" style="background:#17a2b8;padding:15px;text-align:right;">
+            استخدم المتوسط المرجّح: <strong id="rstChoiceAvgCost" style="color:#fff7ed;">—</strong>
+        </button>
+        <p style="color:gray;font-size:12px;margin:0;">التكلفة القديمة المحفوظة كانت: <strong id="rstChoiceOldCost">—</strong></p>
+    </div>
+    <div style="margin-top:18px;">
+        <button class="btn btn-red" onclick="cancelStockCostChoice()" style="width:100%;padding:12px;">↩️ رجوع لتعديل البيانات</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

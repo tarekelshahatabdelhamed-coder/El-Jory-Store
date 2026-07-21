@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>المتجر | الجوري ستور</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .out-of-stock-overlay { position: absolute; top: 10px; right: 10px; background: rgba(217, 83, 79, 0.9); color: white; padding: 5px 10px; border-radius: 5px; font-weight: bold; z-index: 2; }
+        .product-card { position: relative; }
+        .product-card.out-of-stock { opacity: 0.7; }
+        .product-card.out-of-stock img { filter: grayscale(100%); }
+        .product-card.out-of-stock .btn-add { background: #ccc; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+<div id="site-header"></div>
+<script src="js/header-loader.js"></script>
+        <section class="products-section">
+        <!-- العنوان ده هيتغير حسب القسم -->
+        <h2 id="screensPageTitle" style="color: #1d364a;">جاري التحميل...</h2> 
+        <p id="screensPageDesc" style="color: #f38c18; font-weight: bold;"></p>
+        
+        <div id="subCategoriesFilterBar" style="display: flex; gap: 10px; justify-content: center; margin-bottom: 30px; flex-wrap: wrap;"></div>
+        <div class="products-grid" id="dynamicProductsContainer">
+            <!-- المنتجات هتنزل هنا -->
+        </div>
+    </section>
+    
+    <!-- 1. مكتبات فايربيس -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    
+    <!-- 2. ملفات الاتصال ونواة المتجر (الهيكلة الجديدة) -->
+    <script src="js/firebase-init.js"></script>
+    <script src="js/store-core.js"></script>
+    <script src="script.js"></script>
+
+</body>
+</html>

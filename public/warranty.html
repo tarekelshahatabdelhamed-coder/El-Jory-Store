@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تفعيل الضمان | الجوري ستور</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .wty-wrap {
+            max-width: 560px; margin: 40px auto 60px; padding: 0 16px;
+        }
+        .wty-card {
+            background: #fff; border-radius: 16px; box-shadow: 0 8px 30px rgba(29,54,74,.1);
+            padding: 36px 30px; text-align: center;
+        }
+        .wty-logo {
+            width: 130px; height: 130px; margin: 0 auto 18px;
+            border-radius: 50%; overflow: hidden; border: 4px solid #f38c18;
+            box-shadow: 0 6px 18px rgba(0,0,0,.12);
+            display: flex; align-items: center; justify-content: center; background: #fff;
+        }
+        .wty-logo img { width: 100%; height: 100%; object-fit: contain; }
+        .wty-title { color: #1d364a; font-size: 24px; font-weight: 900; margin-bottom: 8px; }
+        .wty-subtitle { color: #666; font-size: 14.5px; line-height: 1.8; margin-bottom: 26px; }
+        .wty-badge {
+            display: inline-block; background: #eafaf0; color: #28a745;
+            border: 1px solid #cdebd8; padding: 6px 16px; border-radius: 20px;
+            font-size: 13px; font-weight: bold; margin-bottom: 22px;
+        }
+        .wty-items { text-align: right; background: #f8fafc; border-radius: 10px; padding: 14px 18px; margin-bottom: 22px; }
+        .wty-items div { font-size: 14px; color: #1d364a; padding: 5px 0; border-bottom: 1px dashed #e2e8f0; }
+        .wty-items div:last-child { border-bottom: none; }
+        .wty-meta { font-size: 13px; color: #888; margin-bottom: 20px; }
+        .wty-form-group { text-align: right; margin-bottom: 16px; }
+        .wty-form-group label { display: block; margin-bottom: 7px; color: #1d364a; font-weight: bold; font-size: 14.5px; }
+        .wty-btn {
+            width: 100%; padding: 14px; background: #1d364a; color: #fff; border: none;
+            border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: .25s;
+        }
+        .wty-btn:hover { background: #f38c18; }
+        .wty-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .wty-msg { padding: 12px 15px; border-radius: 8px; font-size: 14px; font-weight: bold; margin-bottom: 18px; display: none; }
+        .wty-msg.error   { background: #ffeaea; color: #d9534f; display: block; }
+        .wty-msg.success { background: #e8f5e9; color: #28a745; display: block; }
+        .wty-msg.info    { background: #fff7ed; color: #b9740b; display: block; }
+        .wty-loading { color: #888; padding: 40px 0; font-size: 15px; }
+        .wty-trust { display:flex; justify-content:center; gap:22px; margin-top:22px; flex-wrap:wrap; }
+        .wty-trust span { font-size:12px; color:#888; display:flex; align-items:center; gap:6px; }
+        .wty-hidden { display: none !important; }
+    </style>
+</head>
+<body>
+<div id="site-header"></div>
+<script src="js/header-loader.js"></script>
+
+<div class="wty-wrap">
+    <div class="wty-card">
+        <div class="wty-logo"><img id="wtyLogoImg" src="logo.png" alt="الجوري ستور"></div>
+        <div id="wtyGreeting" class="wty-hidden" style="color:#1d364a;font-weight:900;font-size:17px;margin-bottom:10px;"></div>
+        <div class="wty-title" id="wtyTitleText">🛡️ تفعيل ضمان منتجاتك</div>
+        <div class="wty-subtitle" id="wtySubtitle">
+            إحنا في الجوري ستور بنوثّق ضمان كل منتج بشرائك عشان تضمن حقك بالكامل وقت ما تحتاج الصيانة.
+            خطوة واحدة بسيطة وضمانك يبقى موثّق وحسابك جاهز.
+        </div>
+
+        <div id="wtyMsgBox" class="wty-msg"></div>
+
+        <div id="wtyLoading" class="wty-loading">⏳ جاري التحقق من بيانات فاتورتك...</div>
+
+        <div id="wtyContent" class="wty-hidden">
+            <div id="wtyItemsBox" class="wty-items"></div>
+            <div id="wtyMetaBox" class="wty-meta"></div>
+
+            <!-- خطوة ١: التحقق من رقم التليفون -->
+            <div id="wtyPhoneStep" class="wty-hidden">
+                <div class="wty-form-group">
+                    <label>📞 أدخل رقم تليفونك المسجل في الفاتورة</label>
+                    <input type="tel" id="wtyPhoneInput" class="form-control" placeholder="01xxxxxxxxx">
+                </div>
+                <button class="wty-btn" onclick="wtyVerifyPhone()">تأكيد الرقم والمتابعة</button>
+            </div>
+
+            <!-- خطوة ٢أ: عميل جديد - كود سري + كلمة مرور جديدة -->
+            <div id="wtyNewCustomerStep" class="wty-hidden">
+                <div class="wty-badge">🎉 هيتعمل لك حساب على الموقع بعد التفعيل</div>
+                <div class="wty-form-group">
+                    <label>🔑 الكود السري المطبوع على فاتورتك (6 أرقام)</label>
+                    <input type="text" id="wtySecretCodeInput" class="form-control" maxlength="6" style="letter-spacing:4px;text-align:center;font-weight:bold;">
+                </div>
+                <div class="wty-form-group">
+                    <label>🔒 اختر كلمة مرور لحسابك</label>
+                    <input type="password" id="wtyNewPasswordInput" class="form-control" placeholder="6 أحرف على الأقل">
+                </div>
+                <button class="wty-btn" onclick="wtyActivateNewCustomer()">تفعيل الضمان وإنشاء حسابي</button>
+            </div>
+
+            <!-- خطوة ٢ب: عميل حالي - تسجيل دخول بكلمة المرور -->
+            <div id="wtyExistingCustomerStep" class="wty-hidden">
+                <div class="wty-form-group">
+                    <label>🔒 أدخل كلمة مرور حسابك لتأكيد هويتك</label>
+                    <input type="password" id="wtyExistingPasswordInput" class="form-control">
+                </div>
+                <button class="wty-btn" onclick="wtyActivateExistingCustomer()">تسجيل الدخول وتفعيل الضمان</button>
+            </div>
+
+            <!-- شاشة النجاح -->
+            <div id="wtySuccessStep" class="wty-hidden">
+                <div style="font-size:52px;margin-bottom:10px;">✅</div>
+                <div style="color:#28a745;font-weight:bold;font-size:17px;margin-bottom:18px;" id="wtySuccessMsgText">تم تفعيل ضمانك بنجاح!</div>
+                <a href="account.html" class="wty-btn" style="display:block;text-decoration:none;box-sizing:border-box;" id="wtySuccessBtnLink">اذهب لصفحة "ضماناتي"</a>
+            </div>
+        </div>
+
+        <div class="wty-trust">
+            <span id="wtyTrust1">🔒 بياناتك في أمان تام</span>
+            <span id="wtyTrust2">🛡️ ضمان موثّق</span>
+            <span id="wtyTrust3">⚡ تفعيل فوري</span>
+        </div>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+<script src="js/firebase-init.js"></script>
+<script src="js/store-core.js"></script>
+<script src="script.js"></script>
+
+<script>
+// ============================================================================
+// منطق صفحة تفعيل الضمان
+// ============================================================================
+let wtyOrder = null;
+let wtyOrderId = null;
+let wtyGraceDays = 3;
+
+function wtyShowMsg(text, type) {
+    let box = document.getElementById("wtyMsgBox");
+    box.className = "wty-msg " + type;
+    box.innerText = text;
+}
+
+function wtyHideMsg() {
+    let box = document.getElementById("wtyMsgBox");
+    box.className = "wty-msg";
+    box.innerText = "";
+}
+
+function wtyShowStep(stepId) {
+    ["wtyPhoneStep", "wtyNewCustomerStep", "wtyExistingCustomerStep", "wtySuccessStep"].forEach(id => {
+        document.getElementById(id).classList.add("wty-hidden");
+    });
+    if (stepId) document.getElementById(stepId).classList.remove("wty-hidden");
+}
+
+function wtyMaskPhone(phone) {
+    let p = String(phone || "");
+    if (p.length < 6) return p;
+    return p.slice(0, 3) + "•••••" + p.slice(-2);
+}
+
+// ⭐ تطبيق محتوى صفحة التفعيل اللي الأدمن بيتحكم فيه (لوجو/عنوان/نص تمهيدي/
+// شريط الثقة/رسالة النجاح) — بيقرا من الكاش المحلي اللي store-core.js بيزامنه
+// من /warrantyActivationPageContent، ولو مفيش حاجة محفوظة بيسيب النص الافتراضي
+// الموجود في الـ HTML زي ما هو من غير أي تغيير.
+window.renderWarrantyActivationPageContent = function() {
+    let data = JSON.parse(localStorage.getItem("eljory_warranty_activation_content") || "null");
+    if (!data) return;
+
+    let setText = (id, val) => { if (val) { let el = document.getElementById(id); if (el) el.innerText = val; } };
+    let setHtml = (id, val) => { if (val) { let el = document.getElementById(id); if (el) el.innerHTML = val; } };
+
+    if (data.logoImg) { let el = document.getElementById("wtyLogoImg"); if (el) el.src = data.logoImg; }
+    setText("wtyTitleText", data.title);
+    setHtml("wtySubtitle", data.subtitleHtml);
+    setText("wtyTrust1", data.trust1);
+    setText("wtyTrust2", data.trust2);
+    setText("wtyTrust3", data.trust3);
+    setText("wtySuccessMsgText", data.successMsg);
+    setText("wtySuccessBtnLink", data.successBtnText);
+};
+
+document.addEventListener("DOMContentLoaded", function() {
+    if (typeof window.renderWarrantyActivationPageContent === 'function') window.renderWarrantyActivationPageContent();
+
+    let params = new URLSearchParams(window.location.search);
+    let token = params.get("token");
+
+    if (!token) {
+        document.getElementById("wtyLoading").style.display = "none";
+        wtyShowMsg("الرابط غير صالح أو ناقص. تأكد إنك ماسح كود الضمان الصحيح من فاتورتك.", "error");
+        return;
+    }
+
+    // نستنى إعدادات المتجر (مهلة التفعيل) تتحمل من store-core.js أول ما تتوفر
+    setTimeout(function() {
+        wtyGraceDays = window.getWarrantyGraceDaysSetting ? window.getWarrantyGraceDaysSetting() : 3;
+        wtyLoadOrderByToken(token);
+    }, 600);
+});
+
+function wtyLoadOrderByToken(token) {
+    // ⚠️ ملحوظة: الاستعلام ده بيدور في /orders بمسار warrantyToken، بنفس أسلوب
+    // الاستعلام المستخدم في account.html للبحث عن طلبات العميل بالتليفون.
+    // لو عدد الطلبات كبير جدًا، الأفضل إضافة index على warrantyToken في قواعد
+    // الأمان بتاعة Firebase لتحسين الأداء (.indexOn: ["warrantyToken"]).
+    db.ref('/orders').orderByChild('warrantyToken').equalTo(token).once('value').then(function(snap) {
+        document.getElementById("wtyLoading").style.display = "none";
+
+        if (!snap.exists()) {
+            wtyShowMsg("لم نتمكن من العثور على فاتورة مرتبطة بهذا الكود. تأكد من الرابط أو تواصل معنا.", "error");
+            return;
+        }
+
+        snap.forEach(function(child) {
+            wtyOrderId = child.key;
+            wtyOrder = child.val();
+        });
+
+        document.getElementById("wtyContent").classList.remove("wty-hidden");
+        wtyRenderOrderInfo();
+    }).catch(function(err) {
+        document.getElementById("wtyLoading").style.display = "none";
+        wtyShowMsg("حدث خطأ أثناء تحميل بيانات فاتورتك. حاول تاني كمان شوية.", "error");
+        console.error(err);
+    });
+}
+
+function wtyRenderOrderInfo() {
+    // ⭐ رسالة ترحيب ثابتة تحت اللوجو باسم صاحب الفاتورة، بتتحط أوتوماتيك من
+    // بيانات الطلب نفسه (بغض النظر عن حالة الضمان)، والباقي (النص التمهيدي)
+    // يفضل قابل للتعديل من الأدمن زي ما هو.
+    let greetingEl = document.getElementById("wtyGreeting");
+    if (greetingEl) {
+        let custName = (wtyOrder.customer && wtyOrder.customer.name) ? wtyOrder.customer.name : "";
+        if (custName) {
+            greetingEl.innerText = "أهلاً بيك أستاذ/ة " + custName;
+            greetingEl.classList.remove("wty-hidden");
+        }
+    }
+
+    let warrantyItems = (wtyOrder.items || []).filter(it => (parseInt(it.warrantyMonths) || 0) > 0);
+    let products = JSON.parse(localStorage.getItem("eljory_products") || "[]");
+
+    let itemsHtml = warrantyItems.map(function(it) {
+        let p = products.find(x => x.id === it.id);
+        let name = p ? p.titleAr : it.id;
+        return `<div>🛡️ ${name} — ضمان ${it.warrantyMonths} شهر</div>`;
+    }).join('');
+    document.getElementById("wtyItemsBox").innerHTML = itemsHtml || '<div>لا توجد منتجات مضمونة في هذه الفاتورة.</div>';
+
+    let maskedPhone = wtyMaskPhone(wtyOrder.customer ? wtyOrder.customer.phone : '');
+    document.getElementById("wtyMetaBox").innerText = `رقم الطلب: ${wtyOrder.id} — رقم العميل: ${maskedPhone}`;
+
+    // حالة الضمان بالفعل مفعّل من قبل
+    if (wtyOrder.warrantyStatus === "active") {
+        let activatedTxt = wtyOrder.warrantyActivatedAt ? new Date(wtyOrder.warrantyActivatedAt).toLocaleDateString('ar-EG') : '';
+        wtyShowMsg(`تم تفعيل ضمان هذه الفاتورة بالفعل بتاريخ ${activatedTxt}. تقدر تتابع تفاصيل ضمانك من صفحة "ضماناتي".`, "info");
+        wtyShowStep("wtySuccessStep");
+        return;
+    }
+
+    // لسه الطلب مسجلش استلامه (deliveredAt غير موجود) — مهلة التفعيل بتبدأ من هناك
+    if (!wtyOrder.deliveredAt) {
+        wtyShowMsg("لسه المنتج متسجلش إنه اتسلّم عندك. هيتفعل تفعيل الضمان تلقائيًا متاح بعد تحديث حالة التسليم من عندنا — جرّب تاني بعد كده بشوية.", "info");
+        return;
+    }
+
+    // فحص انتهاء مهلة التفعيل (بتتحسب من تاريخ التسليم الفعلي)
+    let deadline = wtyOrder.deliveredAt + (wtyGraceDays * 24 * 60 * 60 * 1000);
+    if (Date.now() > deadline) {
+        // نحدّث الحالة في القاعدة (best-effort) عشان تظهر صح في لوحة الأدمن كمان
+        db.ref('/orders/' + wtyOrderId + '/warrantyStatus').transaction(function(cur) {
+            return (cur === "not_activated" || !cur) ? "expired_grace" : cur;
+        });
+        wtyShowMsg(`للأسف انتهت مهلة تفعيل الضمان (${wtyGraceDays} أيام من تاريخ الاستلام). تواصل معانا على واتساب لو محتاج مساعدة.`, "error");
+        return;
+    }
+
+    // كل حاجة تمام — نعرض خطوة التحقق من رقم التليفون
+    wtyShowStep("wtyPhoneStep");
+}
+
+window.wtyVerifyPhone = function() {
+    let entered = window.getShortPhone(document.getElementById("wtyPhoneInput").value);
+    let orderPhone = window.getShortPhone(wtyOrder.customer ? wtyOrder.customer.phone : '');
+
+    if (!entered || entered.length < 10) {
+        wtyShowMsg("يرجى إدخال رقم تليفون صحيح.", "error");
+        return;
+    }
+    if (entered !== orderPhone) {
+        wtyShowMsg("عذراً، الرقم اللي دخلته مش مطابق لصاحب هذه الفاتورة.", "error");
+        return;
+    }
+
+    wtyHideMsg();
+    db.ref('/users/' + entered).once('value').then(function(snap) {
+        if (!snap.exists()) {
+            wtyShowMsg("حصل خطأ في العثور على بيانات حسابك، تواصل معانا على واتساب.", "error");
+            return;
+        }
+        let user = snap.val();
+        if (user.passwordSet === false) {
+            wtyShowStep("wtyNewCustomerStep");
+        } else {
+            wtyShowStep("wtyExistingCustomerStep");
+        }
+    });
+};
+
+window.wtyActivateNewCustomer = function() {
+    let phoneKey = window.getShortPhone(wtyOrder.customer.phone);
+    let code = document.getElementById("wtySecretCodeInput").value.trim();
+    let newPass = document.getElementById("wtyNewPasswordInput").value;
+
+    if (!code || code.length !== 6) { wtyShowMsg("يرجى إدخال الكود السري المكوّن من 6 أرقام.", "error"); return; }
+    if (!newPass || newPass.length < 6) { wtyShowMsg("كلمة المرور لازم تكون 6 أحرف على الأقل.", "error"); return; }
+
+    db.ref('/users/' + phoneKey).once('value').then(async function(snap) {
+        let user = snap.val();
+        if (!user) { wtyShowMsg("حصل خطأ في العثور على حسابك.", "error"); return; }
+
+        if (!user.accountActivationCode || String(user.accountActivationCode) !== code) {
+            wtyShowMsg("الكود السري غير صحيح. تأكد من الرقم المطبوع في فاتورتك.", "error");
+            return;
+        }
+
+        let salt = window.generateSalt();
+        let hash = await window.hashPassword(newPass, salt);
+
+        await db.ref('/users/' + phoneKey).update({
+            passwordHash: hash,
+            passwordSalt: salt,
+            passwordSet: true,
+            accountActivationCode: null
+        });
+
+        wtyFinalizeActivation(phoneKey, user);
+    }).catch(function(err) {
+        console.error(err);
+        wtyShowMsg("حدث خطأ أثناء إنشاء حسابك، حاول مرة أخرى.", "error");
+    });
+};
+
+window.wtyActivateExistingCustomer = function() {
+    let phoneKey = window.getShortPhone(wtyOrder.customer.phone);
+    let pass = document.getElementById("wtyExistingPasswordInput").value;
+
+    if (!pass) { wtyShowMsg("يرجى إدخال كلمة المرور.", "error"); return; }
+
+    db.ref('/users/' + phoneKey).once('value').then(async function(snap) {
+        let user = snap.val();
+        if (!user) { wtyShowMsg("حصل خطأ في العثور على حسابك.", "error"); return; }
+
+        let isValid = false;
+        if (user.passwordHash && user.passwordSalt) {
+            let hash = await window.hashPassword(pass, user.passwordSalt);
+            isValid = (hash === user.passwordHash);
+        }
+
+        if (!isValid) {
+            wtyShowMsg("كلمة المرور غير صحيحة.", "error");
+            return;
+        }
+
+        wtyFinalizeActivation(phoneKey, user);
+    }).catch(function(err) {
+        console.error(err);
+        wtyShowMsg("حدث خطأ أثناء تسجيل الدخول، حاول مرة أخرى.", "error");
+    });
+};
+
+function wtyFinalizeActivation(phoneKey, user) {
+    // ⚠️ بنستخدم transaction على warrantyStatus عشان نضمن إن التفعيل يحصل مرة
+    // واحدة بس حتى لو العميل ضغط الزرار مرتين أو فتح نفس اللينك في تابين
+    db.ref('/orders/' + wtyOrderId + '/warrantyStatus').transaction(function(cur) {
+        if (cur === "active") return cur; // اتفعل قبل كده، منعملش حاجة
+        return "active";
+    }, function(error, committed, snapshot) {
+        if (error) {
+            wtyShowMsg("حدث خطأ أثناء تفعيل الضمان، حاول مرة أخرى.", "error");
+            return;
+        }
+        db.ref('/orders/' + wtyOrderId).update({ warrantyActivatedAt: Date.now() });
+
+        // تسجيل دخول العميل تلقائيًا على المتصفح الحالي
+        localStorage.setItem("eljory_auth", "true");
+        localStorage.setItem("eljory_active_phone", phoneKey);
+        localStorage.setItem("eljory_active_user", JSON.stringify(user));
+
+        wtyHideMsg();
+        wtyShowStep("wtySuccessStep");
+    });
+}
+</script>
+</body>
+</html>

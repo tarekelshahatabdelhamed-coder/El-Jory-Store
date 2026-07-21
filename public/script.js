@@ -1,0 +1,1898 @@
+// ============================================================================
+// ملف الواجهة (الترجمة، السلة، الحسابات، عرض المنتجات) - El Jory Store 2.0
+// تم دمج الواجهة الصحيحة مع أوامر الحفظ السحابية (Firebase)
+// ============================================================================
+
+// ============================================================================
+// أدوات التتبع التسويقي - Facebook Pixel
+// ============================================================================
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '1267424028801265');
+fbq('track', 'PageView');
+
+const translations = {
+    ar: {
+        langBtn: "English", navHome: "الرئيسية", navCategories: "الأقسام", navCart: "السلة", navAccount: "حسابي",
+        cartTitle: "سلة التسوق", thCartProd: "المنتج", thCartPrice: "السعر", thCartAction: "إجراء",
+        thCartQty: "الكمية", thCartSub: "الإجمالي الفرعي", cartTotal: "الإجمالي: ", btnCheckout: "إتمام الطلب", 
+        cartEmpty: "السلة فارغة", btnDelete: "حذف", addedToCart: "تمت الإضافة للسلة بنجاح!",
+        loginTitle: "تسجيل الدخول", btnLoginSubmit: "دخول", noAccountText: "ليس لديك حساب؟", linkToRegister: "إنشاء حساب جديد",
+        guestLabel: "ضيف", checkoutSuccess: "تم استلام طلبك بنجاح!", noOrders: "لا توجد طلبات سابقة", 
+        welcomeHeader: "أهلاً،", btnLoginHeader: "تسجيل الدخول", btnLogoutHeader: "خروج",
+        addToCartBtn: "أضف للسلة", outOfStockTxt: "نفدت الكمية", allProductsTitle: "كل المنتجات",
+        btnApplyPromo: "تطبيق", catPageTitle: "أقسام المتجر",
+        searchPlaceholder: "ابحث عن منتج...", searchBtn: "بحث",
+        shippingWord: "مصاريف الشحن:", freeWord: "مجاني"
+    },
+    en: {
+        langBtn: "العربية", navHome: "Home", navCategories: "Categories", navCart: "Cart", navAccount: "Account",
+        cartTitle: "Shopping Cart", thCartProd: "Product", thCartPrice: "Price", thCartAction: "Action",
+        thCartQty: "Qty", thCartSub: "Subtotal", cartTotal: "Total: ", btnCheckout: "Checkout", 
+        cartEmpty: "Cart is empty", btnDelete: "Delete", addedToCart: "Added to cart successfully!",
+        loginTitle: "Login", btnLoginSubmit: "Login", noAccountText: "Don't have an account?", linkToRegister: "Create Account",
+        guestLabel: "Guest", checkoutSuccess: "Order received successfully!", noOrders: "No previous orders", 
+        welcomeHeader: "Welcome, ", btnLoginHeader: "Login", btnLogoutHeader: "Logout",
+        addToCartBtn: "Add to Cart", outOfStockTxt: "Out of Stock", allProductsTitle: "All Products",
+        btnApplyPromo: "Apply", catPageTitle: "Store Categories",
+        searchPlaceholder: "Search for a product...", searchBtn: "Search",
+        shippingWord: "Shipping Fee:", freeWord: "Free"
+    }
+};
+
+let currentLang = localStorage.getItem("eljory_lang") || "ar";
+
+// دالة مساعدة لتوحيد أرقام الهواتف في كل الموقع ومنع أخطاء التسجيل
+window.getShortPhone = function(phone) {
+    if (!phone) return "";
+    return String(phone).replace(/\D/g, '').slice(-10);
+};
+
+// توليد ملح عشوائي فريد لكل مستخدم
+window.generateSalt = function() {
+    let arr = new Uint8Array(16);
+    crypto.getRandomValues(arr);
+    return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// تشفير كلمة المرور بالملح باستخدام SHA-256
+window.hashPassword = async function(password, salt) {
+    let encoder = new TextEncoder();
+    let data = encoder.encode(salt + password);
+    let hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    let hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ⭐ نظام سجل حركة المخزون: نسخة خفيفة من دالة تسجيل الحركة (بدون الاعتماد على
+// admin.js اللي مش متاح في صفحات العملاء)، بتُستخدم فقط لتسجيل "خروج" البضاعة
+// وقت ما عميل يعمل طلب فعلي من الموقع (كارت أو طلب سريع من صفحة المنتج).
+window.logStockMovementPublic = function(entry) {
+    let movement = {
+        id: 'MOV_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+        productId: entry.productId,
+        titleAr: entry.titleAr || entry.productId,
+        type: entry.type,
+        qty: entry.qty,
+        unitCost: null,
+        reason: entry.reason || '',
+        accountId: null,
+        by: 'عميل (طلب أونلاين)',
+        date: new Date().toLocaleString('ar-EG'),
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+    };
+    return db.ref('/stockMovements/' + movement.id).set(movement).catch(function(e) {
+        console.warn('⚠️ تعذر تسجيل حركة المخزون:', e.message);
+    });
+};
+
+// دالة موحدة لاستخراج اسم المنطقة من نص العنوان (آخر جزء بعد " - ")
+window.getRegionFromAddressText = function(addressText) {
+    if (!addressText) return "";
+    let parts = addressText.split(" - ");
+    return parts.length > 1 ? parts[parts.length - 1].trim() : parts[0].trim();
+};
+
+// --- دالة البحث ---
+window.performSearch = function(event) {
+    if(event) event.preventDefault();
+    let searchInput = document.getElementById("searchInput");
+    if(!searchInput) return;
+    let query = searchInput.value.trim();
+    if(query) {
+        window.location.href = `shop.html?search=${encodeURIComponent(query)}`;
+    }
+};
+
+window.applyTranslations = function() {
+    document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = currentLang;
+
+    let t = translations[currentLang];
+    let setText = (id, text) => { let el = document.getElementById(id); if(el) el.innerText = text; };
+    let setPlaceholder = (id, text) => { let el = document.getElementById(id); if(el) el.placeholder = text; };
+    let navCartIcon = document.getElementById("navCartIcon");
+    if(navCartIcon) navCartIcon.title = t.navCart;
+
+    setText("langBtn", t.langBtn);
+    setText("navHome", t.navHome);
+    setText("navCategories", t.navCategories);
+    setText("navCart", t.navCart);
+    setText("navAccount", t.navAccount);
+    
+    setPlaceholder("searchInput", t.searchPlaceholder);
+    setPlaceholder("searchInputMobile", t.searchPlaceholder);
+    setText("searchBtn", t.searchBtn);
+
+    setText("catPageTitle", t.catPageTitle);
+
+    setText("cartTitle", t.cartTitle);
+    setText("thCartProd", t.thCartProd);
+    setText("thCartPrice", t.thCartPrice);
+    setText("thCartQty", t.thCartQty);
+    setText("thCartSub", t.thCartSub);
+    setText("thCartAction", t.thCartAction);
+    setText("btnCheckout", t.btnCheckout);
+    setPlaceholder("promoInput", currentLang === 'ar' ? "كود الخصم..." : "Promo code...");
+
+    setText("promoLabel", currentLang === 'ar' ? "لديك كود خصم؟ (أو كود هدية من نقاطك)" : "Have a promo code? (or a gift code)");
+    setText("btnApplyPromo", t.btnApplyPromo);
+
+    setText("loginTitle", t.loginTitle);
+    setText("btnLoginSubmit", t.btnLoginSubmit);
+    
+    setText("menuOrders", currentLang === 'ar' ? "📦 طلباتي" : "📦 My Orders");
+    setText("menuSettings", currentLang === 'ar' ? "⚙️ إعدادات الحساب" : "⚙️ Account Settings");
+    setText("menuRewards", currentLang === 'ar' ? "🌟 نقاطي والجوائز" : "🌟 Rewards & Points");
+    
+    setText("tabOrdersTitle", currentLang === 'ar' ? "📦 طلباتي السابقة" : "📦 Previous Orders");
+    setText("tabSettingsTitle", currentLang === 'ar' ? "إعدادات الحساب" : "Account Settings");
+    setText("personalInfoTitle", currentLang === 'ar' ? "البيانات الشخصية" : "Personal Information");
+    
+    setText("labelName", currentLang === 'ar' ? "الاسم" : "Name");
+    setText("labelPhone", currentLang === 'ar' ? "رقم التليفون" : "Phone Number");
+    setText("labelEmail", currentLang === 'ar' ? "البريد الإلكتروني" : "Email Address");
+    setText("labelPassword", currentLang === 'ar' ? "تغيير كلمة المرور" : "Change Password");
+    
+    setPlaceholder("editPassword", currentLang === 'ar' ? "اتركه فارغاً إذا لم ترد تغييره" : "Leave empty if unchanged");
+    setText("btnSaveProfile", currentLang === 'ar' ? "💾 حفظ التعديلات" : "💾 Save Changes");
+    
+    setText("addressesTitle", currentLang === 'ar' ? "عناويني (للتوصيل)" : "My Addresses");
+    setText("addressDesc", currentLang === 'ar' ? "العنوان المحدد بـ (الأساسي) سيتم استخدامه أوتوماتيكياً في طلباتك القادمة." : "The address marked as (Primary) will be used automatically in future orders.");
+    setPlaceholder("newAddressInput", currentLang === 'ar' ? "أدخل عنواناً جديداً بالتفصيل..." : "Enter new full address...");
+    setText("btnAddAddress", currentLang === 'ar' ? "➕ إضافة عنوان" : "➕ Add Address");
+    
+    setText("rewardsTitle", currentLang === 'ar' ? "🌟 متجر المكافآت والهدايا" : "🌟 Rewards Store");
+    setText("currentBalanceText", currentLang === 'ar' ? "رصيدك الحالي:" : "Current Balance:");
+    setText("pointsWord", currentLang === 'ar' ? "نقطة" : "Points");
+    
+    setText("historyTitle", currentLang === 'ar' ? "📜 سجل حركات نقاطي" : "📜 Points History");
+    setText("activeCouponsTitle", currentLang === 'ar' ? "🎟️ هداياي وكوبوناتي النشطة" : "🎟️ My Active Coupons");
+
+    setText("ordersSectionTitle", currentLang === 'ar' ? "سجل طلباتك" : "Your Orders History");
+    setText("thOrdId", currentLang === 'ar' ? "رقم الطلب" : "Order ID");
+    setText("thOrdDate", currentLang === 'ar' ? "التاريخ" : "Date");
+    setText("thOrdTotal", currentLang === 'ar' ? "الإجمالي" : "Total Amount");
+    setText("thOrdStatus", currentLang === 'ar' ? "الحالة" : "Status");
+
+    if(typeof renderDynamicNavbar === "function") renderDynamicNavbar();
+
+    // تحديث نصوص الموبايل
+    let setText2 = (id, text) => { let el = document.getElementById(id); if(el) el.innerText = text; };
+    setText2("headerSearchBtn", currentLang === 'ar' ? "بحث" : "Search");
+    setText2("botNavHome", currentLang === 'ar' ? "الرئيسية" : "Home");
+    setText2("botNavCats", currentLang === 'ar' ? "الأقسام" : "Categories");
+    setText2("botNavAcc", currentLang === 'ar' ? "حسابي" : "Account");
+    setText2("botNavCart", currentLang === 'ar' ? "السلة" : "Cart");
+    if(typeof buildNavMegaMenu === "function") buildNavMegaMenu();
+    if(typeof renderStoreProducts === "function") renderStoreProducts();
+    if(typeof renderCategoriesGrid === "function") renderCategoriesGrid();
+    if(typeof updateHeaderAuth === "function") updateHeaderAuth();
+    if(typeof renderCart === "function") renderCart();
+    if(typeof renderOrders === "function") renderOrders();
+}
+
+window.initData = function() {
+    let cats = JSON.parse(localStorage.getItem("eljory_categories"));
+    if(!cats || cats.length === 0) {
+        localStorage.setItem("eljory_categories", JSON.stringify([{ id: "screens", nameAr: "واقيات الشاشات", nameEn: "Screen Protectors", parentId: null, isActive: true }]));
+    }
+}
+
+// === قائمة الأقسام ===
+// تم نقل منطق بناء قائمة الأقسام بالكامل لـ header-loader.js
+// عبر دالة joryRenderNavCategories — لا تحذف هذه الدالة عشان
+// applyTranslations وأماكن تانية بتستدعيها، بس خليناها فاضية
+// عشان منتعارضش مع الـ mega menu الجديد
+window.renderDynamicNavbar = function() {
+    return;
+}
+
+window.buildNavMegaMenu = function() {
+    let cats = JSON.parse(localStorage.getItem("eljory_categories")) || [];
+    let mainCats = cats.filter(c => !c.parentId && c.isActive !== false);
+    mainCats.sort((a, b) => (parseInt(a.priority) || 0) - (parseInt(b.priority) || 0));
+
+    let menuData = mainCats.map(function(cat) {
+        let subs = cats.filter(c => 
+            String(c.parentId) === String(cat.id) && c.isActive !== false
+        );
+        return {
+            id: cat.id,
+            name: (currentLang === 'en' && cat.nameEn) ? cat.nameEn : cat.nameAr,
+            link: 'shop.html?cat=' + cat.id,
+            subs: subs.map(function(sc) {
+                return {
+                    name: (currentLang === 'en' && sc.nameEn) ? sc.nameEn : sc.nameAr,
+                    link: 'shop.html?cat=' + cat.id + '&sub=' + sc.id
+                };
+            })
+        };
+    });
+
+    if (typeof joryRenderNavCategories === 'function') {
+        joryRenderNavCategories(menuData);
+    }
+};
+// ==============================================
+
+window.increaseQty = function(qtyId, productId) { 
+    let input = document.getElementById(qtyId); if(!input) return;
+    let products = JSON.parse(localStorage.getItem("eljory_products")) || [];
+    let prod = products.find(p => p.id === productId);
+    let currentQty = parseInt(input.value);
+    let stockMsg = currentLang === 'ar' ? `عذراً، المتاح في المخزون ${prod.stock} قطع فقط!` : `Sorry, only ${prod.stock} items left in stock!`;
+    if(prod && currentQty >= prod.stock) { alert(stockMsg); return; }
+    input.value = currentQty + 1; 
+};
+window.decreaseQty = function(qtyId) { let input = document.getElementById(qtyId); if(input && parseInt(input.value) > 1) { input.value = parseInt(input.value) - 1; } };
+
+window.renderStoreProducts = function() {
+    const container = document.getElementById("dynamicProductsContainer");
+    const subBar = document.getElementById("subCategoriesFilterBar");
+    if(!container) return;
+    container.innerHTML = "";
+    if(subBar) subBar.innerHTML = ""; 
+    
+    let products = JSON.parse(localStorage.getItem("eljory_products")) || [];
+    let cats = JSON.parse(localStorage.getItem("eljory_categories")) || [];
+    let promos = JSON.parse(localStorage.getItem("eljory_promos")) || [];
+    let now = new Date();
+
+    let activePromos = promos.filter(p => now >= new Date(p.start) && now <= new Date(p.end));
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const catFilter    = urlParams.get('cat'); 
+    const subFilter    = urlParams.get('sub');
+    const listFilter   = urlParams.get('list');
+    const searchFilter = urlParams.get('search'); 
+    const currency = currentLang === 'ar' ? 'ج.م' : 'EGP';
+    
+    let pageTitleElem = document.getElementById("screensPageTitle");
+    if(pageTitleElem) {
+        if(searchFilter) {
+            pageTitleElem.innerText = currentLang === 'ar' ? `نتائج البحث عن: "${searchFilter}"` : `Search results for: "${searchFilter}"`;
+        }
+        else if(catFilter) {
+            let currentCat = cats.find(c => c.id === catFilter);
+            let catName = currentCat ? (currentLang === 'ar' ? currentCat.nameAr : (currentCat.nameEn || currentCat.nameAr)) : (currentLang === 'ar' ? "قسم غير معروف" : "Unknown Category");
+            pageTitleElem.innerText = catName;
+        } else {
+            pageTitleElem.innerText = translations[currentLang].allProductsTitle;
+        }
+    }
+    
+    let activeCatIds = cats.filter(c => c.isActive !== false).map(c => c.id);
+
+    if(catFilter && subBar) {
+        let subCategories = cats.filter(c => c.parentId === catFilter && c.isActive !== false);
+        if(subCategories.length > 0) {
+            let allText = currentLang === 'ar' ? 'الكل' : 'All';
+            let allBtnClass = !subFilter ? 'background:#f38c18; color:#1d364a;' : 'background:#1d364a; color:white;';
+            subBar.innerHTML = `<a href="shop.html?cat=${catFilter}" style="${allBtnClass} padding:10px 20px; border-radius:20px; text-decoration:none; font-weight:bold; font-size:14px; transition:0.3s;">${allText}</a>`;
+            
+            subCategories.forEach(sc => {
+                let scName = currentLang === 'ar' ? sc.nameAr : (sc.nameEn || sc.nameAr);
+                let isCurrentSub = subFilter === sc.id;
+                let btnStyle = isCurrentSub ? 'background:#f38c18; color:#1d364a;' : 'background:#1d364a; color:white;';
+                subBar.innerHTML += `<a href="shop.html?cat=${catFilter}&sub=${sc.id}" style="${btnStyle} padding:10px 20px; border-radius:20px; text-decoration:none; font-weight:bold; font-size:14px; transition:0.3s;">${scName}</a>`;
+            });
+        }
+    }
+
+    let filteredProducts = products.filter(p => {
+        let isProdActive = p.isActive !== false;
+        let isMainCatActive = activeCatIds.includes(p.category);
+        let isSubCatActive = !p.subCategory || activeCatIds.includes(p.subCategory);
+        return isProdActive && isMainCatActive && isSubCatActive;
+    });
+    
+    if(catFilter) filteredProducts = filteredProducts.filter(p => p.category === catFilter);
+    if(subFilter) filteredProducts = filteredProducts.filter(p => p.subCategory === subFilter);
+    if(listFilter) {
+        let customLists = JSON.parse(localStorage.getItem('eljory_custom_lists') || '[]');
+        let targetList  = customLists.find(l => l.id === listFilter && l.isActive !== false);
+        if(targetList && targetList.products && targetList.products.length) {
+            let orderedIds = targetList.products;
+            filteredProducts = orderedIds.map(id => filteredProducts.find(p => p.id === id)).filter(Boolean);
+        } else {
+            filteredProducts = [];
+        }
+    }
+    
+    if(searchFilter) {
+        let q = searchFilter.toLowerCase();
+        filteredProducts = filteredProducts.filter(p => 
+            (p.titleAr && p.titleAr.toLowerCase().includes(q)) || 
+            (p.titleEn && p.titleEn.toLowerCase().includes(q))
+        );
+    }
+
+    if(filteredProducts.length === 0) {
+        let noProductsMsg = currentLang === 'ar' ? 'لا توجد منتجات متوفرة في هذا القسم حالياً.' : 'No products available in this category currently.';
+        if(searchFilter) noProductsMsg = currentLang === 'ar' ? 'لا توجد نتائج مطابقة لبحثك.' : 'No results match your search.';
+        
+        container.innerHTML = `<p style='text-align:center; width:100%; color:gray; font-size:16px; padding:40px 0;'>${noProductsMsg}</p>`;
+        return;
+    }
+
+    filteredProducts.forEach(prod => {
+        let isOutOfStock = prod.stock <= 0;
+        let cardClass = isOutOfStock ? "product-card out-of-stock" : "product-card";
+        let outOfStockLabel = isOutOfStock ? `<div class="out-of-stock-overlay">${translations[currentLang].outOfStockTxt}</div>` : "";
+        let btnDisabled = isOutOfStock ? "disabled" : "";
+        let btnAction = isOutOfStock ? "" : `onclick="addToCart('${prod.id}', ${prod.price}, 'qty_${prod.id}')"`;
+
+        let promoOverlay = "";
+        let productPromo = activePromos.find(p => p.scope === 'all' || p.products.includes(prod.id));
+        
+        if(productPromo && !isOutOfStock) {
+            promoOverlay = `<div style="position:absolute; top:10px; left:10px; background:#d9534f; color:white; padding:5px 10px; border-radius:5px; font-weight:bold; font-size:12px; z-index:2; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">🔥 ${productPromo.label}</div>`;
+        }
+
+        let loyaltySettings = JSON.parse(localStorage.getItem("eljory_loyalty_settings")) || { system: "global", spent: 10, earn: 1 };
+        let pointsBadge = "";
+        let pointsMsg = currentLang === 'ar' ? `🎁 اشتري لتحصل على ${prod.points} نقطة` : `🎁 Buy to get ${prod.points} points`;
+        
+        if(loyaltySettings.system === "product" && prod.points > 0) {
+            pointsBadge = `<p style="color:#28a745; font-size:14px; font-weight:bold; margin:0 0 15px 0;">${pointsMsg}</p>`;
+        }
+
+        let prodName = currentLang === 'ar' ? prod.titleAr : (prod.titleEn || prod.titleAr);
+
+        container.innerHTML += `
+            <div class="${cardClass}" style="position:relative;">
+                <a href="product.html?id=${prod.id}" style="text-decoration: none; color: inherit; display: block; cursor: pointer;">
+                    ${outOfStockLabel}
+                    ${promoOverlay}
+                    <img src="${prod.img}" alt="${prodName}">
+                    <h3>${prodName}</h3>
+                </a>
+                <p class="price" style="margin-bottom: 5px;">${prod.price} ${currency}</p>
+                ${pointsBadge}
+                <div class="qty-container">
+                    <button class="qty-btn" onclick="increaseQty('qty_${prod.id}', '${prod.id}')" ${btnDisabled}>+</button>
+                    <input type="text" id="qty_${prod.id}" class="qty-input" value="1" readonly>
+                    <button class="qty-btn" onclick="decreaseQty('qty_${prod.id}')" ${btnDisabled}>-</button>
+                </div>
+                <button class="btn-add" ${btnAction} ${btnDisabled}>${translations[currentLang].addToCartBtn}</button>
+            </div>
+        `;        
+    });
+}
+
+let cart = JSON.parse(localStorage.getItem("eljory_cart")) || [];
+function saveCart() { localStorage.setItem("eljory_cart", JSON.stringify(cart)); if(typeof updateCartBadge === "function") updateCartBadge(); }
+
+window.addToCart = function(productId, price, qtyId) {
+    let isAuth = localStorage.getItem("eljory_auth") === "true";
+    let loginMsg = currentLang === 'ar' ? "يرجى تسجيل الدخول أولاً!" : "Please login first!";
+    let qtyErrorMsg = currentLang === 'ar' ? "الكمية المطلوبة غير متوفرة!" : "Requested quantity not available!";
+    
+    if (!isAuth) { alert(loginMsg); window.location.href = "login.html"; return; }
+    let qtyInput = document.getElementById(qtyId); let qty = qtyInput ? parseInt(qtyInput.value) : 1;
+    let products = JSON.parse(localStorage.getItem("eljory_products")) || [];
+    let prodData = products.find(p => p.id === productId);
+
+    if(!prodData || prodData.stock < qty) { alert(qtyErrorMsg); return; }
+
+    let existingItem = cart.find(item => item.id === productId);
+    if(existingItem) { 
+        let maxQtyMsg = currentLang === 'ar' ? `أقصى كمية متاحة هي ${prodData.stock}` : `Maximum available quantity is ${prodData.stock}`;
+        if(existingItem.qty + qty > prodData.stock) { alert(maxQtyMsg); return; }
+        existingItem.qty += qty; 
+    } else { cart.push({ id: productId, price: price, qty: qty }); }
+    saveCart();
+
+    if (typeof fbq === 'function') {
+        fbq('track', 'AddToCart', {
+            content_ids: [productId],
+            content_type: 'product',
+            value: price * qty,
+            currency: 'EGP'
+        });
+    }
+
+    alert(translations[currentLang].addedToCart); if(qtyInput) qtyInput.value = 1; 
+}
+
+let appliedPromoObj = null; 
+
+window.applyPromo = function() {
+    let inputElem = document.getElementById("promoInput"); 
+    let msgElem = document.getElementById("promoMessage"); 
+    if(!inputElem || !msgElem) return;
+    
+    let code = inputElem.value.trim().toUpperCase();
+    let promos = JSON.parse(localStorage.getItem("eljory_promos")) || [];
+    let now = new Date();
+
+    let validPromo = promos.find(p => p.code === code && now >= new Date(p.start) && now <= new Date(p.end));
+
+    if(validPromo) {
+        appliedPromoObj = validPromo;
+        msgElem.innerText = currentLang === 'ar' ? "تم تطبيق الكوبون بنجاح!" : "Coupon applied successfully!";
+        msgElem.style.color = "green"; 
+        msgElem.style.display = "block";
+    } else {
+        appliedPromoObj = null;
+        msgElem.innerText = currentLang === 'ar' ? "الكود غير صحيح أو منتهي الصلاحية" : "Invalid or expired code";
+        msgElem.style.color = "#d9534f"; 
+        msgElem.style.display = "block";
+    }
+    renderCart(); 
+}
+
+function renderCart() {
+    const tbody = document.querySelector(".cart-section tbody"); const cartTotal = document.getElementById("cartTotal"); if(!tbody || !cartTotal) return; 
+    tbody.innerHTML = ""; let grandTotal = 0;
+    const currency = currentLang === 'ar' ? 'ج.م' : 'EGP';
+    
+    if (cart.length === 0) { 
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 20px;">${translations[currentLang].cartEmpty}</td></tr>`; 
+        cartTotal.innerHTML = `${translations[currentLang].cartTotal} 0 ${currency}`; 
+        return; 
+    }
+    
+    let allProducts = JSON.parse(localStorage.getItem("eljory_products")) || [];
+    
+    cart.forEach((item, index) => {
+        let subtotal = item.price * item.qty; grandTotal += subtotal;
+        let pData = allProducts.find(p => p.id === item.id); 
+        let productName = pData ? (currentLang === 'ar' ? pData.titleAr : (pData.titleEn || pData.titleAr)) : item.id;
+        let lbl1 = currentLang === 'ar' ? 'المنتج' : 'Product';
+let lbl2 = currentLang === 'ar' ? 'السعر' : 'Price';
+let lbl3 = currentLang === 'ar' ? 'الكمية' : 'Qty';
+let lbl4 = currentLang === 'ar' ? 'الإجمالي' : 'Subtotal';
+tbody.innerHTML += `<tr>
+  <td data-label="${lbl1}">${productName}</td>
+  <td data-label="${lbl2}">${item.price} ${currency}</td>
+  <td data-label="${lbl3}"><strong>${item.qty}</strong></td>
+  <td data-label="${lbl4}">${subtotal} ${currency}</td>
+  <td><button onclick="removeFromCart(${index})" style="background:#d9534f; color:white; border:none; padding:6px 14px; cursor:pointer; border-radius:6px; font-weight:bold; width:100%;">${translations[currentLang].btnDelete}</button></td>
+</tr>`;
+    });
+
+    let finalTotal = grandTotal;
+    let discountMsg = "";
+
+    let user = getCurrentUser();
+    let shippingFee = 0;
+    let hasShipping = false;
+    
+    if (user && user.addresses && user.addresses.length > 0) {
+        let primaryAddress = user.addresses.find(a => a.isPrimary) || user.addresses[0];
+        
+        let regionName = getRegionFromAddressText(primaryAddress.text);
+        
+        let regions = JSON.parse(localStorage.getItem("eljory_regions")) || [];
+        let matchedRegion = regions.find(r => r.name === regionName);
+        if (matchedRegion) {
+            shippingFee = parseFloat(matchedRegion.fee) || 0;
+            hasShipping = true;
+        }
+    }
+
+    if(appliedPromoObj) {
+        // ✅ إصلاح: الكوبون المخصص لمنتجات معينة (scope: specific) لازم يتفعّل بس لو
+        // واحد على الأقل من المنتجات المحددة موجود في السلة (isPromoQualified)، لكن
+        // قيمة الخصم نفسها لازم تتحسب على *إجمالي السلة كله* (grandTotal) مش بس على
+        // المنتجات المحددة (applicableTotal) - ده الفرق عن السلوك القديم اللي كان
+        // بيقصر الخصم على المنتجات المشمولة فقط.
+        let applicableTotal = 0;
+        let isPromoQualified = appliedPromoObj.scope === 'all';
+        cart.forEach(item => {
+            if(appliedPromoObj.scope === 'all' || (appliedPromoObj.products && appliedPromoObj.products.includes(item.id))) {
+                applicableTotal += (item.price * item.qty);
+                isPromoQualified = true;
+            }
+        });
+
+        if(isPromoQualified) {
+            if(appliedPromoObj.type === "percent") {
+                let discountAmount = grandTotal * (appliedPromoObj.value / 100);
+                // ⭐ الحد الأقصى لقيمة الخصم (لو محدد من الأدمن) بيقصّ قيمة
+                // الخصم عند مبلغ معين حتى لو النسبة المئوية بتدي رقم أكبر
+                if (appliedPromoObj.maxDiscountValue && discountAmount > appliedPromoObj.maxDiscountValue) {
+                    discountAmount = appliedPromoObj.maxDiscountValue;
+                }
+                finalTotal = grandTotal - discountAmount;
+                let pctMsg = currentLang === 'ar' ? `(تم خصم ${appliedPromoObj.value}% من إجمالي السلة)` : `(${appliedPromoObj.value}% off your total cart)`;
+                discountMsg = `<br><span style="color:#f38c18; font-size:16px;">${pctMsg}</span>`;
+            } else if (appliedPromoObj.type === "fixed") {
+                let discountAmount = appliedPromoObj.value;
+                if(discountAmount > grandTotal) discountAmount = grandTotal; 
+                finalTotal = grandTotal - discountAmount;
+                let fixMsg = currentLang === 'ar' ? `(تم خصم ${appliedPromoObj.value} ${currency})` : `(${appliedPromoObj.value} ${currency} off)`;
+                discountMsg = `<br><span style="color:#f38c18; font-size:16px;">${fixMsg}</span>`;
+            } else if (appliedPromoObj.type === "shipping") {
+                shippingFee = 0; 
+                let shipMsg = currentLang === 'ar' ? `🎉 التوصيل مجاني بفضل البروموكود!` : `🎉 Free shipping applied!`;
+                discountMsg = `<br><span style="color:#28a745; font-size:18px; font-weight:bold;">${shipMsg}</span>`;
+            }
+        } else {
+            let noApplyMsg = currentLang === 'ar' ? '(الكوبون لا ينطبق على المنتجات الموجودة في السلة)' : '(Coupon does not apply to items in cart)';
+            discountMsg = `<br><span style="color:red; font-size:14px;">${noApplyMsg}</span>`;
+        }
+    }
+
+    finalTotal += shippingFee;
+    
+    let shipText = "";
+    if (!hasShipping) {
+        let loginMsg = currentLang === 'ar' ? '<span style="color:gray; font-size:14px;">(سجل الدخول لمعرفة الشحن)</span>' : '<span style="color:gray; font-size:14px;">(Login to see shipping)</span>';
+        let noAddrMsg = currentLang === 'ar' ? '<span style="color:red; font-size:14px;">(يرجى إضافة المحافظة في إعدادات الحساب)</span>' : '<span style="color:red; font-size:14px;">(Please add region in account)</span>';
+        shipText = user ? noAddrMsg : loginMsg;
+    } else if (shippingFee === 0) {
+        shipText = `<span style="color:green; font-weight:bold;">${translations[currentLang].freeWord || 'مجاني'}</span>`;
+    } else {
+        shipText = `${shippingFee} ${currency}`;
+    }
+
+    let beforeText = currentLang === 'ar' ? 'المجموع:' : 'Subtotal:';
+    let shipLabel = translations[currentLang].shippingWord || 'مصاريف الشحن:';
+    let afterText = currentLang === 'ar' ? 'الإجمالي الكلي:' : 'Grand Total:';
+
+    cartTotal.innerHTML = `
+        <div style="font-size:18px; color:#555; margin-bottom:5px;">${beforeText} <strong>${grandTotal}</strong> ${currency}</div>
+        <div style="font-size:18px; color:#555; margin-bottom:15px; border-bottom:1px solid #ccc; padding-bottom:10px;">${shipLabel} <strong>${shipText}</strong></div>
+        <div style="color:green; font-size:26px;">${afterText} <strong>${finalTotal}</strong> ${currency}</div>
+        ${discountMsg}
+    `;
+    
+    window.cartFinalTotal = finalTotal; 
+    window.cartShippingFee = hasShipping ? shippingFee : 0; 
+}
+
+window.updateCartBadge = function() {
+    let currentCart = JSON.parse(localStorage.getItem("eljory_cart")) || [];
+    let totalQty = currentCart.reduce((sum, item) => sum + item.qty, 0); 
+    let badge = document.getElementById("cartBadge");
+    let badgeBot = document.getElementById("cartBadgeBot");
+    
+    if(badge) {
+        if(totalQty > 0) {
+            badge.innerText = totalQty;
+            badge.style.display = "inline-block";
+        } else {
+            badge.style.display = "none";
+        }
+    }
+    if(badgeBot) {
+        if(totalQty > 0) {
+            badgeBot.innerText = totalQty;
+            badgeBot.style.display = "flex";
+        } else {
+            badgeBot.style.display = "none";
+        }
+    }
+};
+
+window.removeFromCart = function(index) { cart.splice(index, 1); saveCart(); renderCart(); };
+
+window.loadUserProfile = function() {
+    let user = getCurrentUser(); let isAuth = localStorage.getItem("eljory_auth") === "true";
+    let greetingElem = document.getElementById("accountGreeting");
+    let guestText = currentLang === 'ar' ? 'ضيف' : 'Guest';
+    let welcomeText = currentLang === 'ar' ? 'أهلاً بك يا' : 'Welcome,';
+
+    if(greetingElem) greetingElem.innerHTML = (isAuth && user) ? `${welcomeText} ${user.name}` : guestText;
+    if(isAuth && user) {
+        if(document.getElementById("editName")) document.getElementById("editName").value = user.name || "";
+        if(document.getElementById("editPhone")) document.getElementById("editPhone").value = user.phone || "";
+        if(document.getElementById("editEmail")) document.getElementById("editEmail").value = user.email || "";
+        if(window.renderAddresses) renderAddresses();
+    }
+    
+    let pointsElem = document.getElementById("loyaltyPointsDisplay");
+    let settings = JSON.parse(localStorage.getItem("eljory_loyalty_settings")) || {};
+    let points = user ? (user.points || 0) : 0;
+    
+    if(pointsElem) {
+        let now = new Date();
+        let expiry = settings.expiry ? new Date(settings.expiry) : null;
+        
+        if(expiry && now > expiry) {
+            pointsElem.innerText = "0";
+            let expMsg = currentLang === 'ar' ? 'انتهت صلاحية نقاطك السابقة.' : 'Your previous points have expired.';
+            pointsElem.insertAdjacentHTML('afterend', `<p style="color:red; font-weight:bold; font-size:14px; margin-top:5px;">${expMsg}</p>`);
+        } else {
+            pointsElem.innerText = points;
+            if(expiry) {
+                let expiryStr = currentLang === 'ar' ? expiry.toLocaleDateString('ar-EG') : expiry.toLocaleDateString('en-US');
+                let validMsg = currentLang === 'ar' ? 'النقاط صالحة حتى:' : 'Points valid until:';
+                pointsElem.insertAdjacentHTML('afterend', `<p style="color:green; font-weight:bold; font-size:14px; margin-top:5px;">${validMsg} ${expiryStr}</p>`);
+            }
+        }
+    }
+}
+
+// ==== دوال الحفظ مربوطة بـ Firebase ====
+window.saveProfile = async function() {
+    let user = getCurrentUser(); if(!user) return;
+    let newName = document.getElementById("editName").value.trim();
+    let newEmail = document.getElementById("editEmail").value.trim();
+    let newPass = document.getElementById("editPassword").value.trim();
+    let reqMsg = currentLang === 'ar' ? "الاسم مطلوب!" : "Name is required!";
+    if(!newName) return alert(reqMsg);
+    
+    let phoneKey = getShortPhone(user.phone);
+    let updates = { name: newName, email: newEmail };
+
+    if (newPass) {
+        let salt = window.generateSalt();
+        updates.passwordHash = await window.hashPassword(newPass, salt);
+        updates.passwordSalt = salt;
+        updates.password = null;
+    }
+
+    db.ref('/users/' + phoneKey).update(updates).then(() => {
+        let successMsg = currentLang === 'ar' ? "تم تحديث البيانات بنجاح!" : "Profile updated successfully!";
+        alert(successMsg); document.getElementById("editPassword").value = "";
+        updateHeaderAuth(); loadUserProfile();
+    });
+}
+
+window.renderAddresses = function() {
+    let user = getCurrentUser(); let list = document.getElementById("addressesList");
+    if(!list || !user) return; list.innerHTML = ""; let addresses = user.addresses || [];
+    let primaryText = currentLang === 'ar' ? 'الأساسي' : 'Primary';
+    let setPrimaryText = currentLang === 'ar' ? 'تعيين كأساسي' : 'Set as Primary';
+
+    addresses.forEach(addr => {
+        let primaryBadge = addr.isPrimary ? `<span style="background:#28a745; color:white; font-size:11px; padding:3px 8px; border-radius:4px; font-weight:bold;">${primaryText}</span>` : `<button onclick="setPrimaryAddress(${addr.id})" style="background:none; border:1px solid #1d364a; font-size:12px; cursor:pointer; padding:3px 8px; border-radius:4px;">${setPrimaryText}</button>`;
+        list.innerHTML += `<div style="background:#f9f9f9; padding:12px; border:1px solid #ddd; margin-bottom:8px; border-radius:5px; display:flex; justify-content:space-between; align-items:center;">
+                <div style="flex:1;"><strong>${addr.text}</strong> <div style="margin-top:5px;">${primaryBadge}</div></div>
+                <button onclick="deleteAddress(${addr.id})" style="color:red; background:none; border:none; cursor:pointer; font-weight:bold; font-size:16px;">✖</button>
+            </div>`;
+    });
+}
+
+window.addNewAddress = function() {
+    let input = document.getElementById("newAddressInput"); let text = input.value.trim();
+    let regionSelect = document.getElementById("newAddressRegion");
+    let region = regionSelect ? regionSelect.value : "";
+    let reqMsg = currentLang === 'ar' ? "يرجى كتابة العنوان الجديد" : "Please enter the new address";
+    let reqRegionMsg = currentLang === 'ar' ? "يرجى اختيار المنطقة" : "Please select a region";
+    if(!text) return alert(reqMsg);
+    if(!region) return alert(reqRegionMsg);
+    let user = getCurrentUser(); let phoneKey = getShortPhone(user.phone);
+    let newAddrs = user.addresses || []; 
+    newAddrs.push({ id: Date.now(), text: text + " - " + region, isPrimary: newAddrs.length === 0 });
+    db.ref('/users/' + phoneKey + '/addresses').set(newAddrs).then(() => { 
+        input.value = ""; if(regionSelect) regionSelect.value = ""; renderAddresses(); 
+    });
+}
+
+window.setPrimaryAddress = function(id) {
+    let user = getCurrentUser(); let phoneKey = getShortPhone(user.phone);
+    let addrs = (user.addresses || []).map(a => ({ ...a, isPrimary: a.id === id }));
+    db.ref('/users/' + phoneKey + '/addresses').set(addrs).then(() => renderAddresses());
+}
+
+window.deleteAddress = function(id) {
+    let user = getCurrentUser(); let phoneKey = getShortPhone(user.phone); let addrs = user.addresses || [];
+    let errAdd = currentLang === 'ar' ? "عفواً، يجب أن يحتفظ حسابك بعنوان واحد على الأقل!" : "Sorry, you must keep at least one address!";
+    if(addrs.length <= 1) return alert(errAdd);
+    let target = addrs.find(a => a.id === id); 
+    addrs = addrs.filter(a => a.id !== id);
+    if(target && target.isPrimary && addrs.length > 0) addrs[0].isPrimary = true;
+    db.ref('/users/' + phoneKey + '/addresses').set(addrs).then(() => renderAddresses());
+}
+
+const btnCheckout = document.getElementById("btnCheckout");
+if(btnCheckout) {
+    btnCheckout.addEventListener("click", () => {
+        let emptyMsg = currentLang === 'ar' ? "السلة فارغة" : "Cart is empty";
+        let logMsg = currentLang === 'ar' ? "يرجى تسجيل الدخول أولاً!" : "Please login first!";
+        
+        if(cart.length === 0) { alert(emptyMsg); return; }
+        let user = getCurrentUser();
+        if(!user) { alert(logMsg); window.location.href="login.html"; return; }
+
+        if (typeof fbq === 'function') {
+            fbq('track', 'InitiateCheckout', {
+                content_ids: cart.map(item => item.id),
+                contents: cart.map(item => ({ id: item.id, quantity: item.qty })),
+                value: window.cartFinalTotal || 0,
+                currency: 'EGP',
+                num_items: cart.reduce((sum, item) => sum + item.qty, 0)
+            });
+        }
+        
+        let shipping = 0;
+        let regions = JSON.parse(localStorage.getItem("eljory_regions")) || [];
+        if (user.addresses && user.addresses.length > 0) {
+            let primaryAddress = user.addresses.find(a => a.isPrimary) || user.addresses[0];
+            let regionName = getRegionFromAddressText(primaryAddress.text);
+            let matchedRegion = regions.find(r => r.name === regionName);
+            if (matchedRegion) shipping = parseFloat(matchedRegion.fee) || 0;
+        }
+
+        if(appliedPromoObj && appliedPromoObj.type === "shipping") shipping = 0;
+
+        let total = window.cartFinalTotal; 
+        let subTotal = total - shipping;   
+        
+        let loyaltySettings = JSON.parse(localStorage.getItem("eljory_loyalty_settings")) || { system: "global", spent: 10, earn: 1 };
+        let earnedPoints = 0;
+        if(loyaltySettings.system === "global") {
+            earnedPoints = Math.floor(total / loyaltySettings.spent) * loyaltySettings.earn;
+        } else {
+            let allProds = JSON.parse(localStorage.getItem("eljory_products")) || [];
+            cart.forEach(item => {
+                let p = allProds.find(x => x.id === item.id);
+                if(p && p.points) earnedPoints += (p.points * item.qty);
+            });
+        }
+
+        let noAddr = currentLang === 'ar' ? "لم يتم تحديد عنوان" : "No address selected";
+        let primaryAddr = user.addresses && user.addresses.find(a => a.isPrimary) ? user.addresses.find(a => a.isPrimary).text : noAddr;
+        let checkoutCustomerData = { name: user.name, phone: user.phone, address: primaryAddr };
+
+        // رفع الطلب لفايربيس باستخدام Transaction للرقم التسلسلي
+        const counterRef = db.ref('/metadata/lastOrderId');
+        counterRef.transaction((currentValue) => {
+            return (currentValue || 1000) + 1;
+        }, async (error, committed, snapshot) => {
+            if (error) { alert("حدث خطأ في النظام أثناء توليد رقم الطلب."); } 
+            else if (committed) {
+                let newOrderId = "ORD-" + snapshot.val();
+                // ⭐ نظام الضمان: نجمّد شهور ضمان كل منتج وقت البيع نفسه، ولو أي منتج في الطلب عنده ضمان،
+                // نولّد توكن فريد للفاتورة يُستخدم في QR التفعيل.
+                // ⚠️ إصلاح: كنا بنجيب شهور الضمان من الكاش المحلي (localStorage) اللي ممكن يكون لسه ماتحدثش لحظة الشراء لو الأدمن غير الضمان والعميل طلب بسرعة بعده. دلوقتي بنقرا بيانات كل منتج في السلة مباشرة من فايربيس قبل إنشاء الطلب مباشرة، عشان نضمن إن شهور الضمان المحفوظة هي الأحدث دايماً.
+                let allProdsForWarranty = [];
+                try {
+                    let prodSnaps = await Promise.all(cart.map(it => db.ref('/products/' + it.id).once('value')));
+                    allProdsForWarranty = prodSnaps.map(s => s.val()).filter(Boolean);
+                } catch (e) {
+                    console.warn('⚠️ تعذر جلب بيانات الضمان الحية، سيتم الاعتماد على الكاش المحلي:', e);
+                    allProdsForWarranty = JSON.parse(localStorage.getItem("eljory_products")) || [];
+                }
+                let warrantySnap = window.snapshotItemsWarranty ? window.snapshotItemsWarranty(cart, allProdsForWarranty) : { items: cart, hasWarranty: false };
+                // ⭐ نظام الحسابات: بنسجل قيمة أي خصم تم تطبيقه فعلياً على الفاتورة (كوبون
+                // نسبة/مبلغ ثابت/كوبون نقاط) بغض النظر عن الشحن المجاني (ده مستثنى عمداً).
+                // القيمة دي بتتسجل هنا بس كـ"بيانات"، والخصم كمصروف فعلي في الخزنة بيتسجل
+                // تلقائياً بعدين لما الطلب يتحول لـ"تم التوصيل" (شوف finalizeDeliverOrder في admin.js).
+                let orderDiscount = parseFloat(window.cartDiscountAmount) || 0;
+                let orderPromoCode = window.cartPromoCodeUsed || null;
+                let newOrder = { 
+                    id: newOrderId, date: new Date().toLocaleDateString('en-GB'), subTotal: subTotal, shippingFee: shipping, total: total, 
+                    discount: orderDiscount, promoCode: orderPromoCode,
+                    status: "Pending", earnedPoints: earnedPoints, customer: checkoutCustomerData, items: warrantySnap.items, timestamp: firebase.database.ServerValue.TIMESTAMP,
+                    warrantyToken: warrantySnap.hasWarranty ? window.generateWarrantyToken() : null,
+                    warrantyStatus: warrantySnap.hasWarranty ? "not_activated" : null,
+                    deliveredAt: null
+                };
+                
+                db.ref('/orders/' + newOrderId).set(newOrder).then(() => {
+
+                    // Facebook Pixel - Purchase
+                    if (typeof fbq === 'function') {
+                        fbq('track', 'Purchase', {
+                            content_ids: cart.map(item => item.id),
+                            contents: cart.map(item => ({ id: item.id, quantity: item.qty })),
+                            value: total,
+                            currency: 'EGP',
+                            num_items: cart.reduce((sum, item) => sum + item.qty, 0)
+                        });
+                    }
+
+                    // تسجيل استخدام البروموكود العادي في Firebase
+                    // ⚠️ إصلاح: كان بيعمل قراءة كل الكوبونات ثم كتابتها كاملة (read-then-write)،
+                    // ولو حصل تشيك أوت متزامن من عميلين في نفس اللحظة ممكن نفقد تحديث أو نتخطى
+                    // الحد الأقصى المسموح. دلوقتي بنستخدم .transaction() على /promos عشان
+                    // فايربيس يضمن إن التحديث ذري (atomic) ويعيد المحاولة تلقائياً لو حصل تعارض،
+                    // وكمان بنتأكد من الحد الأقصى (maxTotal) *جوه* نفس الـ transaction.
+                    if (window.appliedPromoObj && window.appliedPromoObj.code && !window.appliedPromoObj.rewardName) {
+                        const promoCode = window.appliedPromoObj.code;
+                        const userPhoneKey = getShortPhone(user.phone);
+                        db.ref('/promos').transaction(function(currentPromos) {
+                            if (!currentPromos) return currentPromos;
+                            let allPromos = Array.isArray(currentPromos) ? currentPromos : Object.values(currentPromos);
+                            let pi = allPromos.findIndex(p => p && p.code === promoCode);
+                            if (pi > -1) {
+                                let promo = allPromos[pi];
+                                let reachedMax = promo.maxTotal && (promo.usageCount || 0) >= promo.maxTotal;
+                                if (!reachedMax) {
+                                    promo.usageCount = (promo.usageCount || 0) + 1;
+                                    if (!promo.usedBy) promo.usedBy = {};
+                                    promo.usedBy[userPhoneKey] = (promo.usedBy[userPhoneKey] || 0) + 1;
+                                }
+                            }
+                            return allPromos;
+                        });
+                    }
+
+                    // معالجة كوبون الهدية لو موجود
+                    let usedLoyaltyCoupon = JSON.parse(localStorage.getItem("eljory_applied_loyalty_coupon"));
+                    if (usedLoyaltyCoupon) {
+                        let userPhoneKey = getShortPhone(user.phone);
+                        db.ref('/users/' + userPhoneKey + '/coupons').once('value').then(snap => {
+                            let coupons = snap.val() || [];
+                            let idx = coupons.findIndex(c => c.code === usedLoyaltyCoupon.code);
+                            if (idx > -1) {
+                                coupons[idx].isUsed = true;
+                                db.ref('/users/' + userPhoneKey + '/coupons').set(coupons);
+                            }
+                        });
+                        localStorage.removeItem("eljory_applied_loyalty_coupon");
+                    }
+
+                    // ✅ الإصلاح: ننتظر كل transactions المخزون تخلص فعلاً قبل الـ redirect
+                    let stockTransactions = cart.map(item =>
+                        db.ref('/products/' + item.id + '/stock').transaction(
+                            currentStock => Math.max(0, (currentStock || 0) - item.qty)
+                        )
+                    );
+                    // ⭐ سجل حركة المخزون: تسجيل خروج كل منتج بسبب هذا الطلب
+                    let allProdsForNames = JSON.parse(localStorage.getItem("eljory_products")) || [];
+                    cart.forEach(function(item) {
+                        let pName = (allProdsForNames.find(x => x.id === item.id) || {}).titleAr || item.id;
+                        window.logStockMovementPublic({
+                            productId: item.id, titleAr: pName, type: 'out', qty: item.qty,
+                            reason: `خروج بسبب طلب رقم ${newOrderId}`
+                        });
+                    });
+                    return Promise.all(stockTransactions);
+
+                }).then(() => {
+                    // ✅ دلوقتي بعد خصم المخزون فعلاً، نفرّغ السلة ونعمل redirect
+                    cart = []; 
+                    saveCart(); 
+                    appliedPromoObj = null; 
+                    window.cartDiscountAmount = 0; window.cartPromoCodeUsed = null;
+                    alert(translations[currentLang].checkoutSuccess + "\nرقم طلبك هو: " + newOrderId); 
+                    localStorage.setItem("eljory_active_acc_tab", "orders"); 
+                    window.location.href = "account.html";
+
+                }).catch(error => {
+                    console.error("خطأ في خصم المخزون:", error);
+                    // الطلب اتحفظ بنجاح حتى لو المخزون اتأخر
+                    cart = []; 
+                    saveCart(); 
+                    appliedPromoObj = null;
+                    window.cartDiscountAmount = 0; window.cartPromoCodeUsed = null;
+                    alert(translations[currentLang].checkoutSuccess + "\nرقم طلبك هو: " + newOrderId);
+                    localStorage.setItem("eljory_active_acc_tab", "orders"); 
+                    window.location.href = "account.html";
+                });
+            }
+        });
+    });
+}
+
+window.toggleAuth = function(type) {
+    let boxes = ['loginFormBox', 'registerFormBox', 'forgotFormBox'];
+    boxes.forEach(id => { if(document.getElementById(id)) document.getElementById(id).style.display = 'none'; });
+    if(type === 'register') document.getElementById('registerFormBox').style.display = 'block';
+    else if(type === 'forgot') document.getElementById('forgotFormBox').style.display = 'block';
+    else document.getElementById('loginFormBox').style.display = 'block';
+}
+
+window.doLogin = async function(event) {
+    if (event) event.preventDefault();
+
+    let phone = document.getElementById("loginPhone").value.trim();
+    let password = document.getElementById("loginPassword").value;
+    let cleanPhone = window.getShortPhone(phone);
+
+    if (!cleanPhone || !password) {
+        alert(currentLang === 'ar' ? "يرجى ملء جميع الحقول!" : "Please fill all fields!");
+        return;
+    }
+
+    db.ref('/users/' + cleanPhone).once('value').then(async (snapshot) => {
+        if (!snapshot.exists()) {
+            alert(currentLang === 'ar' ? "الرقم غير مسجل! يرجى إنشاء حساب جديد." : "Phone not registered!");
+            return;
+        }
+
+        let user = snapshot.val();
+
+        // فحص الحظر
+        if (user.isBlocked) {
+            alert(currentLang === 'ar' ? "هذا الحساب محظور. تواصل مع الإدارة." : "Account blocked. Contact support.");
+            return;
+        }
+
+        let isValid = false;
+
+        // التحقق من كلمة المرور (هاش أو نص عادي للحسابات القديمة)
+        if (user.passwordHash && user.passwordSalt) {
+            let hash = await window.hashPassword(password, user.passwordSalt);
+            isValid = (hash === user.passwordHash);
+        } else if (user.password) {
+            isValid = (password === user.password);
+            if (isValid) {
+                // ترقية تلقائية للتشفير للحسابات القديمة
+                let salt = window.generateSalt();
+                let hash = await window.hashPassword(password, salt);
+                db.ref('/users/' + cleanPhone).update({ passwordHash: hash, passwordSalt: salt, password: null });
+            }
+        }
+
+        if (!isValid) {
+            alert(currentLang === 'ar' ? "كلمة المرور غير صحيحة!" : "Incorrect password!");
+            return;
+        }
+
+        // فحص انتهاء صلاحية النقاط عند الدخول
+        user = window.checkAndResetLoyaltyExpiry(user, cleanPhone);
+
+        localStorage.setItem("eljory_auth", "true");
+        localStorage.setItem("eljory_active_phone", cleanPhone);
+        localStorage.setItem("eljory_active_user", JSON.stringify(user));
+
+        window.location.href = "index.html";
+    });
+};
+
+window.doForgotPassword = function(event) {
+    if(event) event.preventDefault();
+    let phone = document.getElementById("forgotPhone").value.trim();
+    let reqMsg = currentLang === 'ar' ? "يرجى إدخال رقم التليفون" : "Please enter your phone number";
+    if(!phone) return alert(reqMsg);
+
+    let cleanPhone = window.getShortPhone(phone);
+    let invalidMsg = currentLang === 'ar' ? "رقم التليفون غير صحيح!" : "Invalid phone number!";
+    if(cleanPhone.length < 10) return alert(invalidMsg);
+
+    // ⚠️ إصلاح أمني: كان الكود القديم بيولّد كلمة مرور جديدة ويعرضها في alert()
+    // لأي حد يكتب أي رقم، وده معناه أي حد عارف رقم عميل يقدر يستولي على حسابه فوراً.
+    // دلوقتي: مفيش أي تغيير في الباسورد يحصل تلقائي؛ بنوجّه العميل للتواصل مع الدعم
+    // عبر واتساب، وبعد ما الأدمن يتأكد من هويته يدوياً، يقدر يولّد له باسورد جديد
+    // من داخل لوحة التحكم نفسها (زرار "توليد كلمة مرور جديدة" في تعديل العميل).
+    let waNumber = window.JORY_WHATSAPP || '201100395049';
+    let waText = currentLang === 'ar'
+        ? `مرحباً، عايز أسترجع كلمة المرور بتاعة حسابي.\nرقم التليفون المسجل: ${cleanPhone}`
+        : `Hello, I'd like to reset my account password.\nRegistered phone: ${cleanPhone}`;
+    let waLink = `https://wa.me/${waNumber}?text=${encodeURIComponent(waText)}`;
+
+    let infoMsg = currentLang === 'ar'
+        ? "لحمايتك، لا يمكن استرجاع كلمة المرور تلقائياً.\nهيتم تحويلك الآن لواتساب عشان نتأكد من هويتك ونساعدك فوراً."
+        : "For your security, passwords can't be reset automatically.\nYou'll be redirected to WhatsApp so our team can verify your identity and help you right away.";
+    alert(infoMsg);
+    window.open(waLink, '_blank');
+}
+
+window.doLogout = function() { 
+    localStorage.removeItem("eljory_auth"); 
+    localStorage.removeItem("eljory_active_phone"); 
+    localStorage.removeItem("eljory_active_user");
+    window.location.href = "index.html"; 
+}
+
+window.getCurrentUser = function() {
+    let userStr = localStorage.getItem("eljory_active_user");
+    return userStr ? JSON.parse(userStr) : null;
+}
+
+window.updateHeaderAuth = function() {
+    let userInfoElem = document.getElementById("headerUserInfo"); if(!userInfoElem) return;
+    let isAuth = localStorage.getItem("eljory_auth") === "true"; let user = getCurrentUser();
+    let t = translations[currentLang];
+    
+    if (isAuth && user) { userInfoElem.innerHTML = `<span>${t.welcomeHeader}${user.name}</span> <button class="btn-logout-header" onclick="doLogout()">${t.btnLogoutHeader}</button>`; } 
+    else { userInfoElem.innerHTML = `<span>${t.guestLabel}</span> <a href="login.html" class="btn-login-header">${t.btnLoginHeader}</a>`; }
+
+    // زرار الخروج في صفحة الحساب على الموبايل
+    let mobileLogout = document.getElementById("mobileLogoutBtn");
+    if (mobileLogout) {
+        if (isAuth && user) {
+            mobileLogout.style.display = "block";
+            mobileLogout.innerText = "🚪 " + t.btnLogoutHeader;
+        } else {
+            mobileLogout.style.display = "none";
+        }
+    }
+}
+
+window.renderOrders = function() {
+    const tbody = document.getElementById("ordersTableBody"); if(!tbody) return;
+    let user = getCurrentUser(); 
+    let isAuth = localStorage.getItem("eljory_auth") === "true"; 
+    tbody.innerHTML = ""; 
+    const currency = currentLang === 'ar' ? 'ج.م' : 'EGP';
+    
+    let reqLogMsg = currentLang === 'ar' ? 'يرجى تسجيل الدخول لعرض طلباتك' : 'Please login to view your orders';
+    if (!isAuth || !user) { 
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding: 20px;">${reqLogMsg}</td></tr>`; 
+        return; 
+    }
+
+    // سحب الأوردرات من السحابة مباشرة وفلترتها برقم العميل
+    db.ref('/orders').on('value', snapshot => {
+        let myOrders = [];
+        if (snapshot.exists()) {
+            snapshot.forEach(child => {
+                let ord = child.val();
+                if (ord && ord.customer && ord.customer.phone) {
+                    let ordPhone = String(ord.customer.phone).replace(/\D/g, '').slice(-10);
+                    let userPhone = String(user.phone).replace(/\D/g, '').slice(-10);
+                    
+                    if (ordPhone === userPhone) {
+                        myOrders.push(ord);
+                    }
+                }
+            });
+        }
+        
+        if (myOrders.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding: 20px;">${translations[currentLang].noOrders}</td></tr>`; 
+            return; 
+        }
+        
+        tbody.innerHTML = "";
+        myOrders.reverse().forEach((order) => {
+            let statusText = ""; let statusClass = ""; let actionBtn = "";
+            
+            if(order.status === "Pending" || order.status === "Processing" || !order.status) {
+                statusText = currentLang === 'ar' ? 'تم الطلب ⏳' : 'Pending'; statusClass = "status-badge"; 
+                let cancelText = currentLang === 'ar' ? 'إلغاء الطلب' : 'Cancel Order';
+                actionBtn = `<button style="background:#d9534f; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; margin-top:5px; font-weight:bold; width:100%;" onclick="cancelOrderUser('${order.id}')">${cancelText}</button>`;
+            } else if(order.status === "Shipped") {
+                statusText = currentLang === 'ar' ? 'تم الشحن 🚚' : 'Shipped'; statusClass = "status-badge"; 
+            } else if(order.status === "Delivered") {
+                statusText = currentLang === 'ar' ? 'تم التوصيل ✅' : 'Delivered'; statusClass = "status-delivered"; 
+            } else if(order.status === "Cancelled") {
+                statusText = currentLang === 'ar' ? 'ملغي ❌' : 'Cancelled'; statusClass = "status-badge"; 
+            }
+
+            let bgStyle = order.status === "Cancelled" ? "background-color: #d9534f;" : (order.status === "Shipped" ? "background-color: #17a2b8;" : (order.status === "Pending" || order.status === "Processing" ? "background-color: #f38c18;" : ""));
+
+            tbody.innerHTML += `<tr>
+                <td><strong>${order.id}</strong></td>
+                <td>${order.date}</td>
+                <td>${order.total} ${currency}</td>
+                <td style="text-align:center;">
+                    <span class="status-badge ${statusClass}" style="${bgStyle}; display:block; padding:5px; border-radius:4px; color:white;">${statusText}</span>
+                    ${actionBtn}
+                </td>
+            </tr>`;
+        });
+    });
+}
+
+window.cancelOrderUser = function(orderId) {
+    let confirmMsg = currentLang === 'ar' ? "هل أنت متأكد من إلغاء هذا الطلب؟" : "Are you sure you want to cancel this order?";
+    if(!confirm(confirmMsg)) return;
+
+    // ⚠️ إصلاح أمني: كان أي حد يقدر يلغي أي طلب برقمه بس (والأرقام تسلسلية وسهلة التخمين)
+    // من غير ما نتأكد إنه صاحب الطلب فعلاً. دلوقتي بنتأكد إن رقم تليفون الطلب
+    // مطابق لرقم تليفون العميل المسجل دخوله قبل ما نسمح بالإلغاء.
+    let currentUser = getCurrentUser();
+    let notLoggedMsg = currentLang === 'ar' ? "يجب تسجيل الدخول أولاً!" : "You must be logged in!";
+    if(!currentUser) { alert(notLoggedMsg); return; }
+    let myPhone = getShortPhone(currentUser.phone);
+
+    db.ref('/orders/' + orderId).once('value').then(snapshot => {
+        let order = snapshot.val();
+        let notFoundMsg = currentLang === 'ar' ? "هذا الطلب غير موجود." : "Order not found.";
+        if(!order) { alert(notFoundMsg); return; }
+
+        let orderPhone = order.customer ? getShortPhone(order.customer.phone) : "";
+        let notOwnerMsg = currentLang === 'ar' ? "عفواً، لا يمكنك إلغاء طلب لا يخصك." : "Sorry, you can't cancel an order that isn't yours.";
+        if(orderPhone !== myPhone) { alert(notOwnerMsg); return; }
+
+        if(order.status === "Pending" || order.status === "Processing" || !order.status) {
+            let histEntry = { status:'Cancelled', by: myPhone, byType:'customer', date: new Date().toLocaleString('ar-EG') };
+            let newHist = (order.statusHistory || []).concat([histEntry]);
+            db.ref('/orders/' + orderId).update({status: "Cancelled", statusHistory: newHist}).then(() => {
+                if(order.items) {
+                    let allProdsForNames = JSON.parse(localStorage.getItem("eljory_products")) || [];
+                    order.items.forEach(item => {
+                        db.ref('/products/' + item.id + '/stock').transaction(currentStock => (currentStock || 0) + item.qty);
+                        // ⭐ سجل حركة المخزون: تسجيل رجوع المنتج بسبب إلغاء العميل لطلبه
+                        let pName = (allProdsForNames.find(x => x.id === item.id) || {}).titleAr || item.id;
+                        window.logStockMovementPublic({
+                            productId: item.id, titleAr: pName, type: 'in', qty: item.qty,
+                            reason: `رجوع للمخزون بسبب إلغاء العميل للطلب رقم ${order.id}`
+                        });
+                    });
+                }
+                let succMsg = currentLang === 'ar' ? "تم إلغاء الطلب بنجاح وتم استرجاع المنتجات للمخزون." : "Order cancelled successfully.";
+                alert(succMsg);
+            });
+        } else {
+            let errMsg = currentLang === 'ar' ? "عفواً، لا يمكن إلغاء الطلب بعد شحنه." : "Sorry, order cannot be cancelled after shipping.";
+            alert(errMsg);
+        }
+    });
+}
+
+// ============================================================================
+// ⭐ فاتورة العميل (صفحة "طلباتي") — نسخة مطابقة لفاتورة الأدمن بالظبط، لكن
+// بدون أي دالة إدارية، عشان العميل يقدر يشوف فاتورة طلبه بنفس الشكل الرسمي.
+// ⭐ تحديث: بقت الفاتورة متجاوبة بالكامل مع شاشات الموبايل (Responsive) —
+// نفس المحتوى والبيانات وشريط الضمان بالظبط (بيظهر فقط لو الطلب "تم التوصيل")
+// لكن بيتحول تلقائياً لعرض عمودي (كروت) بدل جدول أفقي لما الشاشة تضيق، عشان
+// العميل يقدر يقرأ فاتورته بسهولة من موبايله من غير سكرول جانبي أو نص متزنّق.
+// ============================================================================
+
+// ⭐ نظام الضمان: بناء قسم الضمان في أسفل الفاتورة — بيظهر بس لو فيه منتج
+// واحد على الأقل في الطلب عنده ضمان (order.warrantyToken موجود)، وشريط
+// تفعيل الضمان نفسه (QR + الكود السري) ما يظهرش إلا لما الطلب يبقى "تم
+// التوصيل" فعليًا، لأن مهلة التفعيل بتتحسب من تاريخ التسليم.
+// (نفس منطق الأدمن والشرط بالظبط — اتغيّر فيه بس الكلاسات عشان الاستجابة).
+window.buildInvoiceWarrantySection = function(order, allProds) {
+    let warrantyItems = (order.items || []).filter(it => (parseInt(it.warrantyMonths) || 0) > 0);
+
+    if (!order.warrantyToken || !warrantyItems.length) {
+        return `<div class="inv-no-warranty" style="text-align:center;font-size:11px;padding:8px;color:#888;">
+            هذه الفاتورة لا تحتوي على منتجات مشمولة بضمان.
+        </div>`;
+    }
+
+    if (order.status !== 'Delivered') {
+        return `<div class="inv-warranty-pending" style="text-align:center;font-size:12.5px;padding:12px 16px;color:#b9740b;background:#fff7ed;border-top:3px dashed #f38c18;">
+            🛡️ هذه الفاتورة تحتوي على منتجات مشمولة بضمان — سيظهر رابط تفعيل الضمان هنا بعد تسجيل استلامك للمنتج (تم التوصيل).
+        </div>`;
+    }
+
+    let warrantyLink = window.buildWarrantyLink ? window.buildWarrantyLink(order.warrantyToken) : ('warranty.html?token=' + order.warrantyToken);
+    let qrImgUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=' + encodeURIComponent(warrantyLink);
+    let graceDays = window.getWarrantyGraceDaysSetting ? window.getWarrantyGraceDaysSetting() : 3;
+
+    let itemsListHtml = warrantyItems.map(it => {
+        let p = (allProds || []).find(x => x.id === it.id);
+        let name = p ? p.titleAr : it.id;
+        return `<div style="padding:2px 0;">🛡️ ${name} — ضمان ${it.warrantyMonths} شهر</div>`;
+    }).join('');
+
+    let secretCodeHtml = order.activationCode ? `
+        <div class="inv-warranty-code" style="background:#fdf5e6;border:2px dashed #f38c18;border-radius:6px;padding:6px 10px;text-align:center;">
+            <div style="font-size:9px;color:#1d364a;font-weight:bold;">الكود السري لحسابك:</div>
+            <div style="font-size:20px;font-weight:900;letter-spacing:4px;color:#f38c18;">${order.activationCode}</div>
+        </div>` : '';
+
+    let deadlineNoticeHtml = `
+        <div class="inv-warranty-deadline" style="font-size:12px;color:#d9534f;font-weight:bold;line-height:1.6;">
+            ⚠️ يجب تفعيل الضمان خلال ${graceDays} ${graceDays === 1 ? 'يوم' : 'أيام'} من استلام المنتج، وإلا هتفوت خدمة الضمان!
+        </div>`;
+
+    return `<div class="inv-warranty" style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+                padding:14px;border-top:3px dashed #f38c18;background:#f9fbfc;flex-wrap:wrap;">
+        <div class="inv-warranty-items" style="flex:1;text-align:right;min-width:0;">
+            <strong style="color:#1d364a;font-size:12px;">🛡️ المنتجات المشمولة بالضمان</strong>
+            <div style="font-size:11px;color:#333;line-height:1.6;margin-top:4px;">${itemsListHtml}</div>
+        </div>
+        <div class="inv-warranty-action" style="flex:0 0 auto;display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;">
+            <div class="inv-warranty-qr" style="text-align:center;flex-shrink:0;">
+                <strong style="color:#1d364a;font-size:11px;display:block;margin-bottom:6px;white-space:nowrap;">فعّل ضمانك الآن 🛡️</strong>
+                <img src="${qrImgUrl}" alt="QR تفعيل الضمان" style="width:100px;height:100px;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.15);border-radius:6px;">
+            </div>
+            ${secretCodeHtml}
+            ${deadlineNoticeHtml}
+        </div>
+    </div>`;
+};
+
+// ⭐ الأنماط المتجاوبة الخاصة بالفاتورة — بتتحقن مرة واحدة بس في الصفحة، وبتشتغل
+// فقط جوه عناصر بكلاس "eljory-invoice" عشان منأثرش على أي جزء تاني في الموقع.
+function ensureInvoiceResponsiveStyles() {
+    let styleEl = document.getElementById("eljoryInvoiceResponsiveStyles");
+    if (!styleEl) {
+        styleEl = document.createElement("style");
+        styleEl.id = "eljoryInvoiceResponsiveStyles";
+        document.head.appendChild(styleEl);
+    }
+    styleEl.textContent = `
+        /* ── الهيدر: صف واحد ثابت دايماً (لوجو يسار / العنوان وسط / بيانات التواصل يمين) ── */
+        .eljory-invoice .inv-top-header > div {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 6px !important;
+        }
+        .eljory-invoice .inv-shop-info {
+            text-align: right !important;
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+        .eljory-invoice .inv-shop-info div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .eljory-invoice .inv-title {
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
+        .eljory-invoice .inv-logo-box {
+            flex: 0 0 auto;
+        }
+
+        /* ── جداول أصغر بشكل عام (سطح المكتب والموبايل) ── */
+        .eljory-invoice .inv-info-table td,
+        .eljory-invoice .inv-items-table th,
+        .eljory-invoice .inv-items-table td,
+        .eljory-invoice .inv-footer-table td {
+            padding: 5px 4px !important;
+            font-size: 12px !important;
+        }
+        .eljory-invoice .inv-items-table-wrap {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .eljory-invoice .inv-items-table {
+            font-size: 12px !important;
+        }
+
+        @media (max-width: 620px) {
+            .eljory-invoice { border-width: 2px !important; border-radius: 8px !important; }
+            .eljory-invoice .inv-top-header { padding: 8px 10px !important; }
+            .eljory-invoice .inv-logo-box { width: 46px !important; height: 46px !important; }
+            .eljory-invoice .inv-shop-info div { font-size: 10px !important; }
+            .eljory-invoice .inv-title { font-size: 13px !important; }
+            .eljory-invoice .inv-info-table td { font-size: 10.5px !important; padding: 4px 3px !important; }
+            .eljory-invoice .inv-items-table th,
+            .eljory-invoice .inv-items-table td { font-size: 10px !important; padding: 4px 2px !important; }
+            .eljory-invoice .inv-footer-table td { font-size: 10.5px !important; }
+            .eljory-invoice .inv-total-row > div { font-size: 13px !important; padding: 8px !important; }
+            .eljory-invoice .inv-warranty {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                text-align: center !important;
+            }
+            .eljory-invoice .inv-warranty-items { text-align: center !important; }
+            .eljory-invoice .inv-warranty-action {
+                justify-content: center !important;
+                width: 100% !important;
+            }
+            .eljory-invoice .inv-warranty-qr,
+            .eljory-invoice .inv-warranty-code,
+            .eljory-invoice .inv-warranty-deadline {
+                width: 100% !important;
+                max-width: 260px !important;
+                margin: 0 auto !important;
+            }
+        }
+    `;
+}
+
+window.generateInvoiceTemplate = function(order) {
+    ensureInvoiceResponsiveStyles();
+
+    let allProds = JSON.parse(localStorage.getItem("eljory_products")) || [];
+    let c        = order.customer || {};
+    let invNum   = "INV-" + String(order.id).replace(/\D/g,'');
+    let payStatus= order.status === "Delivered" ? "تم الدفع (كاش)" : "لم يتم الدفع بعد";
+
+    let lblCode  = "كود", lblName = "اسم المنتج", lblQty = "الكمية", lblUnitPrice = "السعر للوحدة", lblRowTotal = "الإجمالي";
+
+    let rowsHtml = "";
+    (order.items || []).forEach(item => {
+        let pData = allProds.find(p => p.id === item.id);
+        let pName = pData ? pData.titleAr : item.id;
+        let rowTotal = item.price * item.qty;
+        rowsHtml += `<tr>
+            <td data-label="${lblCode}" style="border:1px solid #ccc;padding:8px;text-align:center;">${item.id}</td>
+            <td data-label="${lblName}" style="border:1px solid #ccc;padding:8px;text-align:center;">${pName}</td>
+            <td data-label="${lblQty}" style="border:1px solid #ccc;padding:8px;text-align:center;">${item.qty}</td>
+            <td data-label="${lblUnitPrice}" style="border:1px solid #ccc;padding:8px;text-align:center;">${item.price}</td>
+            <td data-label="${lblRowTotal}" style="border:1px solid #ccc;padding:8px;text-align:center;">${rowTotal}</td>
+        </tr>`;
+    });
+
+    return `<div class="eljory-invoice" style="width:100%;max-width:850px;margin:0 auto;background:white;padding:0;border:3px solid #1d364a;border-radius:10px;overflow:hidden;font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;text-align:center;">
+        <div class="inv-top-header" style="padding:10px 16px;border-bottom:3px solid #f38c18;">
+            <div>
+                <div class="inv-shop-info">
+                    <div style="font-weight:bold;color:#1d364a;">eljorystore.com</div>
+                    <div style="font-weight:bold;color:#1877f2;margin-top:2px;">
+                        <a href="https://www.facebook.com/Elgorystore" target="_blank" style="color:#1877f2;text-decoration:none;">facebook.com/Elgorystore</a>
+                    </div>
+                    <div style="font-weight:bold;color:#1d364a;margin-top:2px;">📞 01100395049</div>
+                </div>
+                <div class="inv-title" style="font-weight:900;color:#1d364a;font-size:18px;">فاتورة بيع</div>
+                <div class="inv-logo-box" style="width:64px;height:64px;display:flex;align-items:center;justify-content:center;">
+                    <img src="logo.png" alt="El Jory Store" style="max-width:100%;max-height:100%;">
+                </div>
+            </div>
+        </div>
+        <div style="padding:6px 16px;background:#fdf5e6;font-weight:bold;color:#f38c18;text-align:center;font-size:13px;">
+            <span>${invNum}</span>
+        </div>
+        <table class="inv-info-table" style="width:100%;border-collapse:collapse;">
+            <tr>
+                <td style="background:#1d364a;color:white;text-align:center;width:15%;">التاريخ :-</td>
+                <td style="text-align:center;width:35%;">${order.date||"---"}</td>
+                <td style="background:#1d364a;color:white;text-align:center;width:15%;">العنوان :-</td>
+                <td style="text-align:center;width:35%;">${c.address||"---"}</td>
+            </tr>
+            <tr>
+                <td style="background:#1d364a;color:white;text-align:center;">الاسم :-</td>
+                <td style="text-align:center;">${c.name||"---"}</td>
+                <td style="background:#1d364a;color:white;text-align:center;">رقم العميل :-</td>
+                <td style="text-align:center;">${c.phone||"---"}</td>
+            </tr>
+        </table>
+        <div class="inv-items-table-wrap">
+        <table class="inv-items-table" style="width:100%;border-collapse:collapse;margin-top:4px;">
+            <thead>
+                <tr style="background:#eef2f5;">
+                    <th style="border:1px solid #ccc;text-align:center;">${lblCode}</th>
+                    <th style="border:1px solid #ccc;text-align:center;">${lblName}</th>
+                    <th style="border:1px solid #ccc;text-align:center;">${lblQty}</th>
+                    <th style="border:1px solid #ccc;text-align:center;">${lblUnitPrice}</th>
+                    <th style="border:1px solid #ccc;text-align:center;">${lblRowTotal}</th>
+                </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+        </table>
+        </div>
+        <table class="inv-footer-table" style="width:100%;border-collapse:collapse;">
+            <tr>
+                <td style="border:1px solid #ccc;text-align:center;width:50%;">مصاريف شحن</td>
+                <td style="border:1px solid #ccc;text-align:center;width:50%;">${order.shippingFee||0}</td>
+            </tr>
+            ${(order.discount && order.discount > 0) ? `<tr>
+                <td style="border:1px solid #ccc;text-align:center;">قيمة الخصم${order.promoCode ? ' (' + order.promoCode + ')' : ''}</td>
+                <td style="border:1px solid #ccc;text-align:center;color:#d9534f;font-weight:bold;">-${order.discount}</td>
+            </tr>` : ''}
+            <tr>
+                <td style="border:1px solid #ccc;text-align:center;">حالة الدفع</td>
+                <td style="border:1px solid #ccc;text-align:center;">${payStatus}</td>
+            </tr>
+        </table>
+        <div class="inv-total-row" style="display:flex;">
+            <div style="flex:1;background:#1d364a;color:white;font-weight:bold;font-size:16px;text-align:center;padding:10px;">الإجمالي</div>
+            <div style="flex:1;background:#f38c18;color:white;font-weight:900;font-size:18px;text-align:center;padding:10px;">${order.total} جنيه</div>
+        </div>
+        ${window.buildInvoiceWarrantySection ? window.buildInvoiceWarrantySection(order, allProds) : ''}
+    </div>`;
+};
+
+window.printContentViaIframe = function(content) {
+    let iframe   = document.createElement('iframe');
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+    let basePath = window.location.href.split('?')[0];
+    basePath = basePath.substring(0, basePath.lastIndexOf('/') + 1);
+    let html = `<html dir="rtl"><head><title>طباعة الفاتورة - El Jory Store</title><base href="${basePath}">
+        <style>
+            @page { margin: 0; }
+            html, body { font-family:'Segoe UI',Tahoma,Arial,sans-serif; background:white; margin:0; padding:0; }
+            * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; box-sizing:border-box; }
+            .page-break { page-break-after:always; page-break-inside:avoid; width:100%; overflow:visible; margin:0; padding:0; }
+            .page-break:last-child { page-break-after:auto; }
+            .page-break > div, #printArea { width:100% !important; max-width:100% !important; height:auto; margin:0 !important; padding:0 !important; }
+            table { font-size:16px !important; margin-bottom:0 !important; }
+            td { padding:4px !important; }
+            /* عند الطباعة نضمن الشكل الأصلي (جدول أفقي) بغض النظر عن مقاس الشاشة */
+            .eljory-invoice { max-width:none !important; width:100% !important; height:auto !important; }
+            .eljory-invoice .inv-info-table tr,
+            .eljory-invoice .inv-items-table tr,
+            .eljory-invoice .inv-footer-table tr { display: table-row !important; }
+            .eljory-invoice .inv-info-table td,
+            .eljory-invoice .inv-items-table td,
+            .eljory-invoice .inv-footer-table td { display: table-cell !important; }
+            .eljory-invoice .inv-items-table thead { display: table-header-group !important; }
+            .eljory-invoice .inv-items-table td::before { content: none !important; }
+        </style>
+    </head><body>${content}<script>window.onload=function(){setTimeout(()=>{window.print();},800);}<\/script></body></html>`;
+    iframe.contentWindow.document.open();
+    iframe.contentWindow.document.write(html);
+    iframe.contentWindow.document.close();
+    setTimeout(() => { document.body.removeChild(iframe); }, 5000);
+};
+
+// ⭐ الكاش المحلي لأحدث قائمة طلبات العميل اللي ظهرت في صفحة "طلباتي"، عشان
+// نقدر نلاقي الطلب بسرعة لما العميل يدوس عليه من غير ما نعمل استعلام تاني.
+window._myOrdersCache = [];
+
+// ⭐ فتح مودال عرض فاتورة طلب معين لأي عميل من صفحة "طلباتي" (account.html).
+// المودال بيتبني مرة واحدة بس في الصفحة (Singleton) وبعد كده بس بنحدّث محتواه.
+window.viewMyInvoice = function(orderId) {
+    let order = (window._myOrdersCache || []).find(o => o.id === orderId);
+    if (!order) return;
+
+    let modal = document.getElementById("customerInvoiceModal");
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = "customerInvoiceModal";
+        modal.style.cssText = "display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);justify-content:center;align-items:center;z-index:9000;font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;padding:10px;box-sizing:border-box;";
+        modal.innerHTML = `
+            <div style="position:relative;max-height:95vh;overflow-y:auto;width:1000px;max-width:100%;display:flex;flex-direction:column;align-items:center;">
+                <div style="width:100%;text-align:left;margin-bottom:10px;display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
+                    <button onclick="printMyInvoice()"
+                            style="background:#1d364a;color:white;border:none;padding:10px 20px;cursor:pointer;border-radius:5px;font-size:15px;font-weight:bold;">
+                        🖨️ طباعة الفاتورة
+                    </button>
+                    <button onclick="document.getElementById('customerInvoiceModal').style.display='none'"
+                            style="background:#d9534f;color:white;border:none;padding:10px 20px;cursor:pointer;border-radius:5px;font-size:15px;font-weight:bold;">
+                        ✖ إغلاق
+                    </button>
+                </div>
+                <div id="customerInvoicePrintArea" style="width:100%;background:white;padding:12px;border-radius:10px;box-sizing:border-box;"></div>
+            </div>`;
+        document.body.appendChild(modal);
+    }
+
+    document.getElementById("customerInvoicePrintArea").innerHTML = window.generateInvoiceTemplate(order);
+    modal.style.display = "flex";
+};
+
+window.printMyInvoice = function() {
+    let area = document.getElementById("customerInvoicePrintArea");
+    if (!area) return;
+    window.printContentViaIframe(`<div class="page-break">${area.innerHTML}</div>`);
+};
+
+window.loadAdminRegions = function() {
+    let regions = JSON.parse(localStorage.getItem("eljory_regions")) || [];
+    
+    if (regions.length > 0 && typeof regions[0] === 'string') {
+        regions = regions.map(r => ({ name: r, fee: 0, isActive: true }));
+        db.ref('/regions').set(regions);
+    }
+    
+    let regSelect = document.getElementById("regRegion");
+    if(regSelect) {
+        let defOpt = currentLang === 'ar' ? '-- اختر المنطقة --' : '-- Select Region --';
+        regSelect.innerHTML = `<option value="">${defOpt}</option>`;
+        regions.forEach(reg => {
+            let isActive = reg.isActive !== false;
+            if (isActive) regSelect.innerHTML += `<option value="${reg.name}">${reg.name}</option>`;
+        });
+    }
+
+    let newAddrRegSelect = document.getElementById("newAddressRegion");
+    if(newAddrRegSelect) {
+        let defOpt2 = currentLang === 'ar' ? '-- اختر المنطقة --' : '-- Select Region --';
+        newAddrRegSelect.innerHTML = `<option value="">${defOpt2}</option>`;
+        regions.forEach(reg => {
+            let isActive = reg.isActive !== false;
+            if (isActive) newAddrRegSelect.innerHTML += `<option value="${reg.name}">${reg.name}</option>`;
+        });
+    }
+
+    let list = document.getElementById("adminRegionsList");
+    if(list) {
+        list.innerHTML = "";
+        regions.forEach((reg, index) => {
+            let feeTxt = reg.fee === 0 ? "مجاني" : `${reg.fee} ج.م`;
+            list.innerHTML += `<span class="badge" style="font-size:14px; padding:8px 15px;">${reg.name} <span style="color:#f38c18;">(${feeTxt})</span> <span class="badge-remove" onclick="deleteAdminRegion(${index})">✖</span></span>`;
+        });
+    }
+}
+
+window.addAdminRegion = function() {
+    let name = document.getElementById("newRegionName").value.trim();
+    let feeInput = document.getElementById("newRegionFee") ? document.getElementById("newRegionFee").value : "0";
+    let fee = feeInput === "" ? 0 : parseFloat(feeInput);
+    
+    if(!name) return alert("اكتب اسم المنطقة أولاً");
+    let regions = JSON.parse(localStorage.getItem("eljory_regions")) || [];
+    if(regions.find(r => r.name === name)) return alert("المنطقة موجودة مسبقاً");
+    
+    regions.push({name: name, fee: fee, isActive: true});
+    db.ref('/regions').set(regions).then(() => {
+        document.getElementById("newRegionName").value = "";
+        if(document.getElementById("newRegionFee")) document.getElementById("newRegionFee").value = "";
+    });
+}
+
+window.deleteAdminRegion = function(index) {
+    if(!confirm("حذف هذه المنطقة؟")) return;
+    let regions = JSON.parse(localStorage.getItem("eljory_regions")) || [];
+    regions.splice(index, 1);
+    db.ref('/regions').set(regions);
+}
+
+// === إعدادات الإدمن المربوطة بالسحابة ===
+window.renderAdminCustomers = function() {
+    let tbody = document.getElementById("adminCustomersBody");
+    if(!tbody) return;
+    tbody.innerHTML = "";
+
+    let usersDB = JSON.parse(localStorage.getItem("eljory_users_db")) || [];
+    let ordersDB = JSON.parse(localStorage.getItem("eljory_orders")) || [];
+
+    usersDB.reverse().forEach((u, index) => {
+        let actualIndex = usersDB.length - 1 - index;
+        let userOrders = ordersDB.filter(o => o.customer && getShortPhone(o.customer.phone) === getShortPhone(u.phone));
+        let totalOrders = userOrders.length;
+        let deliveredOrders = userOrders.filter(o => o.status === "Delivered").length;
+        let cancelledOrders = userOrders.filter(o => o.status === "Cancelled").length;
+        let totalSpent = userOrders.filter(o => o.status === "Delivered").reduce((sum, order) => sum + order.total, 0);
+        let primaryAddr = u.addresses && u.addresses.find(a => a.isPrimary) ? u.addresses.find(a => a.isPrimary).text : "غير محدد";
+        let blockStatus = u.isBlocked ? `<span style="color:red; font-weight:bold;">محظور ❌</span>` : `<span style="color:green; font-weight:bold;">نشط ✅</span>`;
+        let historyCount = u.pointsHistory ? u.pointsHistory.length : 0;
+
+        tbody.innerHTML += `
+            <tr style="${u.isBlocked ? 'background-color: #ffeaea;' : ''}">
+                <td><strong>${u.id || u.phone || 'غير محدد'}</strong></td>
+                <td><strong>${u.name}</strong><br><small>📞 ${u.phone}</small><br><small style="color:gray;">✉️ ${u.email}</small></td>
+                <td><small>${primaryAddr}</small></td>
+                <td><small>${u.joinDate || 'غير مسجل'}</small></td>
+                <td style="text-align:center;"><strong>${totalOrders}</strong></td>
+                <td style="text-align:center;"><span style="color:green;" title="تم التوصيل">${deliveredOrders}</span> / <span style="color:red;" title="ملغي">${cancelledOrders}</span></td>
+                <td style="color:#f38c18; font-weight:bold;">${totalSpent} ج.م</td>
+                <td>${blockStatus}</td>
+                <td>
+                    <button class="btn" style="background:#17a2b8; margin-bottom:5px; padding: 5px 10px;" onclick="editCustomerFull(${actualIndex})">⚙️ تعديل</button>
+                    <button class="btn" style="background:#f38c18; margin-bottom:5px; padding: 5px 10px;" onclick="viewCustomerPointsHistory(${actualIndex})">📜 السجل (${historyCount})</button>
+                    <button class="btn btn-red" style="margin-bottom:5px; padding: 5px 10px;" onclick="deleteCustomerFull(${actualIndex})">🗑️ حذف</button>
+                    <button class="btn ${u.isBlocked ? 'btn-green' : 'btn-red'}" style="padding: 5px 10px;" onclick="toggleBlockUser(${actualIndex})">${u.isBlocked ? 'فك الحظر' : 'حظر'}</button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+window.toggleBlockUser = function(index) {
+    let usersDB = JSON.parse(localStorage.getItem("eljory_users_db")) || [];
+    if(usersDB[index]) {
+        let phoneKey = getShortPhone(usersDB[index].phone);
+        db.ref('/users/' + phoneKey).update({isBlocked: !usersDB[index].isBlocked}).then(() => {
+            let msg = !usersDB[index].isBlocked ? "تم حظر العميل بنجاح. لن يتمكن من تسجيل الدخول." : "تم فك الحظر عن العميل.";
+            alert(msg);
+        });
+    }
+}
+
+window.exportCustomersCSV = function() {
+    let usersDB = JSON.parse(localStorage.getItem("eljory_users_db")) || [];
+    let ordersDB = JSON.parse(localStorage.getItem("eljory_orders")) || [];
+    if(usersDB.length === 0) return alert("لا يوجد عملاء لتصديرهم");
+
+    // ⚠️ إصلاح: كانت الأعمدة من غير أي quoting، فلو اسم أو عنوان عميل فيه فاصلة
+    // كانت بتتكسر في إكسيل. دلوقتي بنحط كل قيمة بين علامتي اقتباس وبنعمل escape
+    // للاقتباسات الداخلية، بنفس أسلوب exportProductsCSV بالظبط.
+    let esc = v => `"${String(v === undefined || v === null ? "" : v).replace(/"/g, '""')}"`;
+
+    let csvContent = "كود العميل;الاسم;التليفون;البريد الالكتروني;تاريخ التسجيل;وقت التسجيل;العنوان الاساسي;اجمالي الطلبات;تم التوصيل;ملغي;اجمالي المدفوعات;حالة الحساب\r\n";
+
+    usersDB.forEach(u => {
+        let userOrders = ordersDB.filter(o => o.customer && getShortPhone(o.customer.phone) === getShortPhone(u.phone));
+        let deliveredCount = userOrders.filter(o => o.status === "Delivered").length;
+        let totalSpent = userOrders.filter(o => o.status === "Delivered").reduce((sum, order) => sum + order.total, 0);
+        let primaryAddr = u.addresses && u.addresses.find(a => a.isPrimary) ? u.addresses.find(a => a.isPrimary).text : "غير محدد";
+        let row = [
+            esc(u.id || "N/A"), esc(u.name), esc(u.phone), esc(u.email),
+            esc(u.joinDate || "N/A"), esc(u.joinTime || "—"), esc(primaryAddr), userOrders.length, deliveredCount,
+            userOrders.filter(o => o.status === "Cancelled").length, totalSpent,
+            esc(u.isBlocked ? "محظور" : "نشط")
+        ];
+        csvContent += row.join(";") + "\r\n";
+    });
+
+    let bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+    let blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
+    let url = URL.createObjectURL(blob);
+    let link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `ElJory_Customers_${new Date().toLocaleDateString()}.csv`);
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+}
+
+window.renderLoyaltyBanner = function() {
+    let oldBanner = document.getElementById("loyaltyGlobalBanner");
+    if(oldBanner) oldBanner.remove();
+
+    let settings = JSON.parse(localStorage.getItem("eljory_loyalty_settings")) || { system: "global", spent: 10, earn: 1 };
+    
+    if(settings.system === "global") {
+        let txt1 = currentLang === 'ar' ? 'تسوق الآن بـ' : 'Shop now for';
+        let txt2 = currentLang === 'ar' ? 'ج.م واحصل على' : 'EGP and get';
+        let txt3 = currentLang === 'ar' ? 'نقطة تضاف لمحفظتك! 🎁' : 'points added to your wallet! 🎁';
+        
+        let bannerText = `${txt1} ${settings.spent} ${txt2} ${settings.earn} ${txt3}`;
+        let bannerHTML = `<div id="loyaltyGlobalBanner" style="background-color: #1d364a; color: #f38c18; text-align: center; padding: 10px; font-weight: bold; font-size: 16px; border-bottom: 3px solid #f38c18;">${bannerText}</div>`;
+        document.body.insertAdjacentHTML('afterbegin', bannerHTML);
+    }
+}
+
+window.loadAdminLoyalty = function() {
+    let settings = JSON.parse(localStorage.getItem("eljory_loyalty_settings")) || { system: "global", spent: 10, earn: 1, expiryPeriods: [] };
+    if (document.getElementById("loyaltySysGlobal")) {
+        document.getElementById("loyaltySysGlobal").checked  = settings.system === "global";
+        document.getElementById("loyaltySysProduct").checked = settings.system === "product";
+        document.getElementById("loyaltyGlobalSpent").value  = settings.spent;
+        document.getElementById("loyaltyGlobalEarn").value   = settings.earn;
+        expiryPeriods = settings.expiryPeriods || [];
+        renderExpiryPeriods();
+        toggleLoyaltyView();
+        renderLoyaltyProductsTable();
+    }
+};
+
+window.toggleLoyaltyView = function() {
+    let system = document.querySelector('input[name="loyaltySystem"]:checked').value;
+    document.getElementById("loyaltyGlobalSettings").style.display = system === "global" ? "block" : "none";
+    document.getElementById("loyaltyProductSettings").style.display = system === "product" ? "block" : "none";
+    document.getElementById("labelSysGlobal").style.borderColor = system === "global" ? "#f38c18" : "transparent";
+    document.getElementById("labelSysProduct").style.borderColor = system === "product" ? "#f38c18" : "transparent";
+}
+
+window.saveLoyaltySettings = function() {
+    let system = document.querySelector('input[name="loyaltySystem"]:checked').value;
+    let spent  = document.getElementById("loyaltyGlobalSpent").value || 10;
+    let earn   = document.getElementById("loyaltyGlobalEarn").value || 1;
+    let settings = {
+        system: system,
+        spent: parseFloat(spent),
+        earn: parseFloat(earn),
+        expiryPeriods: expiryPeriods
+    };
+    db.ref('/settings').set(settings).then(() => {
+        alert("تم حفظ إعدادات نظام الولاء بنجاح!");
+    });
+};
+
+window.renderLoyaltyProductsTable = function() {
+    let tbody = document.getElementById("loyaltyProductsBody");
+    if(!tbody) return;
+    tbody.innerHTML = "";
+    let products = JSON.parse(localStorage.getItem("eljory_products")) || [];
+    products.forEach((p, index) => {
+        let currentPts = p.points || 0;
+        tbody.innerHTML += `
+            <tr>
+                <td><img src="${p.img}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;"></td>
+                <td><strong>${p.titleAr}</strong></td>
+                <td>${p.price} ج.م</td>
+                <td><input type="number" id="pts_${p.id}" class="form-control" value="${currentPts}" style="width: 100%;"></td>
+                <td><button class="btn btn-green" onclick="saveProductPoints('${p.id}')">حفظ</button></td>
+            </tr>
+        `;
+    });
+}
+
+window.saveProductPoints = function(productId) {
+    let newPts = parseFloat(document.getElementById(`pts_${productId}`).value) || 0;
+    db.ref('/products/' + productId + '/points').set(newPts).then(() => {
+        alert("تم حفظ النقاط للمنتج بنجاح!");
+    });
+}
+
+window.renderCategoriesGrid = function() {
+    const container = document.getElementById("dynamicCategoriesGrid");
+    if(!container) return; 
+    container.innerHTML = "";
+
+    let cats = JSON.parse(localStorage.getItem("eljory_categories")) || [];
+    cats.sort((a, b) => (parseInt(a.priority) || 0) - (parseInt(b.priority) || 0));
+    let activeMainCats = cats.filter(c => !c.parentId && c.isActive !== false);
+
+    // لو الحاوية عليها data-featured-only="1" (سيكشن "تسوق بالفئة" في الصفحة
+    // الرئيسية)، بنعرض بس الأقسام اللي الأدمن علّم عليها كـ "مميزة". صفحة كل
+    // الأقسام (categories.html) مالهاش الخاصية دي فبتفضل تعرض كل الأقسام.
+    let featuredOnly = container.getAttribute('data-featured-only') === '1';
+    if (featuredOnly) {
+        activeMainCats = activeMainCats.filter(c => c.isFeatured === true);
+    }
+
+    if(activeMainCats.length === 0) {
+        let emptyMsg = currentLang === 'ar' ? 'لا توجد أقسام متاحة حالياً.' : 'No categories available currently.';
+        container.innerHTML = `<p style='text-align:center; width:100%; color:gray; font-size:18px;'>${emptyMsg}</p>`;
+        return;
+    }
+
+    activeMainCats.forEach(cat => {
+        let defaultDesc = cat.id === "screens" ? 
+            (currentLang === 'ar' ? "حماية فائقة من الأكريليك التركي لجميع المقاسات" : "Premium Turkish Acrylic protection for all sizes") : 
+            (currentLang === 'ar' ? "تصفح أحدث المنتجات في هذا القسم بأسعار تنافسية" : "Browse the latest products in this category at competitive prices");
+        
+        let catImg = cat.img ? cat.img : "https://via.placeholder.com/300x200";
+        let catName = currentLang === 'ar' ? cat.nameAr : (cat.nameEn || cat.nameAr);
+        let btnText = currentLang === 'ar' ? 'تصفح القسم' : 'Browse Category';
+
+        container.innerHTML += `
+            <div class="category-card">
+                <a href="shop.html?cat=${cat.id}" style="text-decoration:none; color:inherit; display:block;">
+                <img src="${catImg}" alt="${catName}">
+                <h3>${catName}</h3>
+                </a>
+                <p>${defaultDesc}</p>
+                <a href="shop.html?cat=${cat.id}" class="btn-browse">${btnText}</a>
+            </div>
+        `;
+    });
+
+    // سحب بالماوس للشريط (نفس أسلوب شريط المنتجات) — متاح فقط في الصفحات
+    // اللي فيها sections-renderer.js (الصفحة الرئيسية).
+    if (featuredOnly && typeof window.joryInitStripDrag === 'function') {
+        setTimeout(() => window.joryInitStripDrag('dynamicCategoriesGrid'), 60);
+    }
+}
+
+window.onload = () => {
+    let langButton = document.getElementById("langBtn");
+    
+    if(langButton) {
+        langButton.addEventListener("click", () => {
+            currentLang = currentLang === 'ar' ? 'en' : 'ar';
+            localStorage.setItem("eljory_lang", currentLang);
+            applyTranslations(); 
+        });
+    }
+
+    initData(); 
+    applyTranslations();  
+    if(typeof buildNavMegaMenu === "function") buildNavMegaMenu();
+    renderCart();
+    renderLoyaltyBanner(); 
+
+    if(document.getElementById("ordersTableBody")) renderOrders();
+    if(document.getElementById("accountGreeting")) loadUserProfile();
+    
+    if(window.loadAdminRegions) loadAdminRegions(); 
+    if(document.getElementById("adminCustomersBody")) renderAdminCustomers(); 
+    if(document.getElementById("loyaltySysGlobal")) loadAdminLoyalty(); 
+    if(typeof updateCartBadge === "function") updateCartBadge();
+};
+
+// دالة موحدة لفحص انتهاء صلاحية نقاط الولاء وتصفيرها في فايربيس عند الحاجة
+window.checkAndResetLoyaltyExpiry = function(user, phoneKey) {
+    let settings = JSON.parse(localStorage.getItem("eljory_loyalty_settings")) || {};
+    let periods  = settings.expiryPeriods || [];
+    if (!periods.length || !user) return user;
+
+    let now      = new Date();
+    let curMonth = now.getMonth() + 1;
+    let curDay   = now.getDate();
+    let curYear  = now.getFullYear();
+
+    let history      = user.pointsHistory || [];
+    let totalDeduct  = 0;
+    let changed      = false;
+
+    history = history.map(entry => {
+        if (entry.type !== "earn" || entry.expired) return entry;
+
+        // تحويل التاريخ من "DD/MM/YYYY" لشهر
+        let parts     = entry.date.split("/");
+        let entryMonth = parseInt(parts[1]);
+        let entryYear  = parseInt(parts[2]);
+
+        // إيجاد الفترة المناسبة لهذه النقاط
+        let matchedPeriod = periods.find(p =>
+            entryMonth >= p.earnFrom && entryMonth <= p.earnTo
+        );
+        if (!matchedPeriod) return entry;
+
+        // هل عدينا يوم الانتهاء في أي سنة بعد سنة الاكتساب؟
+        let expireYear = entryYear;
+        // لو شهر الانتهاء أكبر من شهر الاكتساب → نفس السنة، غير كده → السنة الجاية
+        if (matchedPeriod.expireMonth <= matchedPeriod.earnTo) {
+            expireYear = entryYear + 1;
+        }
+
+        let isPastExpiry = (curYear > expireYear) ||
+            (curYear === expireYear && curMonth > matchedPeriod.expireMonth) ||
+            (curYear === expireYear && curMonth === matchedPeriod.expireMonth && curDay >= matchedPeriod.expireDay);
+
+        if (isPastExpiry) {
+            totalDeduct += entry.amount;
+            changed = true;
+            return { ...entry, expired: true };
+        }
+        return entry;
+    });
+
+    if (changed && totalDeduct > 0) {
+        let actualDeduct = Math.min(totalDeduct, user.points || 0);
+        history.push({
+            type:   "deduct",
+            amount: actualDeduct,
+            reason: `انتهت صلاحية النقاط حسب الفترة المحددة 🧹`,
+            date:   now.toLocaleDateString('en-GB')
+        });
+        user.points        = Math.max(0, (user.points || 0) - actualDeduct);
+        user.pointsHistory = history;
+        db.ref('/users/' + phoneKey).update({
+            points:        user.points,
+            pointsHistory: history
+        });
+    }
+    return user;
+};
+
+let isRegisteringNow = false; // منع الضغط المتكرر أثناء التسجيل
+
+window.doRegister = async function(event) {
+    if (event) event.preventDefault();
+
+    // لو في عملية تسجيل شغالة بالفعل، تجاهل أي ضغطة زيادة
+    if (isRegisteringNow) return;
+
+    let name = document.getElementById("regName").value.trim();
+    let phone = document.getElementById("regPhone").value.trim();
+    let email = document.getElementById("regEmail").value.trim();
+    let region = document.getElementById("regRegion").value;
+    let address = document.getElementById("regAddress").value.trim();
+    let password = document.getElementById("regPassword").value;
+
+    let cleanPhone = window.getShortPhone(phone);
+    if (!name || !cleanPhone || !password || !region || !address) {
+        alert(currentLang === 'ar' ? "يرجى ملء جميع الحقول المطلوبة!" : "Please fill all required fields!");
+        return;
+    }
+
+    let btn = document.getElementById("btnRegisterSubmit");
+    let originalBtnText = btn ? btn.innerText : "";
+
+    isRegisteringNow = true;
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = "0.6";
+        btn.style.cursor = "not-allowed";
+        btn.innerText = currentLang === 'ar' ? "⏳ جاري إنشاء الحساب..." : "⏳ Creating account...";
+    }
+
+    try {
+        let snapshot = await db.ref('/users/' + cleanPhone).once('value');
+
+        if (snapshot.exists()) {
+            alert(currentLang === 'ar' ? "هذا الرقم مسجل بالفعل! برجاء تسجيل الدخول." : "Phone already registered! Please login.");
+            toggleAuth('login');
+            return;
+        }
+
+        let salt = window.generateSalt();
+        let passwordHash = await window.hashPassword(password, salt);
+
+        let newUser = {
+            id: 'USR-' + cleanPhone,
+            name: name,
+            phone: cleanPhone,
+            email: email,
+            passwordHash: passwordHash,
+            passwordSalt: salt,
+            region: region,
+            address: address + " - " + region,
+            addresses: [{ id: Date.now(), text: address + " - " + region, isPrimary: true }],
+            points: 0,
+            joinDate: new Date().toLocaleDateString('en-GB'),
+            joinTime: new Date().toLocaleTimeString('ar-EG'),
+            isBlocked: false
+        };
+
+        await db.ref('/users/' + cleanPhone).set(newUser);
+
+        alert(currentLang === 'ar' ? "تم إنشاء الحساب بنجاح! 🚀" : "Account created successfully! 🚀");
+        localStorage.setItem("eljory_auth", "true");
+        localStorage.setItem("eljory_active_phone", cleanPhone);
+        localStorage.setItem("eljory_active_user", JSON.stringify(newUser));
+        window.location.href = "account.html";
+
+    } catch (error) {
+        console.error("خطأ في التسجيل: ", error);
+        alert(currentLang === 'ar' ? "حدث خطأ أثناء إنشاء الحساب، برجاء المحاولة مرة أخرى." : "An error occurred while creating your account. Please try again.");
+    } finally {
+        isRegisteringNow = false;
+        if (btn) {
+            btn.disabled = false;
+            btn.style.opacity = "1";
+            btn.style.cursor = "pointer";
+            btn.innerText = originalBtnText || (currentLang === 'ar' ? "إنشاء الحساب" : "Create Account");
+        }
+    }
+};
