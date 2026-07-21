@@ -1,0 +1,23 @@
+﻿name: Deploy Bot to Server
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'eljory-whatsapp-bot/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd ${{ secrets.DEPLOY_PATH }}
+            git pull origin main
+            npm install --omit=dev
+            pm2 restart jory-bot
