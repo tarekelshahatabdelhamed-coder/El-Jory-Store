@@ -19,6 +19,9 @@ const qrcode = require('qrcode-terminal');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getDatabase, ServerValue } = require('firebase-admin/database');
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
 
 // ==================== سجل الأوردرات اللي بيجمعها البوت ====================
 // كل ما البوت يجمع بيانات عميل عايز يأكد أوردر (اسم + رقم + عنوان مفصّل)،
@@ -640,22 +643,67 @@ client.on('ready', function () {
 // البوت "شغال" شكليًا (status: online) بس هو فعليًا مش قادر يبعت ولا
 // يستقبل أي رسايل حقيقية (بيظهر بخطأ "detached Frame" في اللوج).
 // الحارس ده بيتأكد كل دقيقتين إن صفحة واتساب لسه شغالة وبترد فعليًا،
-// ولو لاقاها اتقفلت أو متجمدة، بيقفل الـ process بنفسه (process.exit)
-// عشان pm2 يعيد تشغيله تلقائيًا بجلسة نضيفة من غير أي تدخل يدوي.
+// ولو لاقاها اتقفلت أو متجمدة، بيعمل تنظيف كامل (قتل أي Chromium يتيم +
+// مسح ملفات القفل Singleton*) قبل ما يقفل الـ process، عشان لما pm2 يعيد
+// تشغيله تلقائيًا يلاقي جلسة نضيفة فعلاً - من غير كده كان بيدخل في حلقة
+// كراش لا نهائية (Chromium مش بيقدر يفتح لأن ملف القفل القديم لسه موجود).
 const BROWSER_WATCHDOG_INTERVAL_MS = 2 * 60 * 1000; // فحص كل دقيقتين
+const SESSION_DIR = path.join(__dirname, '.wwebjs_auth');
+
+function cleanupStaleSession() {
+    // 1) نقتل بالقوة أي عملية Chromium لسه شغالة وماسكة نفس مجلد الجلسة -
+    // ده اللي بيمنع فتح نسخة جديدة لو العملية القديمة فضلت "يتيمة" عالقة.
+    try {
+        execSync(`pkill -9 -f "${SESSION_DIR}"`, { stdio: 'ignore' });
+    } catch (e) {
+        // pkill بيرجع كود خطأ لو مفيش أي عملية مطابقة أصلاً - ده طبيعي ومش مشكلة
+    }
+    // 2) نمسح ملفات القفل (Singleton*) المتبقية من الجلسة القديمة، اللي
+    // بتفضل موجودة أحيانًا حتى بعد قتل العملية، وبتمنع Chromium الجديد
+    // من الفتح تاني.
+    try {
+        if (fs.existsSync(SESSION_DIR)) {
+            const walk = (dir) => {
+                for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                    const full = path.join(dir, entry.name);
+                    if (entry.isDirectory()) walk(full);
+                    else if (/^Singleton/i.test(entry.name)) {
+                        try { fs.unlinkSync(full); } catch (e) { /* تجاهل */ }
+                    }
+                }
+            };
+            walk(SESSION_DIR);
+        }
+    } catch (e) {
+        console.error('⚠️ تعذر تنظيف ملفات القفل:', e.message);
+    }
+}
+
+async function forceRestartBot(reason) {
+    console.error('🚨 حارس البراوزر: ' + reason + ' - جاري التنظيف وإعادة التشغيل...');
+    try {
+        if (client.pupBrowser) await client.pupBrowser.close().catch(() => {});
+    } catch (e) { /* تجاهل - المهم إن التنظيف الجبري جاي بعد كده */ }
+    cleanupStaleSession();
+    process.exit(1); // pm2 هيعيد تشغيل البوت تلقائيًا بجلسة نضيفة فعلاً
+}
+
+// تنظيف استباقي مرة واحدة عند بدء تشغيل البوت - بيحمينا لو آخر مرة اتقفل
+// البوت فيها كانت بطريقة غير نظيفة (كراش، kill يدوي، انقطاع كهرباء...)
+// وسابت ملف قفل قديم كان هيمنع Chromium من الفتح من الأساس.
+cleanupStaleSession();
 
 setInterval(async () => {
     try {
         const page = client.pupPage;
         if (!page || page.isClosed()) {
-            console.error('🚨 حارس البراوزر: صفحة واتساب مقفولة أو مش موجودة - إعادة تشغيل البوت...');
-            process.exit(1);
+            await forceRestartBot('صفحة واتساب مقفولة أو مش موجودة');
+            return;
         }
         // فحص إضافي: نتأكد إن الصفحة فعلاً بترد ومش "متجمدة" من جوه
         await page.evaluate(() => true);
     } catch (err) {
-        console.error('🚨 حارس البراوزر: تعذر التواصل مع صفحة واتساب (' + err.message + ') - إعادة تشغيل البوت...');
-        process.exit(1);
+        await forceRestartBot('تعذر التواصل مع صفحة واتساب (' + err.message + ')');
     }
 }, BROWSER_WATCHDOG_INTERVAL_MS);
 
