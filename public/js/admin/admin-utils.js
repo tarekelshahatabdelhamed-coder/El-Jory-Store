@@ -54,6 +54,7 @@ window.PERM_SECTIONS = [
     { key: 'storefront',  label: '🖼️ واجهة المتجر' },
     { key: 'gallery',     label: '🖼️ استوديو الصور' },
     { key: 'accounting',  label: '💰 الحسابات والخزنة' },
+    { key: 'botsettings', label: '🤖 بوت الواتساب' },
     { key: 'team',        label: '👤 فريق العمل' }
 ];
 
@@ -71,6 +72,7 @@ window.getPermKeyForTab = function(tabId) {
         storefront: 'storefront', sections: 'storefront', 'custom-lists': 'storefront',
         'acc-overview': 'accounting', 'acc-treasury-accounts': 'accounting', 'acc-treasury-transactions': 'accounting',
         'acc-expenses': 'accounting', 'acc-price-history': 'accounting', 'acc-stock-movements': 'accounting', 'acc-reports': 'accounting',
+        botsettings: 'botsettings', botquickreplies: 'botsettings', botusagelog: 'botsettings', botorderslog: 'botsettings', botbroadcast: 'botsettings',
         team: 'team', foundations: 'team'
     };
     return map[tabId] || null;
