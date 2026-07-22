@@ -613,17 +613,16 @@ const MAX_MESSAGE_CHARS = 1500;
 const BOT_START_TIMESTAMP_SECONDS = Math.floor(Date.now() / 1000);
 
 // ==================== إعداد واتساب ====================
-// ⚠️ ملحوظة مهمة: شلنا executablePath بتاع '/usr/bin/chromium-browser' لأنه
-// نسخة Snap من كروميوم، والتطبيقات المثبتة بـ Snap بتحتاج "جلسة مستخدم"
-// كاملة (D-Bus session) عشان تشتغل صح - وده مش متوفر لما البوت شغال كخدمة
-// خلفية عبر pm2 من غير واجهة رسومية. ده كان بيسبب فشل متكرر في فتح
-// المتصفح ("cannot start document portal" / "Failed to launch... Code: 1")
-// خصوصًا بعد أي إعادة تشغيل. من غير executablePath، Puppeteer بيستخدم
-// نسخة Chromium الخاصة بيه المدمجة (اتنزلت تلقائيًا وقت npm install)،
-// وهي مش Snap وبتشتغل بثبات تحت أي بيئة خدمة خلفية زي pm2.
+// ⚠️ رجعنا نستخدم chromium-browser بتاع النظام (Snap) بعد ما اتصلحت مشكلة
+// الـ D-Bus بتفعيل `loginctl enable-linger ubuntu` على السيرفر. جربنا
+// قبل كده نسخة Puppeteer المدمجة (بدون executablePath)، بس السيرفر معماريته
+// ARM (aarch64) والنسخة اللي بتتنزل تلقائيًا مش متوافقة معاها (بتدي
+// Syntax error عند التشغيل). فالحل النهائي: نفضل مستخدمين chromium-browser
+// بتاع النظام، مع التأكد إن الـ linger مفعّل على السيرفر دايمًا.
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
+        executablePath: '/usr/bin/chromium-browser',
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
