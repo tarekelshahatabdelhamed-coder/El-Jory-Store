@@ -19,57 +19,39 @@ const qrcode = require('qrcode-terminal');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getDatabase, ServerValue } = require('firebase-admin/database');
-const fs = require('fs');
-const path = require('path');
 
-// ==================== إعداد شيت الأوردرات (ملف Excel/CSV محلي) ====================
-// كل ما البوت يجمع بيانات عميل عايز يأكد أوردر (اسم + رقم + عنوان مفصّل)، بيضيفله
-// صف جديد هنا تلقائيًا. الملف ده بصيغة CSV، وتقدر تفتحه بإكسل عادي مباشرة من غير
-// أي إعدادات أو حسابات إضافية - هيتحدث لحظيًا كل ما يجيلك أوردر جديد.
-const ORDERS_FILE_PATH = path.join(__dirname, 'orders.csv');
-// السطر "sep=," ده بيقول لإكسل صراحة "استخدم الفاصلة العادية كفاصل بين الأعمدة" -
-// بيحل مشكلة إن بعض إصدارات ويندوز العربي بتفتح الفاصل الافتراضي فاصلة منقوطة (؛).
-const ORDERS_CSV_SEP_HINT = 'sep=,\n';
-const ORDERS_CSV_HEADER = 'التاريخ والوقت,الاسم,رقم التليفون,العنوان,قيمة الشحن,سعر القطعة\n';
-// ⚠️ الترميز: رجعنا لـ UTF-8 (بدل UTF-16 اللي جربناه). السبب إن بعض إصدارات
-// إكسل بتتجاهل علامة الـ BOM خالص لملفات .csv عند الفتح بالـ Double-Click
-// العادي (بغض النظر عن الترميز نفسه)، وبتفتحها دايمًا بترميز النظام الافتراضي.
-// UTF-8 هو الأكثر توافقًا عالميًا وهو المعيار القياسي لملفات CSV، فلو المشكلة
-// استمرت، الحل الأضمن مش تغيير الترميز، لكن فتح الملف عن طريق:
-// Excel > Data > Get Data / From Text-CSV، واختيار "65001: Unicode (UTF-8)"
-// صراحة من قايمة File Origin وقت الاستيراد - ده بيضمن الفتح الصحيح 100%
-// بغض النظر عن سلوك الـ Double-Click في نسخة إكسل بتاعتك.
-const ORDERS_FILE_ENCODING = 'utf8';
+// ==================== سجل الأوردرات اللي بيجمعها البوت ====================
+// كل ما البوت يجمع بيانات عميل عايز يأكد أوردر (اسم + رقم + عنوان مفصّل)،
+// بيتسجل هنا في قاعدة البيانات (Firebase) تحت مسار /botOrdersLog - مش في
+// ملف محلي زي الأول، عشان تقدر تشوف الأوردرات وتنزّلها من لوحة الأدمن من
+// أي جهاز، وميضيعش الملف لو السيرفر اتغيّر أو انتقل.
+//
+// ⚠️ ملحوظة مهمة: لما عدد الأوردرات المسجّلة يوصل لـ 50، السجل كله بيتصفّر
+// تلقائيًا ويبدأ العدّ من صفر تاني. لازم تنزّل وتحفظ الأوردرات بانتظام من
+// لوحة الأدمن قبل ما يوصل العدد للحد ده، وإلا هتضيع.
+const BOT_ORDERS_LOG_RESET_THRESHOLD = 50;
 
-function ensureOrdersFileExists() {
-    if (!fs.existsSync(ORDERS_FILE_PATH)) {
-        // BOM (\uFEFF) في الأول عشان إكسل يتعرف على إن الملف UTF-8 من غير ما يتلخبط
-        fs.writeFileSync(ORDERS_FILE_PATH, '\uFEFF' + ORDERS_CSV_SEP_HINT + ORDERS_CSV_HEADER, ORDERS_FILE_ENCODING);
-    }
-}
-
-// بيهرّب أي فاصلة أو علامات اقتباس جوه القيمة نفسها عشان ملف الـ CSV مايتلخبطش
-function csvEscape(value) {
-    const str = String(value ?? '').replace(/"/g, '""').replace(/[\r\n]+/g, ' ').trim();
-    return `"${str}"`;
-}
-
-function appendOrderRow(order) {
+async function appendOrderRow(order) {
     try {
-        ensureOrdersFileExists();
-        const now = new Date().toLocaleString('ar-EG', { timeZone: 'Africa/Cairo' });
-        const row = [
-            csvEscape(now),
-            csvEscape(order.name),
-            csvEscape(order.phone),
-            csvEscape(order.address),
-            csvEscape(order.shipping || ''),
-            csvEscape(order.price || '')
-        ].join(',') + '\n';
-        fs.appendFileSync(ORDERS_FILE_PATH, row, ORDERS_FILE_ENCODING);
-        console.log(`📦 تم تسجيل أوردر جديد في orders.csv: ${order.name} - ${order.phone}`);
+        const ordersRef = db.ref('/botOrdersLog');
+        await ordersRef.push({
+            timestamp: ServerValue.TIMESTAMP,
+            name: order.name || '',
+            phone: order.phone || '',
+            address: order.address || '',
+            shipping: order.shipping || '',
+            price: order.price || ''
+        });
+        console.log(`📦 تم تسجيل أوردر جديد: ${order.name} - ${order.phone}`);
+
+        const snap = await ordersRef.once('value');
+        const count = snap.numChildren();
+        if (count >= BOT_ORDERS_LOG_RESET_THRESHOLD) {
+            await ordersRef.remove();
+            console.log(`🧹 وصل سجل الأوردرات لـ ${count} أوردر - تم مسحه بالكامل تلقائيًا وبدأ العدّ من جديد (تأكد إنك نزّلت النسخة قبل كده من لوحة الأدمن!)`);
+        }
     } catch (error) {
-        console.error('خطأ في تسجيل الأوردر في الشيت:', error.message);
+        console.error('خطأ في تسجيل الأوردر:', error.message);
     }
 }
 

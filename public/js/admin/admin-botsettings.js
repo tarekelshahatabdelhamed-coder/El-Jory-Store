@@ -827,3 +827,71 @@ window.exportBotUsageLogCSV = function() {
     link.download = `bot-usage-log-${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
 };
+
+// ================================================================
+// أوردرات البوت (اللي بيجمعها تلقائيًا من العملاء عن طريق واتساب)
+// السجل بيتصفّر بالكامل تلقائيًا من جانب البوت نفسه (index.js) لما
+// يوصل لـ 50 أوردر - إحنا هنا بس بنعرض ونوفر تنزيل CSV/Excel.
+// ================================================================
+let botOrdersLogCache = []; // [{ id, timestamp, name, phone, address, shipping, price }, ...]
+
+db.ref('/botOrdersLog').on('value', snap => {
+    const val = snap.val() || {};
+    botOrdersLogCache = Object.entries(val)
+        .map(([id, v]) => ({ id, ...v }))
+        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)); // الأحدث فوق
+    renderBotOrdersLog();
+});
+
+function formatOrderDateTime(ts) {
+    if (!ts) return '—';
+    return new Date(ts).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo', hour12: true });
+}
+
+window.renderBotOrdersLog = function() {
+    const body = document.getElementById("botOrdersLogBody");
+    const countEl = document.getElementById("botOrdersCount");
+    if (!body) return;
+
+    if (countEl) countEl.textContent = botOrdersLogCache.length;
+
+    if (!botOrdersLogCache.length) {
+        body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#888;padding:20px;">مفيش أوردرات مسجّلة حاليًا</td></tr>`;
+        return;
+    }
+
+    body.innerHTML = botOrdersLogCache.map(o => `
+        <tr>
+            <td>${formatOrderDateTime(o.timestamp)}</td>
+            <td>${o.name || '—'}</td>
+            <td dir="ltr" style="text-align:right;">${o.phone || '—'}</td>
+            <td>${o.address || '—'}</td>
+            <td>${o.shipping || '—'}</td>
+            <td>${o.price || '—'}</td>
+        </tr>
+    `).join('');
+};
+
+window.downloadBotOrdersCSV = function() {
+    if (!botOrdersLogCache.length) {
+        alert("مفيش أوردرات مسجّلة حاليًا عشان تنزّلها.");
+        return;
+    }
+    const header = 'التاريخ والوقت,الاسم,رقم التليفون,العنوان,قيمة الشحن,سعر القطعة\n';
+    const csvEscapeLocal = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = botOrdersLogCache.map(o => [
+        csvEscapeLocal(formatOrderDateTime(o.timestamp)),
+        csvEscapeLocal(o.name || ''),
+        csvEscapeLocal(o.phone || ''),
+        csvEscapeLocal(o.address || ''),
+        csvEscapeLocal(o.shipping || ''),
+        csvEscapeLocal(o.price || '')
+    ].join(',')).join('\n');
+
+    // sep=, بيقول لإكسل صراحة يستخدم الفاصلة العادية كفاصل بين الأعمدة
+    const blob = new Blob(['\uFEFF' + 'sep=,\n' + header + rows], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+};

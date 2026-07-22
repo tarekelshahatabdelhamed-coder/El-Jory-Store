@@ -209,6 +209,7 @@
         <button class="menu-btn sub-btn" onclick="switchTab('botsettings')">⚙️ الإعدادات العامة</button>
         <button class="menu-btn sub-btn" onclick="switchTab('botquickreplies')">⚡ الردود السريعة</button>
         <button class="menu-btn sub-btn" onclick="switchTab('botusagelog')">📊 سجل استهلاك التوكنز</button>
+        <button class="menu-btn sub-btn" onclick="switchTab('botorderslog')">📦 أوردرات البوت</button>
         <button class="menu-btn sub-btn" onclick="switchTab('botbroadcast')">📢 بحث وإرسال جماعي</button>
     </div>
 
@@ -973,6 +974,32 @@
             <tbody id="botUsageLogBody"></tbody>
         </table>
         <div id="botUsageLogPagination" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:20px;"></div>
+    </div>
+
+    <!-- ══════════════ قسم أوردرات البوت (اللي بيجمعها من العملاء تلقائيًا) ══════════════ -->
+    <div id="botorderslog" class="section">
+        <h3>أوردرات البوت 📦</h3>
+
+        <div style="background:#fff3cd;border:1px solid #f0ad4e;border-radius:8px;padding:15px 18px;margin-bottom:20px;font-size:13.5px;color:#7a5c00;line-height:1.8;">
+            ⚠️ <strong>مهم:</strong> السجل ده بيتصفّر بالكامل تلقائيًا لما يوصل لـ 50 أوردر، ويبدأ العدّ من صفر تاني.
+            نزّل نسخة (زرار "تنزيل Excel/CSV") بانتظام قبل ما يوصل العدد للحد ده، وإلا هتفقد الأوردرات القديمة.
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+            <strong style="font-size:15px;color:#1d364a;">العدد الحالي: <span id="botOrdersCount">0</span> / 50</strong>
+            <button class="btn" style="background:#28a745;color:#fff;" onclick="downloadBotOrdersCSV()">⬇️ تنزيل Excel/CSV</button>
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table class="table" style="width:100%;background:#fff;">
+                <thead>
+                    <tr>
+                        <th>التاريخ والوقت</th><th>الاسم</th><th>رقم التليفون</th><th>العنوان</th><th>قيمة الشحن</th><th>سعر القطعة</th>
+                    </tr>
+                </thead>
+                <tbody id="botOrdersLogBody"></tbody>
+            </table>
+        </div>
     </div>
 
     <!-- ══════════════ قسم البحث في المحادثات والإرسال الجماعي ══════════════ -->
