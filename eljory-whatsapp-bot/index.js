@@ -129,6 +129,30 @@ async function cleanupOldLiveLogs() {
 cleanupOldLiveLogs();
 setInterval(cleanupOldLiveLogs, 60 * 60 * 1000); // إعادة التنظيف كل ساعة
 
+// ==================== تأثير "بيكتب..." + تأخير طبيعي قبل الرد ====================
+// عشان الرد ميوصلش للعميل فورًا في نفس الثانية (شكل رد آلي واضح وميري
+// ثقة)، بنستنى شوية قبل ما نبعت، وبنفعّل مؤشر "بيكتب..." الأزرق اللي
+// واتساب بيوريه للعميل في نفس الوقت، عشان يحس إن في حد بيرد عليه فعلاً.
+async function sendReplyNaturally(message, chatKey, replyText) {
+    try {
+        const chat = await message.getChat();
+        await chat.sendStateTyping();
+    } catch (e) {
+        // لو فشل تفعيل مؤشر الكتابة لأي سبب، نكمل عادي من غير ما نوقف الرد
+    }
+
+    // تأخير عشوائي بين 2 و5 ثواني، بيتزود شوية لو الرد طويل - زي إنسان
+    // بيكتب فعلاً مش بيبعت رد آلي فوري. حد أقصى إضافي 4 ثواني عشان
+    // الردود الطويلة جدًا ماتاخدش وقت مبالغ فيه.
+    const baseDelay = 2000 + Math.random() * 3000;
+    const lengthBonus = Math.min(replyText.length * 15, 4000);
+    await new Promise(r => setTimeout(r, baseDelay + lengthBonus));
+
+    expectBotEcho(chatKey);
+    rememberBotReply(chatKey, replyText);
+    await message.reply(replyText);
+}
+
 async function saveConversation(chatKey, customerMessage, aiReply) {
     try {
         const conversationRef = db.ref(`conversations/${chatKey}`);
@@ -923,9 +947,7 @@ client.on('message_create', async function (message) {
             const combinedReply = quickReplies.map(q => q.reply).join('\n\n');
             const matchedTriggers = quickReplies.map(q => q.trigger).join(' | ');
             console.log(`⚡ رد سريع جاهز (${quickReplies.length} تطابق، من غير استدعاء جيميناي): ` + combinedReply);
-            expectBotEcho(chatKey);
-            rememberBotReply(chatKey, combinedReply);
-            await message.reply(combinedReply);
+            await sendReplyNaturally(message, chatKey, combinedReply);
             await saveConversation(chatKey, body, combinedReply);
             logBotUsage({ chatKey, phone: realNumber, type: 'quick_reply', trigger: matchedTriggers });
             markOutgoingForFollowUp(chatKey, realNumber);
@@ -1053,9 +1075,7 @@ client.on('message_create', async function (message) {
         // لو البوت قرر إنه محتاج يحوّل العميل لموظف بشري
         if (aiReply.includes(HANDOVER_MARKER)) {
             aiReply = 'تمام، هحولك لأحد زملائنا يرد عليك بالتفاصيل دلوقتي 🙏';
-            expectBotEcho(chatKey);
-            rememberBotReply(chatKey, aiReply);
-            await message.reply(aiReply);
+            await sendReplyNaturally(message, chatKey, aiReply);
             pauseCustomerIndefinitely(chatKey); // وقف دائم لحد ما ترد انت يدويًا بنفسك
             clearFollowUp(chatKey); // العملاء المتحوّلين مستبعدين تمامًا من المتابعة التلقائية
             await saveConversation(chatKey, body, aiReply);
@@ -1065,9 +1085,7 @@ client.on('message_create', async function (message) {
 
         console.log('رد الذكاء الاصطناعي: ' + aiReply);
 
-        expectBotEcho(chatKey);
-        rememberBotReply(chatKey, aiReply);
-        await message.reply(aiReply);
+        await sendReplyNaturally(message, chatKey, aiReply);
         markOutgoingForFollowUp(chatKey, realNumber);
 
         await saveConversation(chatKey, body, aiReply);
