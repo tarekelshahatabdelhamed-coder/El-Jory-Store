@@ -997,6 +997,7 @@ client.on('message_create', async function (message) {
             const transcribed = await transcribeVoiceNote(message);
             if (!transcribed) {
                 console.log(`⏭️ تعذر تفريغ فويس العميل ${realNumber} - تم تجاهله.`);
+                notifyOwner(`🎙️ ملحوظة: العميل ${realNumber} بعت رسالة صوتية والبوت مقدرش يعالجها حاليًا (مشكلة تقنية معروفة في تحميل الميديا). العميل ماخدش أي رد ومحدش اتحوّل - ده مجرد تنبيه ليك إنه ممكن يكون محتاج رد يدوي منك.`);
                 return;
             }
             if (transcribed.length > MAX_VOICE_TRANSCRIBED_CHARS) {
@@ -1019,6 +1020,7 @@ client.on('message_create', async function (message) {
                 const compressedBase64 = await compressImageForGemini(message);
                 if (!compressedBase64) {
                     console.log(`⏭️ تعذرت معالجة صورة العميل ${realNumber} - تم تجاهلها.`);
+                    notifyOwner(`🖼️ ملحوظة: العميل ${realNumber} بعت صورة والبوت مقدرش يعالجها حاليًا (مشكلة تقنية معروفة في تحميل الميديا). العميل ماخدش أي رد ومحدش اتحوّل - ده مجرد تنبيه ليك إنه ممكن يكون محتاج رد يدوي منك.`);
                     return;
                 }
                 imagePart = { inlineData: { mimeType: 'image/jpeg', data: compressedBase64 } };
