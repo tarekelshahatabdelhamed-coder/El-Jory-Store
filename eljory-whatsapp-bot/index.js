@@ -21,7 +21,11 @@ const { initializeApp, cert } = require('firebase-admin/app');
 const { getDatabase, ServerValue } = require('firebase-admin/database');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { execSync } = require('child_process');
+const { nodewhisper } = require('nodejs-whisper');
+const Tesseract = require('tesseract.js');
+const sharp = require('sharp');
 
 // ==================== سجل الأوردرات اللي بيجمعها البوت ====================
 // كل ما البوت يجمع بيانات عميل عايز يأكد أوردر (اسم + رقم + عنوان مفصّل)،
@@ -628,6 +632,85 @@ db.ref('/broadcastQueue').on('child_added', async (snap) => {
 });
 
 
+// ==================== تحويل الفويس لنص محليًا (Whisper - من غير أي تكلفة API) ====================
+// بيحمّل ملف الصوت بتاع العميل (.ogg)، يحوّله لـ .wav بـ ffmpeg، وبعدين يشغّل
+// موديل Whisper محليًا على السيرفر نفسه (مفيش أي اتصال بأي API مدفوع هنا خالص).
+// التكلفة الوحيدة هي معالجة الـ CPU بتاعت السيرفر، مش فلوس.
+async function transcribeVoiceNote(message) {
+    let oggPath, wavPath;
+    try {
+        const media = await message.downloadMedia();
+        if (!media || !media.data) return null;
+
+        const tmpId = Date.now() + '_' + Math.random().toString(36).slice(2);
+        oggPath = path.join(os.tmpdir(), `voice_${tmpId}.ogg`);
+        wavPath = path.join(os.tmpdir(), `voice_${tmpId}.wav`);
+
+        fs.writeFileSync(oggPath, Buffer.from(media.data, 'base64'));
+        // Whisper محتاج WAV بمعدل 16kHz موحّد القناة (mono)
+        execSync(`ffmpeg -i "${oggPath}" -ar 16000 -ac 1 "${wavPath}" -y`, { stdio: 'ignore' });
+
+        const result = await nodewhisper(wavPath, {
+            modelName: 'base', // 'tiny' أسرع وأخف لو حبيت توفير أكتر في معالجة السيرفر
+            whisperOptions: { language: 'ar', outputInText: true }
+        });
+
+        return (result || '').trim();
+    } catch (err) {
+        console.error('⚠️ تعذر تفريغ الفويس:', err.message);
+        return null;
+    } finally {
+        try { if (oggPath && fs.existsSync(oggPath)) fs.unlinkSync(oggPath); } catch (e) { /* تجاهل */ }
+        try { if (wavPath && fs.existsSync(wavPath)) fs.unlinkSync(wavPath); } catch (e) { /* تجاهل */ }
+    }
+}
+
+// حد أقصى لطول النص المفرّغ من الفويس - عشان نمنع العملاء اللي بيستسهلوا الفويس
+// ويبعتوا فويس طويل جدًا (تعبير عن مشكلة مثلاً) من غير ما يوصل لجيميناي بتكلفة عالية.
+const MAX_VOICE_TRANSCRIBED_CHARS = 500;
+const VOICE_TOO_LONG_MESSAGE = 'الرسالة الصوتية طويلة أوي 🙏 لو ممكن تختصرها أو تكتبلنا اللي محتاجه في رسالة نصية.';
+
+// ==================== قراءة نص من الصور محليًا (OCR - من غير أي تكلفة API) ====================
+// لو الصورة فيها نص (فاتورة، سكرين شات، صورة مكتوب فيها كلام...)، بنستخرج النص
+// بمكتبة Tesseract محليًا ونبعته لجيميناي كنص عادي بدل الصورة نفسها - أرخص بكتير.
+const OCR_MIN_CHARS = 3; // لو الناتج أقل من كذا حرف، نعتبره فشل (صورة منتج بس من غير كتابة)
+
+async function extractTextFromImage(message) {
+    try {
+        const media = await message.downloadMedia();
+        if (!media || !media.data) return null;
+
+        const buffer = Buffer.from(media.data, 'base64');
+        const { data: { text } } = await Tesseract.recognize(buffer, 'ara+eng');
+        const cleaned = (text || '').replace(/\s+/g, ' ').trim();
+
+        return cleaned.length >= OCR_MIN_CHARS ? cleaned : null;
+    } catch (err) {
+        console.error('⚠️ تعذرت قراءة النص من الصورة (OCR):', err.message);
+        return null;
+    }
+}
+
+// لو الـ OCR فشل (صورة مفيهاش نص فعلي - زي صورة منتج)، بنضغطها قبل ما تروح
+// لجيميناي عشان تكلفة التوكنز تبقى أقل بكتير من الصورة الأصلية.
+async function compressImageForGemini(message) {
+    try {
+        const media = await message.downloadMedia();
+        if (!media || !media.data) return null;
+
+        const buffer = Buffer.from(media.data, 'base64');
+        const compressed = await sharp(buffer)
+            .resize({ width: 768, height: 768, fit: 'inside', withoutEnlargement: true })
+            .jpeg({ quality: 70 })
+            .toBuffer();
+
+        return compressed.toString('base64');
+    } catch (err) {
+        console.error('⚠️ تعذر ضغط الصورة:', err.message);
+        return null;
+    }
+}
+
 // ==================== حدود أمان لمحتوى الرسائل ====================
 const MAX_MESSAGE_CHARS = 1500;
 
@@ -866,31 +949,21 @@ client.on('message_create', async function (message) {
 
         // ---------- حالة 2: رسالة عميل عادية ----------
 
-        // نتعامل مع الرسائل النصية العادية بس. أي حاجة تانية (صور، فيديو، ستيكرز،
-        // كروت جهات اتصال VCard، مستندات...) بتتجاهل تمامًا ومبتوصلش لجيميناي،
-        // لأنها ممكن تحمل بيانات ضخمة (زي صورة Base64 جوه كارت جهة اتصال)
-        // وكانت السبب الأساسي في استهلاك الفلوس.
-        if (message.type !== 'chat') {
+        // منواعين تانيين غير النص العادي بنقدر نتعامل معاهم دلوقتي: الفويس (بيتحول
+        // لنص بـ Whisper محليًا) والصور (بيتقرا منها نص بـ OCR محليًا لو فيها كتابة).
+        // أي حاجة تانية غير كده (فيديو، ستيكرز، مستندات، كروت جهات اتصال...) لسه بتتجاهل
+        // تمامًا زي الأول بالظبط.
+        const isVoiceType = (message.type === 'ptt' || message.type === 'audio');
+        const isImageType = (message.type === 'image');
+
+        if (message.type !== 'chat' && !isVoiceType && !isImageType) {
             // إشعارات نظام من واتساب (notification_template, e2e_notification, ...) بتتجاهل بصمت
             // من غير ما تتطبع في اللوج عشان متكترش عليك من غير داعي - مفيش أي استهلاك فلوس عليها أصلًا.
             return;
         }
 
-        const body = (message.body || '').trim();
-
-        // رسالة فاضية (ممكن تيجي من بعض أنواع الميديا) - متبعتش برومبت فاضي لجيميناي
-        if (!body) {
-            console.log('⏭️ تم تجاهل رسالة فاضية.');
-            return;
-        }
-
-        // حماية إضافية: أي نص أطول من الحد المسموح بيتجاهل بدل ما يتبعت كامل لجيميناي
-        if (body.length > MAX_MESSAGE_CHARS) {
-            console.log(`⏭️ تم تجاهل رسالة طويلة جدًا (${body.length} حرف) - غالبًا مش رسالة عميل حقيقية.`);
-            return;
-        }
-
-        // منع التكرار (نفس الرسالة ممكن تتفعّل أكتر من مرة في بعض الحالات)
+        // منع التكرار (نفس الرسالة ممكن تتفعّل أكتر من مرة في بعض الحالات) - بنعملها
+        // بدري قبل أي معالجة تقيلة (Whisper/OCR) عشان منعالجش نفس الفويس/الصورة مرتين.
         if (msgId) {
             if (processedMessageIds.has(msgId)) {
                 console.log('⚠️ تم تجاهل رسالة مكررة:', msgId);
@@ -907,6 +980,58 @@ client.on('message_create', async function (message) {
         // البثّية القديمة (@broadcast) - دول مش محادثات عملاء حقيقية خالص، ومينفعش
         // نرد عليهم أو نسجلهم كمحادثة أو نبعتلهم متابعة.
         if (chatKey.endsWith('@newsletter') || chatKey.endsWith('@g.us') || chatKey.endsWith('@broadcast')) {
+            return;
+        }
+
+        let body = (message.body || '').trim();
+        let imagePart = null; // هيتحط فيها بيانات الصورة المضغوطة لو مفيش نص نقدر نستخرجه منها
+
+        // ---------- فويس: تحويل لنص محليًا بـ Whisper ----------
+        if (isVoiceType) {
+            const transcribed = await transcribeVoiceNote(message);
+            if (!transcribed) {
+                console.log(`⏭️ تعذر تفريغ فويس العميل ${realNumber} - تم تجاهله.`);
+                return;
+            }
+            if (transcribed.length > MAX_VOICE_TRANSCRIBED_CHARS) {
+                console.log(`⏭️ فويس العميل ${realNumber} طويل جدًا بعد التفريغ (${transcribed.length} حرف) - تم الرد برسالة اعتراض.`);
+                expectBotEcho(chatKey);
+                rememberBotReply(chatKey, VOICE_TOO_LONG_MESSAGE);
+                await message.reply(VOICE_TOO_LONG_MESSAGE);
+                return;
+            }
+            body = transcribed;
+            console.log(`🎙️ تم تفريغ فويس العميل ${realNumber}: ${body}`);
+        }
+        // ---------- صورة: قراءة نص منها (OCR)، أو ضغطها لو مفيهاش نص ----------
+        else if (isImageType) {
+            const ocrText = await extractTextFromImage(message);
+            if (ocrText) {
+                body = ocrText;
+                console.log(`🖼️ تم استخراج نص من صورة العميل ${realNumber} (OCR): ${body}`);
+            } else {
+                const compressedBase64 = await compressImageForGemini(message);
+                if (!compressedBase64) {
+                    console.log(`⏭️ تعذرت معالجة صورة العميل ${realNumber} - تم تجاهلها.`);
+                    return;
+                }
+                imagePart = { inlineData: { mimeType: 'image/jpeg', data: compressedBase64 } };
+                body = message.caption && message.caption.trim() ? message.caption.trim() : '[صورة من العميل بدون تعليق نصي]';
+                console.log(`🖼️ صورة العميل ${realNumber} من غير نص - هتتبعت مضغوطة لجيميناي.`);
+            }
+        }
+
+        // رسالة فاضية (ممكن تيجي من بعض أنواع الميديا أو فويس فشل تفريغه لنص فاضي) -
+        // متبعتش برومبت فاضي لجيميناي
+        if (!body) {
+            console.log('⏭️ تم تجاهل رسالة فاضية.');
+            return;
+        }
+
+        // حماية إضافية: أي نص أطول من الحد المسموح بيتجاهل بدل ما يتبعت كامل لجيميناي
+        // (بتفحص برضه النص المفرّغ من الفويس أو المستخرج بالـ OCR، مش بس الكتابة العادية)
+        if (body.length > MAX_MESSAGE_CHARS) {
+            console.log(`⏭️ تم تجاهل رسالة طويلة جدًا (${body.length} حرف) - غالبًا مش رسالة عميل حقيقية.`);
             return;
         }
 
@@ -942,7 +1067,7 @@ client.on('message_create', async function (message) {
 
         // فحص الردود السريعة الجاهزة الأول - لو فيه أي تطابق (حتى لو أكتر من واحد)،
         // نرد بيهم كلهم مجمّعين من غير أي اتصال بجيميناي خالص (توفير كامل للتوكن).
-        const quickReplies = findQuickReplies(body);
+        const quickReplies = imagePart ? [] : findQuickReplies(body);
         if (quickReplies.length > 0) {
             const combinedReply = quickReplies.map(q => q.reply).join('\n\n');
             const matchedTriggers = quickReplies.map(q => q.trigger).join(' | ');
@@ -966,7 +1091,9 @@ client.on('message_create', async function (message) {
             contents.push({ role: 'user', parts: [{ text: item.message }] });
             contents.push({ role: 'model', parts: [{ text: truncateForHistory(item.reply) }] });
         }
-        contents.push({ role: 'user', parts: [{ text: body }] });
+        // لو الرسالة كانت صورة من غير نص نقدر نقرأه بالـ OCR، بنبعت الصورة المضغوطة
+        // مع النص البديل مع بعض في نفس الرسالة لجيميناي.
+        contents.push({ role: 'user', parts: imagePart ? [imagePart, { text: body }] : [{ text: body }] });
 
         const systemInstructionText = MANDATORY_RULES + botSettingsCache.systemPrompt;
 
