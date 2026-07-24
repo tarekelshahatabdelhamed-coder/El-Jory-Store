@@ -142,7 +142,9 @@ async function sendReplyNaturally(message, chatKey, replyText) {
         const chat = await message.getChat();
         await chat.sendStateTyping();
     } catch (e) {
-        // لو فشل تفعيل مؤشر الكتابة لأي سبب، نكمل عادي من غير ما نوقف الرد
+        // لو فشل تفعيل مؤشر الكتابة لأي سبب، نكمل عادي من غير ما نوقف الرد -
+        // بس بنسجل الخطأ في اللوج عشان نقدر نعرف السبب لو حصل بشكل متكرر
+        console.error('⚠️ تعذر تفعيل مؤشر "بيكتب...":', e.message);
     }
 
     // تأخير عشوائي بين 2 و5 ثواني، بيتزود شوية لو الرد طويل - زي إنسان
