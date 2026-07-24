@@ -1230,4 +1230,3 @@ client.on('message_create', async function (message) {
 });
 
 client.initialize();
-
