@@ -728,6 +728,16 @@ const BOT_START_TIMESTAMP_SECONDS = Math.floor(Date.now() / 1000);
 // بتاع النظام، مع التأكد إن الـ linger مفعّل على السيرفر دايمًا.
 const client = new Client({
     authStrategy: new LocalAuth(),
+    // ⚠️ مثبتين نسخة واتساب ويب محددة بدل ما نسيب المكتبة تاخد أحدث نسخة
+    // أوتوماتيك من واتساب - ده بيحمينا من مشكلة شائعة بيحصل فيها كسر داخلي
+    // في دوال تحميل الميديا (downloadMedia) بعد أي تحديث مفاجئ لواتساب ويب
+    // (بتظهر كأخطاء "r: r" غامضة جوه Puppeteer عند محاولة تفريغ فويس أو قراءة
+    // صورة). لو النسخة دي بقت قديمة جدًا في المستقبل وسببت مشاكل تانية، ممكن
+    // تجرب رقم نسخة أحدث من نفس المصدر: github.com/wppconnect-team/wa-version
+    webVersionCache: {
+        type: 'remote',
+        remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1023006954.html'
+    },
     puppeteer: {
         executablePath: '/usr/bin/chromium-browser',
         args: [
