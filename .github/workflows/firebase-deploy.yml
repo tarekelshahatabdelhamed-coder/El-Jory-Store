@@ -1,16 +1,15 @@
 name: Deploy to Firebase Hosting
-
 on:
   push:
     branches:
       - main
-
+    paths-ignore:
+      - 'eljory-whatsapp-bot/**'
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
       - name: Deploy to Firebase
         uses: w9jds/firebase-action@master
         with:
