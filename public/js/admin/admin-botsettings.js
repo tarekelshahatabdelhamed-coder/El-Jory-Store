@@ -460,6 +460,10 @@ function renderQuickReplies(quickReplies) {
     box.innerHTML = entries.map(([id, q], index) => {
         let mt = matchTypeLabel(q.matchType);
         let color = colorPalette[index % colorPalette.length];
+        let mediaLabels = { audio: '🎙️ فويس', image: '🖼️ صورة', video: '🎬 فيديو' };
+        let mediaBadge = q.mediaUrl
+            ? `<span style="background:#6c757d;color:white;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:bold;margin-left:6px;display:inline-block;margin-bottom:4px;">${mediaLabels[q.mediaType] || '📎 ميديا'} مرفقة</span>`
+            : '';
         return `
         <div draggable="true" data-quick-reply-id="${id}"
              ondragstart="quickReplyDragStart(event, '${id}')"
@@ -470,6 +474,7 @@ function renderQuickReplies(quickReplies) {
             <div style="flex:0 0 auto;color:${color.border};font-size:18px;padding-top:2px;user-select:none;" title="اسحب لتغيير الترتيب">⠿</div>
             <div style="flex:1;min-width:0;">
                 <span style="background:${mt.color};color:white;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:bold;margin-left:6px;display:inline-block;margin-bottom:4px;">${mt.text}</span>
+                ${mediaBadge}
                 <span>${(q.trigger || '').split(/[,،]/).map(k => k.trim()).filter(Boolean).map(k =>
                     `<span style="background:${color.border};color:white;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:bold;margin-left:4px;display:inline-block;margin-bottom:4px;">${escapeHtml(k)}</span>`
                 ).join('')}</span>
@@ -561,15 +566,22 @@ window.saveQuickReply = function() {
     let triggerBox = document.getElementById("newQuickReplyTrigger");
     let replyBox = document.getElementById("newQuickReplyText");
     let matchTypeBox = document.getElementById("newQuickReplyMatchType");
+    let mediaUrlBox = document.getElementById("newQuickReplyMediaUrl");
+    let mediaTypeBox = document.getElementById("newQuickReplyMediaType");
     if (!triggerBox || !replyBox) return;
 
     let trigger = triggerBox.value.trim();
     let reply = replyBox.value; // مانعملش trim هنا عشان مايشيلش مسافات/أسطر مقصودة في الأول أو الآخر
     let matchType = matchTypeBox ? matchTypeBox.value : 'contains';
-    if (!trigger || !reply.trim()) {
-        alert("اكتب الكلمة المفتاحية والرد الجاهز الأول");
+    let mediaUrl = mediaUrlBox ? mediaUrlBox.value.trim() : '';
+    let mediaType = mediaUrlBox && mediaUrl ? (mediaTypeBox ? mediaTypeBox.value : 'image') : '';
+
+    if (!trigger || (!reply.trim() && !mediaUrl)) {
+        alert("اكتب الكلمة المفتاحية، وإما نص الرد الجاهز أو رابط ميديا (فويس/صورة/فيديو) على الأقل");
         return;
     }
+
+    let dataToSave = { trigger, reply, matchType, mediaUrl, mediaType };
 
     let editingId = editingIdBox ? editingIdBox.value : "";
     let ref = editingId
@@ -577,8 +589,8 @@ window.saveQuickReply = function() {
         : db.ref('/botSettings/quickReplies').push();
 
     if (editingId) {
-        // بنعدّل trigger/reply/matchType ومنلمسش رقم الترتيب المحفوظ أصلاً
-        ref.update({ trigger, reply, matchType }).then(() => {
+        // بنعدّل trigger/reply/matchType/mediaUrl/mediaType ومنلمسش رقم الترتيب المحفوظ أصلاً
+        ref.update(dataToSave).then(() => {
             cancelEditQuickReply();
         }).catch(err => {
             alert("حصل خطأ أثناء الحفظ: " + err.message);
@@ -587,7 +599,7 @@ window.saveQuickReply = function() {
         // رد جديد -> ياخد ترتيب في آخر القايمة تلقائيًا (أكبر رقم موجود + 1)
         let existingOrders = Object.values(quickRepliesCache).map(q => Number.isFinite(q.order) ? q.order : -1);
         let nextOrder = existingOrders.length ? Math.max(...existingOrders) + 1 : 0;
-        ref.set({ trigger, reply, matchType, order: nextOrder }).then(() => {
+        ref.set({ ...dataToSave, order: nextOrder }).then(() => {
             cancelEditQuickReply();
         }).catch(err => {
             alert("حصل خطأ أثناء الحفظ: " + err.message);
@@ -605,6 +617,10 @@ window.editQuickReply = function(id) {
     document.getElementById("newQuickReplyText").value = q.reply || "";
     let matchTypeBox = document.getElementById("newQuickReplyMatchType");
     if (matchTypeBox) matchTypeBox.value = q.matchType || "contains";
+    let mediaUrlBox = document.getElementById("newQuickReplyMediaUrl");
+    let mediaTypeBox = document.getElementById("newQuickReplyMediaType");
+    if (mediaUrlBox) mediaUrlBox.value = q.mediaUrl || "";
+    if (mediaTypeBox) mediaTypeBox.value = q.mediaType || "image";
 
     let saveBtn = document.getElementById("quickReplySaveBtn");
     let cancelBtn = document.getElementById("quickReplyCancelBtn");
@@ -621,6 +637,10 @@ window.cancelEditQuickReply = function() {
     document.getElementById("newQuickReplyText").value = "";
     let matchTypeBox = document.getElementById("newQuickReplyMatchType");
     if (matchTypeBox) matchTypeBox.value = "contains";
+    let mediaUrlBox = document.getElementById("newQuickReplyMediaUrl");
+    let mediaTypeBox = document.getElementById("newQuickReplyMediaType");
+    if (mediaUrlBox) mediaUrlBox.value = "";
+    if (mediaTypeBox) mediaTypeBox.value = "image";
 
     let saveBtn = document.getElementById("quickReplySaveBtn");
     let cancelBtn = document.getElementById("quickReplyCancelBtn");

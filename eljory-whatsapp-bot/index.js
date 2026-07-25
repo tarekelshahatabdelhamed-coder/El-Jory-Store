@@ -14,7 +14,7 @@ if (process.platform === 'win32') {
         // أساسي من عمل البوت.
     }
 }
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { initializeApp, cert } = require('firebase-admin/app');
@@ -157,6 +157,41 @@ async function sendReplyNaturally(message, chatKey, replyText) {
     expectBotEcho(chatKey);
     rememberBotReply(chatKey, replyText);
     await message.reply(replyText);
+}
+
+// ==================== إرسال ميديا (فويس/صورة/فيديو) من رد سريع جاهز ====================
+// ⚠️ بيستخدم MessageMedia.fromUrl - يعني البوت بينزّل الملف من الرابط المكتوب
+// في لوحة التحكم، يحوّله لصيغة واتساب، ويبعته كملف حقيقي (مش لينك) للعميل.
+// دي عملية بتمر بنفس الطبقة الداخلية الهشة في المكتبة، فمن الوارد (مش مؤكد)
+// تواجه نفس نوع مشاكل التوافق اللي شايفينها في استقبال الميديا من العميل -
+// عشان كده بنتعامل مع أي فشل هنا بهدوء تام (رسالة نصية بديلة + تنبيه لصاحب
+// المتجر) من غير ما نكسر تجربة العميل أو نوقف البوت.
+async function sendMediaReplyNaturally(message, chatKey, mediaUrl, captionText) {
+    try {
+        const chat = await message.getChat();
+        await chat.sendStateTyping();
+    } catch (e) {
+        console.error('⚠️ تعذر تفعيل مؤشر "بيكتب...":', e.message);
+    }
+
+    const baseDelay = 2000 + Math.random() * 2000;
+    await new Promise(r => setTimeout(r, baseDelay));
+
+    expectBotEcho(chatKey);
+    rememberBotReply(chatKey, captionText || '[ميديا]');
+
+    try {
+        const media = await MessageMedia.fromUrl(mediaUrl, { unsafeMime: true });
+        await message.reply(media, undefined, captionText ? { caption: captionText } : undefined);
+        console.log(`📎 تم إرسال ميديا الرد السريع بنجاح: ${mediaUrl}`);
+    } catch (err) {
+        console.error('⚠️ تعذر إرسال ميديا الرد السريع:', err.message);
+        notifyOwner(`⚠️ ملحوظة: البوت فشل يبعت ميديا رد سريع للعميل ${chatKey.replace('@c.us', '')} (مشكلة تقنية في إرسال الملف). الرابط: ${mediaUrl}\nممكن يكون العميل محتاج رد يدوي منك.`);
+        // خطة بديلة: لو فيه نص مرفق مع الميديا، نبعته على الأقل بدل ما نسيب العميل من غير رد خالص
+        if (captionText) {
+            try { await message.reply(captionText); } catch (e2) { /* تجاهل - حاولنا قد ما نقدر */ }
+        }
+    }
 }
 
 async function saveConversation(chatKey, customerMessage, aiReply) {
@@ -331,7 +366,7 @@ db.ref('/botSettings/quickReplies').on('value', snap => {
     // فيظهر في الآخر تلقائيًا.
     quickRepliesCache = val
         ? Object.values(val)
-            .filter(q => q && q.trigger && q.reply)
+            .filter(q => q && q.trigger && (q.reply || q.mediaUrl))
             .sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity))
         : [];
     console.log(`⚡ تحديث الردود السريعة: ${quickRepliesCache.length} رد محمّل (${quickRepliesCache.map(q => q.trigger).join(', ')})`);
@@ -412,7 +447,7 @@ function findQuickReplies(customerMessageBody) {
         });
 
         if (matched) {
-            matchedReplies.push({ reply: q.reply, trigger: q.trigger });
+            matchedReplies.push({ reply: q.reply, trigger: q.trigger, mediaUrl: q.mediaUrl || '', mediaType: q.mediaType || '' });
         }
     }
     return matchedReplies;
@@ -1079,6 +1114,18 @@ client.on('message_create', async function (message) {
         // نرد بيهم كلهم مجمّعين من غير أي اتصال بجيميناي خالص (توفير كامل للتوكن).
         const quickReplies = imagePart ? [] : findQuickReplies(body);
         if (quickReplies.length > 0) {
+            // لو من ضمن الردود المطابقة رد فيه رابط ميديا (فويس/صورة/فيديو)، نبعت
+            // الميديا دي بدل الرد النصي العادي (بحد أقصى رد ميديا واحد في المرة).
+            const mediaReply = quickReplies.find(q => q.mediaUrl);
+            if (mediaReply) {
+                console.log(`⚡ رد سريع بميديا (${mediaReply.mediaType || 'ملف'}, من غير استدعاء جيميناي): ${mediaReply.mediaUrl}`);
+                await sendMediaReplyNaturally(message, chatKey, mediaReply.mediaUrl, mediaReply.reply || '');
+                await saveConversation(chatKey, body, mediaReply.reply || `[${mediaReply.mediaType || 'ميديا'} مرسلة]`);
+                logBotUsage({ chatKey, phone: realNumber, type: 'quick_reply', trigger: mediaReply.trigger });
+                markOutgoingForFollowUp(chatKey, realNumber);
+                return;
+            }
+
             const combinedReply = quickReplies.map(q => q.reply).join('\n\n');
             const matchedTriggers = quickReplies.map(q => q.trigger).join(' | ');
             console.log(`⚡ رد سريع جاهز (${quickReplies.length} تطابق، من غير استدعاء جيميناي): ` + combinedReply);
