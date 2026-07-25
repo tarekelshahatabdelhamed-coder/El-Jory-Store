@@ -636,8 +636,21 @@ function clearFollowUp(chatKey) {
 // وقت قصير، اللي واتساب بيشوفه كنمط سبام واضح وممكن يوقف الرقم بسببه.
 const MAX_FOLLOWUPS_PER_CYCLE = 6;
 
+// ⚠️ حارس تداخل الدورات: دورة المتابعة الواحدة ممكن تاخد وقت أطول من الـ 10 دقايق
+// بتاعة الـ setInterval نفسه (لو فيه 6 رسائل والفاصل بينهم وصل لـ 3 دقايق، تبقى
+// الدورة محتاجة لحد 18 دقيقة تخلص). من غير الحارس ده، setInterval كان بيشغّل دورة
+// جديدة فوق دورة لسه شغالة (overlap)، فالاتنين كانوا بيقروا نفس بيانات /followUps
+// قبل ما أي واحدة فيهم تسجّل notified:true، فنفس العميل كان بياخد رسالة مرتين
+// قريبين من بعض. الحارس ده بيمنع أي دورة جديدة تبدأ لحد ما اللي قبلها تخلص تمامًا.
+let followUpCheckBusy = false;
+
 async function runFollowUpCheck() {
     if (!botSettingsCache.followUpEnabled) return;
+    if (followUpCheckBusy) {
+        console.log('⏭️ دورة متابعة سابقة لسه شغالة - تم تجاهل الدورة الجديدة دي حماية من التداخل.');
+        return;
+    }
+    followUpCheckBusy = true;
     try {
         const snap = await db.ref('/followUps').once('value');
         const all = snap.val() || {};
@@ -673,6 +686,8 @@ async function runFollowUpCheck() {
         }
     } catch (err) {
         console.log('⚠️ خطأ أثناء فحص المتابعات: ' + err.message);
+    } finally {
+        followUpCheckBusy = false;
     }
 }
 setInterval(runFollowUpCheck, 10 * 60 * 1000); // بيتفحص كل 10 دقايق
