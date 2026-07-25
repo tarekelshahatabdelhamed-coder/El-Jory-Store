@@ -283,6 +283,7 @@ ${ORDER_CAPTURE_RULES}
 let botSettingsCache = {
     systemPrompt: DEFAULT_SYSTEM_PROMPT,
     isActive: true,
+    fullyDisabled: false,          // إيقاف تام: زي فصل البوت بالكامل - مفيش أي معالجة أو تحميل ميديا أو استدعاء جيميناي أو كتابة لوج خالص
     pauseMinutes: 30,
     ownerNumber: '',              // رقم صاحب المتجر (بصيغة دولية زي 201001234567) - يستقبل تنبيهات التحويل والأعطال
     workHoursEnabled: false,
@@ -299,6 +300,7 @@ db.ref('/botSettings').on('value', snap => {
     const val = snap.val() || {};
     botSettingsCache.systemPrompt = val.systemPrompt || DEFAULT_SYSTEM_PROMPT;
     botSettingsCache.isActive = val.isActive !== false;
+    botSettingsCache.fullyDisabled = val.fullyDisabled === true;
     botSettingsCache.pauseMinutes = (val.pauseMinutes !== undefined && val.pauseMinutes !== null)
         ? Number(val.pauseMinutes)
         : 30;
@@ -564,7 +566,7 @@ function clearFollowUp(chatKey) {
 }
 
 async function runFollowUpCheck() {
-    if (!botSettingsCache.followUpEnabled) return;
+    if (botSettingsCache.fullyDisabled || !botSettingsCache.followUpEnabled) return;
     try {
         const snap = await db.ref('/followUps').once('value');
         const all = snap.val() || {};
@@ -604,6 +606,7 @@ let broadcastQueueBusy = false;
 db.ref('/broadcastQueue').on('child_added', async (snap) => {
     const item = snap.val();
     if (!item || item.status !== 'pending') return;
+    if (botSettingsCache.fullyDisabled) return; // البوت متوقف بالكامل - الطلب هيتلقط تلقائي أول ما يترفع الإيقاف
     if (broadcastQueueBusy) {
         // لو فيه طلب شغال بالفعل، الطلب ده هيتلقط تلقائي في الدورة اللي بعدها
         // (Firebase بيفضل يبعت child_added لحد ما نغيّر status بتاعه)
@@ -910,6 +913,15 @@ function resetGeminiErrorStreak() {
 // وده اللي بيسمحلنا نطبق ميزة "وقف تلقائي لما ترد بنفسك".
 client.on('message_create', async function (message) {
     try {
+        // ⚠️ الإيقاف التام: لو مفعّل من لوحة التحكم، البوت بيرجع فورًا من غير أي
+        // معالجة خالص - مفيش تحميل فويس/صور، مفيش استدعاء جيميناي، ومفيش حتى
+        // console.log واحد (عشان اللوج المباشر على Firebase منيكبرش من غير داعي).
+        // ده مختلف عن "تفعيل الرد الآلي" العادي اللي البوت لسه بيعالج ويسجّل بيه
+        // من غير ما يرد بس - هنا كل حاجة بتتوقف تمامًا من أول لحظة.
+        if (botSettingsCache.fullyDisabled) {
+            return;
+        }
+
         if (message.from.includes('broadcast') || message.to?.includes('broadcast')) {
             return;
         }

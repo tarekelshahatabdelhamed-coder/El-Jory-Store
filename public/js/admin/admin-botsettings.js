@@ -13,6 +13,8 @@ db.ref('/botSettings').on('value', snap => {
     let promptBox = document.getElementById("botSystemPrompt");
     let toggle    = document.getElementById("botIsActiveToggle");
     let label     = document.getElementById("botIsActiveLabel");
+    let fullToggle = document.getElementById("botFullyDisabledToggle");
+    let fullLabel  = document.getElementById("botFullyDisabledLabel");
     let pauseBox  = document.getElementById("botPauseMinutes");
     let ownerBox  = document.getElementById("botOwnerNumber");
     let whToggle  = document.getElementById("botWorkHoursEnabled");
@@ -31,6 +33,11 @@ db.ref('/botSettings').on('value', snap => {
         let isActive = settings.isActive !== false; // افتراضيًا مفعّل لو مفيش قيمة محفوظة
         toggle.checked = isActive;
         if (label) label.textContent = isActive ? "مفعّل" : "متوقف";
+    }
+    if (fullToggle) {
+        let fullyDisabled = settings.fullyDisabled === true;
+        fullToggle.checked = fullyDisabled;
+        if (fullLabel) fullLabel.textContent = fullyDisabled ? "متوقف بالكامل 🔴" : "شغال ⚪";
     }
     if (pauseBox && document.activeElement !== pauseBox) {
         pauseBox.value = settings.pauseMinutes !== undefined ? settings.pauseMinutes : 30;
@@ -77,6 +84,23 @@ window.saveBotIsActive = function() {
     });
     // يفتح شاشة اللوج المباشر تلقائيًا لحظة ما تتغيّر حالة التفعيل
     window.showBotLiveLog();
+};
+
+// إيقاف تام: مختلف تمامًا عن "تفعيل الرد الآلي" فوق - ده بيوقف البوت بالكامل
+// (مفيش معالجة، مفيش تحميل فويس/صور، مفيش استدعاء جيميناي، مفيش لوج جديد على
+// Firebase، مفيش متابعة تلقائية ولا إرسال جماعي) لحد ما ترجع تشغّله تاني يدويًا.
+window.saveBotFullyDisabled = function() {
+    let fullToggle = document.getElementById("botFullyDisabledToggle");
+    if (!fullToggle) return;
+    if (fullToggle.checked) {
+        if (!confirm("هيقف البوت بالكامل تمامًا (مش بس هيبطل يرد - هيبطل يعالج أي حاجة خالص، حتى المتابعة التلقائية والإرسال الجماعي). متأكد؟")) {
+            fullToggle.checked = false;
+            return;
+        }
+    }
+    db.ref('/botSettings/fullyDisabled').set(fullToggle.checked).catch(err => {
+        alert("حصل خطأ أثناء الحفظ: " + err.message);
+    });
 };
 
 // ================================================================
