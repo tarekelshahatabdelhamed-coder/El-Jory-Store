@@ -196,7 +196,11 @@ async function sendMediaSequenceNaturally(message, chatKey, mediaItems, captionT
     for (let i = 0; i < mediaItems.length; i++) {
         const item = mediaItems[i];
         expectBotEcho(chatKey);
-        rememberBotReply(chatKey, `[ميديا ${i + 1}/${mediaItems.length}]`);
+        // ⚠️ مهم: ملف الميديا من غير caption بيوصل من واتساب كإيكو بنص فاضي (body فاضي)،
+        // فلازم نسجل نفس القيمة الفاضية دي كـ"آخر رد بعته البوت" عشان المقارنة تنجح صح.
+        // لو سجلنا هنا أي نص وهمي (زي "[ميديا]") هيفشل التطابق مع الإيكو الحقيقي، والبوت
+        // هيفتكر غلط إن ده رد يدوي منك ويوقف نفسه مع العميل بالغلط.
+        rememberBotReply(chatKey, '');
         try {
             const media = await MessageMedia.fromUrl(item.url, { unsafeMime: true });
             await message.reply(media);
@@ -642,6 +646,7 @@ async function runFollowUpCheck() {
 
             try {
                 expectBotEcho(entry.chatKey);
+                rememberBotReply(entry.chatKey, botSettingsCache.followUpMessage);
                 await client.sendMessage(entry.chatKey, botSettingsCache.followUpMessage);
                 await db.ref('/followUps/' + encodeURIComponent(entry.chatKey)).update({ notified: true });
                 logBotUsage({ chatKey: entry.chatKey, phone: entry.phone, type: 'follow_up' });
@@ -682,6 +687,7 @@ db.ref('/broadcastQueue').on('child_added', async (snap) => {
         const chatId = String(r.chatKey || r.phone || '').includes('@') ? r.chatKey : `${r.phone}@c.us`;
         try {
             expectBotEcho(chatId);
+            rememberBotReply(chatId, item.message);
             await client.sendMessage(chatId, item.message);
             sentCount++;
             logBotUsage({ chatKey: chatId, phone: r.phone || '', type: 'broadcast' });
@@ -899,6 +905,7 @@ async function notifyOwner(text) {
     if (!ownerNumber) return; // مفيش رقم محدد في لوحة التحكم - يتجاهل بهدوء
     try {
         expectBotEcho(`${ownerNumber}@c.us`); // عشان النسخة اللي هترجع كـ fromMe متتفسّرش غلط كـ "رد يدوي" وتوقف البوت مع رقمك انت
+        rememberBotReply(`${ownerNumber}@c.us`, text);
         await client.sendMessage(`${ownerNumber}@c.us`, text);
     } catch (err) {
         console.log('⚠️ تعذر إرسال تنبيه لصاحب المتجر: ' + err.message);
