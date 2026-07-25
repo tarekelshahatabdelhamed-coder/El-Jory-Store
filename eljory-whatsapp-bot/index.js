@@ -534,10 +534,15 @@ function rememberBotReply(chatKey, text) {
     }, BOT_ECHO_WINDOW_MS * 4).unref?.(); // مهلة أطول من نافذة الإيكو العادية كشبكة أمان
 }
 
-function consumeBotEchoIfPending(chatKey) {
+function consumeBotEchoIfPending(chatKey, messageBody) {
     const expiry = pendingBotEcho.get(chatKey);
     if (!expiry) return false;
-    return Date.now() <= expiry; // من غير ما نمسحها فورًا - تفضل صالحة لحد ما تنتهي المهلة
+    if (Date.now() > expiry) return false;
+    // ⚠️ لازم نتأكد إن نص الرسالة فعلاً مطابق لآخر رد بعته البوت، مش بس إننا
+    // جوه النافذة الزمنية - وإلا أي رد يدوي حقيقي منك خلال 15 ثانية من آخر
+    // رد آلي كان بيتحسب غلط "إيكو" ويتجاهل تمامًا (من غير لوج ومن غير إيقاف
+    // مؤقت)، وده كان بالظبط سبب المشكلة اللي حصلت معاك.
+    return lastBotReplyText.get(chatKey) === (messageBody || '');
 }
 
 // منع معالجة نفس الرسالة أكتر من مرة (بيحصل أحيانًا مع واتساب Multi-Device)
@@ -971,7 +976,7 @@ client.on('message_create', async function (message) {
             }
 
             // لو الرسالة دي هي رد البوت نفسه (بعتناها إحنا برمجيًا) نتجاهلها تمامًا
-            if (chatKeyOfThisReply && consumeBotEchoIfPending(chatKeyOfThisReply)) {
+            if (chatKeyOfThisReply && consumeBotEchoIfPending(chatKeyOfThisReply, message.body)) {
                 return;
             }
 
