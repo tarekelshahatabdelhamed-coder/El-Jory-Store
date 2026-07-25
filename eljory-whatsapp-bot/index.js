@@ -1232,3 +1232,26 @@ client.on('message_create', async function (message) {
 });
 
 client.initialize();
+
+// ==================== معالجة إغلاق البوت بأمر خارجي (مثلاً pm2 stop) ====================
+// لما حد يوقف البوت من برة (زي مراقب "إيقاف السيرفر" اللي بينفّذ pm2 stop)،
+// الـ process بياخد إشارة SIGTERM من النظام. من غير المعالج ده، البوت كان
+// بيتقفل فورًا من غير ما يقدر يبعت أي رسالة أخيرة، فاللوج المباشر كان بيسكت
+// فجأة من غير أي توضيح للسبب. هنا بنحاول نبعت رسالة أخيرة بسرعة قبل ما نقفل
+// فعليًا - مش مضمون 100% (الوقت المتاح قصير جدًا)، لكنه بيشتغل في أغلب الحالات.
+let isShuttingDown = false;
+async function handleShutdownSignal(signalName) {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    try {
+        console.log(`🛑 البوت بيتقفل الآن (إشارة ${signalName}) - غالبًا بأمر إيقاف من لوحة التحكم.`);
+        // مهلة قصيرة جدًا نديها لقاعدة البيانات عشان تقدر تستقبل الرسالة قبل ما نقفل فعليًا
+        await new Promise(resolve => setTimeout(resolve, 700));
+    } catch (e) {
+        // تجاهل - المهم إننا نقفل بعدها في كل الأحوال
+    } finally {
+        process.exit(0);
+    }
+}
+process.on('SIGTERM', () => handleShutdownSignal('SIGTERM'));
+process.on('SIGINT', () => handleShutdownSignal('SIGINT'));

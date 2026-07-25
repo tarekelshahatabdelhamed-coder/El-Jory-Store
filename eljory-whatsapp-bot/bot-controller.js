@@ -16,7 +16,7 @@ require('dotenv').config({ quiet: true });
 //   pm2 start bot-controller.js --name jory-bot-controller
 //   pm2 save
 const { initializeApp, cert } = require('firebase-admin/app');
-const { getDatabase } = require('firebase-admin/database');
+const { getDatabase, ServerValue } = require('firebase-admin/database');
 const { execSync } = require('child_process');
 
 const serviceAccount = require('./firebase-service-account.json');
@@ -27,6 +27,36 @@ initializeApp({
 });
 
 const db = getDatabase();
+
+// ==================== توصيل المراقب بنفس شاشة اللوج المباشر بتاعة index.js ====================
+// ⚠️ ده process منفصل تمامًا عن index.js، فمعندوش تلقائيًا نفس نظام "اعتراض
+// console.log" اللي بيبعت كل حاجة لـ Firebase. من غير السطور دي، رسائل
+// المراقب (زي "استقبلنا أمر إيقاف السيرفر") كانت بتظهر بس في pm2 logs
+// ومش بتوصل لشاشة اللوج المباشر في لوحة التحكم خالص.
+const _origConsoleLog = console.log.bind(console);
+const _origConsoleError = console.error.bind(console);
+
+function pushLiveLog(level, args) {
+    try {
+        const text = args.map(a => {
+            if (typeof a === 'string') return a;
+            if (a instanceof Error) return a.message;
+            try { return JSON.stringify(a); } catch (e) { return String(a); }
+        }).join(' ');
+        db.ref('/liveLogs').push({ text, level, time: ServerValue.TIMESTAMP }).catch(() => {});
+    } catch (e) {
+        // تجاهل بهدوء
+    }
+}
+
+console.log = function(...args) {
+    _origConsoleLog(...args);
+    pushLiveLog('info', args);
+};
+console.error = function(...args) {
+    _origConsoleError(...args);
+    pushLiveLog('error', args);
+};
 
 // اسم البوت الأساسي في pm2 - لازم يكون مطابق بالظبط لاسمه الحالي
 const BOT_PM2_NAME = 'jory-bot';
