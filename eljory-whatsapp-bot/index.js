@@ -630,6 +630,12 @@ function clearFollowUp(chatKey) {
     db.ref('/followUps/' + encodeURIComponent(chatKey)).remove().catch(() => {});
 }
 
+// ⚠️ حد أقصى لعدد رسائل المتابعة اللي تتبعت في دورة الفحص الواحدة (كل 10 دقايق).
+// لو فيه أكتر من كده مستحقين في نفس اللحظة، الباقي بيتأجل تلقائيًا للدورة اللي
+// بعدها (مش بيضيع) - ده عشان مانبعتش لعدد كبير من الأرقام المختلفة ورا بعض في
+// وقت قصير، اللي واتساب بيشوفه كنمط سبام واضح وممكن يوقف الرقم بسببه.
+const MAX_FOLLOWUPS_PER_CYCLE = 6;
+
 async function runFollowUpCheck() {
     if (!botSettingsCache.followUpEnabled) return;
     try {
@@ -638,7 +644,12 @@ async function runFollowUpCheck() {
         const thresholdMs = (botSettingsCache.followUpHours || 8) * 60 * 60 * 1000;
         const now = Date.now();
 
+        let sentThisCycle = 0;
         for (const key of Object.keys(all)) {
+            if (sentThisCycle >= MAX_FOLLOWUPS_PER_CYCLE) {
+                console.log(`⏭️ تم الوصول للحد الأقصى (${MAX_FOLLOWUPS_PER_CYCLE}) من رسائل المتابعة في الدورة دي - الباقي هيتبعت في الدورة الجاية (بعد 10 دقايق) حماية من نمط الإرسال الجماعي.`);
+                break;
+            }
             const entry = all[key];
             if (!entry || entry.notified) continue;
             if (isHandedOver(entry.chatKey)) { clearFollowUp(entry.chatKey); continue; }
@@ -651,12 +662,14 @@ async function runFollowUpCheck() {
                 await db.ref('/followUps/' + encodeURIComponent(entry.chatKey)).update({ notified: true });
                 logBotUsage({ chatKey: entry.chatKey, phone: entry.phone, type: 'follow_up' });
                 console.log(`🔁 اتبعتت رسالة متابعة للعميل ${entry.phone}`);
+                sentThisCycle++;
             } catch (err) {
                 console.log('⚠️ تعذر إرسال متابعة لـ ' + entry.phone + ': ' + err.message);
             }
 
-            // تأخير عشوائي بسيط بين كل متابعة والتانية عشان مايبقاش شكله جماعي/سبام
-            await new Promise(r => setTimeout(r, 20000 + Math.random() * 40000));
+            // فاصل زمني أطول وعشوائي أكتر بين كل متابعة والتانية (دقيقة لـ 3 دقايق تقريبًا)
+            // عشان الإرسال يفضل شكله طبيعي ومايبقاش نمط جماعي متكرر بسرعة
+            await new Promise(r => setTimeout(r, 60000 + Math.random() * 120000));
         }
     } catch (err) {
         console.log('⚠️ خطأ أثناء فحص المتابعات: ' + err.message);
