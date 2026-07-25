@@ -166,7 +166,10 @@ async function sendReplyNaturally(message, chatKey, replyText) {
 // تواجه نفس نوع مشاكل التوافق اللي شايفينها في استقبال الميديا من العميل -
 // عشان كده بنتعامل مع أي فشل هنا بهدوء تام (رسالة نصية بديلة + تنبيه لصاحب
 // المتجر) من غير ما نكسر تجربة العميل أو نوقف البوت.
-async function sendMediaReplyNaturally(message, chatKey, mediaUrl, captionText) {
+// ⚠️ محدّث: الرد السريع الواحد ممكن دلوقتي يحمل أكتر من ملف ميديا (فويس + صورة +
+// فيديو مع بعض مثلاً)، وبنبعتهم للعميل واحد واحد بنفس الترتيب اللي محطوطين بيه في
+// لوحة التحكم. لو فيه نص مرفق مع الرد، بيتبعت كرسالة منفصلة الأول قبل الملفات.
+async function sendMediaSequenceNaturally(message, chatKey, mediaItems, captionText) {
     try {
         const chat = await message.getChat();
         await chat.sendStateTyping();
@@ -177,19 +180,34 @@ async function sendMediaReplyNaturally(message, chatKey, mediaUrl, captionText) 
     const baseDelay = 2000 + Math.random() * 2000;
     await new Promise(r => setTimeout(r, baseDelay));
 
-    expectBotEcho(chatKey);
-    rememberBotReply(chatKey, captionText || '[ميديا]');
+    // لو فيه نص مرفق مع الرد، نبعته الأول كرسالة مستقلة قبل ملفات الميديا
+    if (captionText) {
+        expectBotEcho(chatKey);
+        rememberBotReply(chatKey, captionText);
+        try {
+            await message.reply(captionText);
+        } catch (err) {
+            console.error('⚠️ تعذر إرسال نص الرد السريع:', err.message);
+        }
+        await new Promise(r => setTimeout(r, 1200 + Math.random() * 800));
+    }
 
-    try {
-        const media = await MessageMedia.fromUrl(mediaUrl, { unsafeMime: true });
-        await message.reply(media, undefined, captionText ? { caption: captionText } : undefined);
-        console.log(`📎 تم إرسال ميديا الرد السريع بنجاح: ${mediaUrl}`);
-    } catch (err) {
-        console.error('⚠️ تعذر إرسال ميديا الرد السريع:', err.message);
-        notifyOwner(`⚠️ ملحوظة: البوت فشل يبعت ميديا رد سريع للعميل ${chatKey.replace('@c.us', '')} (مشكلة تقنية في إرسال الملف). الرابط: ${mediaUrl}\nممكن يكون العميل محتاج رد يدوي منك.`);
-        // خطة بديلة: لو فيه نص مرفق مع الميديا، نبعته على الأقل بدل ما نسيب العميل من غير رد خالص
-        if (captionText) {
-            try { await message.reply(captionText); } catch (e2) { /* تجاهل - حاولنا قد ما نقدر */ }
+    // بعدين نبعت كل ملفات الميديا واحد واحد بنفس الترتيب المحدد
+    for (let i = 0; i < mediaItems.length; i++) {
+        const item = mediaItems[i];
+        expectBotEcho(chatKey);
+        rememberBotReply(chatKey, `[ميديا ${i + 1}/${mediaItems.length}]`);
+        try {
+            const media = await MessageMedia.fromUrl(item.url, { unsafeMime: true });
+            await message.reply(media);
+            console.log(`📎 تم إرسال ميديا رقم ${i + 1}/${mediaItems.length} من الرد السريع بنجاح: ${item.url}`);
+        } catch (err) {
+            console.error(`⚠️ تعذر إرسال ميديا رقم ${i + 1}/${mediaItems.length} من الرد السريع:`, err.message);
+            notifyOwner(`⚠️ ملحوظة: البوت فشل يبعت ملف ميديا رقم ${i + 1} من رد سريع للعميل ${chatKey.replace('@c.us', '')} (مشكلة تقنية في إرسال الملف). الرابط: ${item.url}\nممكن يكون العميل محتاج رد يدوي منك.`);
+        }
+        // فاصل زمني قصير بين كل ملف والتاني عشان الترتيب يوصل واضح ومايبقاش شكله سبام
+        if (i < mediaItems.length - 1) {
+            await new Promise(r => setTimeout(r, 1500 + Math.random() * 1000));
         }
     }
 }
@@ -366,7 +384,7 @@ db.ref('/botSettings/quickReplies').on('value', snap => {
     // فيظهر في الآخر تلقائيًا.
     quickRepliesCache = val
         ? Object.values(val)
-            .filter(q => q && q.trigger && (q.reply || q.mediaUrl))
+            .filter(q => q && q.trigger && (q.reply || q.mediaUrl || (Array.isArray(q.mediaItems) && q.mediaItems.length)))
             .sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity))
         : [];
     console.log(`⚡ تحديث الردود السريعة: ${quickRepliesCache.length} رد محمّل (${quickRepliesCache.map(q => q.trigger).join(', ')})`);
@@ -447,7 +465,12 @@ function findQuickReplies(customerMessageBody) {
         });
 
         if (matched) {
-            matchedReplies.push({ reply: q.reply, trigger: q.trigger, mediaUrl: q.mediaUrl || '', mediaType: q.mediaType || '' });
+            // دعم الردود القديمة اللي كانت متسجلة بملف ميديا واحد بس (mediaUrl/mediaType)
+            // قبل ما تتضاف ميزة الملفات المتعددة (mediaItems)
+            const mediaItems = Array.isArray(q.mediaItems) && q.mediaItems.length
+                ? q.mediaItems
+                : (q.mediaUrl ? [{ url: q.mediaUrl, type: q.mediaType || 'image' }] : []);
+            matchedReplies.push({ reply: q.reply, trigger: q.trigger, mediaItems });
         }
     }
     return matchedReplies;
@@ -1119,13 +1142,14 @@ client.on('message_create', async function (message) {
         // نرد بيهم كلهم مجمّعين من غير أي اتصال بجيميناي خالص (توفير كامل للتوكن).
         const quickReplies = imagePart ? [] : findQuickReplies(body);
         if (quickReplies.length > 0) {
-            // لو من ضمن الردود المطابقة رد فيه رابط ميديا (فويس/صورة/فيديو)، نبعت
-            // الميديا دي بدل الرد النصي العادي (بحد أقصى رد ميديا واحد في المرة).
-            const mediaReply = quickReplies.find(q => q.mediaUrl);
+            // لو من ضمن الردود المطابقة رد فيه ملفات ميديا (فويس/صورة/فيديو، ملف واحد
+            // أو أكتر)، نبعتهم بدل الرد النصي العادي (بحد أقصى رد ميديا واحد في المرة،
+            // لكن الرد ده نفسه ممكن يحمل أكتر من ملف بيتبعتوا بالترتيب).
+            const mediaReply = quickReplies.find(q => q.mediaItems && q.mediaItems.length);
             if (mediaReply) {
-                console.log(`⚡ رد سريع بميديا (${mediaReply.mediaType || 'ملف'}, من غير استدعاء جيميناي): ${mediaReply.mediaUrl}`);
-                await sendMediaReplyNaturally(message, chatKey, mediaReply.mediaUrl, mediaReply.reply || '');
-                await saveConversation(chatKey, body, mediaReply.reply || `[${mediaReply.mediaType || 'ميديا'} مرسلة]`);
+                console.log(`⚡ رد سريع بميديا (${mediaReply.mediaItems.length} ملف، من غير استدعاء جيميناي): ${mediaReply.mediaItems.map(m => m.url).join(' | ')}`);
+                await sendMediaSequenceNaturally(message, chatKey, mediaReply.mediaItems, mediaReply.reply || '');
+                await saveConversation(chatKey, body, mediaReply.reply || `[${mediaReply.mediaItems.length} ملف ميديا مرسلة]`);
                 logBotUsage({ chatKey, phone: realNumber, type: 'quick_reply', trigger: mediaReply.trigger });
                 markOutgoingForFollowUp(chatKey, realNumber);
                 return;

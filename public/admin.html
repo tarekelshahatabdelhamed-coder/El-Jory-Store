@@ -929,20 +929,14 @@
 
                 <div style="background:#f0f4f8;padding:12px;border-radius:8px;border:1px dashed #6c757d;margin-bottom:10px;">
                     <label style="font-weight:bold;color:#1d364a;font-size:13px;display:block;margin-bottom:8px;">
-                        📎 إرفاق ميديا (اختياري) - فويس، صورة، أو فيديو يتبعت بدل النص أو معاه
+                        📎 إرفاق ميديا (اختياري) - تقدر تضيف أكتر من ملف (فويس/صورة/فيديو)، هيتبعتوا
+                        للعميل واحد واحد بنفس الترتيب اللي مرتبهم بيه تحت
                     </label>
-                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                        <input type="text" id="newQuickReplyMediaUrl" class="form-control"
-                               style="flex:2;min-width:220px;" placeholder="رابط مباشر للملف (مثال: https://example.com/voice.m4a)">
-                        <select id="newQuickReplyMediaType" class="form-control" style="flex:1;min-width:120px;">
-                            <option value="audio">🎙️ فويس</option>
-                            <option value="image">🖼️ صورة</option>
-                            <option value="video">🎬 فيديو</option>
-                        </select>
-                    </div>
+                    <div id="newQuickReplyMediaList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;"></div>
+                    <button type="button" class="btn" style="background:#6c757d;width:100%;" onclick="addQuickReplyMediaRow()">➕ إضافة ملف ميديا</button>
                     <p style="color:#666;font-size:12px;margin:8px 0 0;line-height:1.7;">
-                        لازم يكون رابط مباشر للملف نفسه (مش صفحة عرض) ومتاح للجميع من غير تسجيل دخول. البوت هيبعته
-                        كملف حقيقي للعميل (مش لينك). لو حطيت نص في الرد فوق كمان، هيتبعت كـ caption مع الملف.
+                        كل رابط لازم يكون رابط مباشر للملف نفسه (مش صفحة عرض) ومتاح للجميع من غير تسجيل دخول.
+                        لو حطيت نص في الرد فوق كمان، هيتبعت كرسالة منفصلة الأول وبعدين الملفات بالترتيب.
                     </p>
                 </div>
 

@@ -460,9 +460,12 @@ function renderQuickReplies(quickReplies) {
     box.innerHTML = entries.map(([id, q], index) => {
         let mt = matchTypeLabel(q.matchType);
         let color = colorPalette[index % colorPalette.length];
-        let mediaLabels = { audio: '🎙️ فويس', image: '🖼️ صورة', video: '🎬 فيديو' };
-        let mediaBadge = q.mediaUrl
-            ? `<span style="background:#6c757d;color:white;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:bold;margin-left:6px;display:inline-block;margin-bottom:4px;">${mediaLabels[q.mediaType] || '📎 ميديا'} مرفقة</span>`
+        let mediaItems = Array.isArray(q.mediaItems) && q.mediaItems.length
+            ? q.mediaItems
+            : (q.mediaUrl ? [{ url: q.mediaUrl, type: q.mediaType || 'image' }] : []);
+        let mediaLabels = { audio: '🎙️', image: '🖼️', video: '🎬' };
+        let mediaBadge = mediaItems.length
+            ? `<span style="background:#6c757d;color:white;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:bold;margin-left:6px;display:inline-block;margin-bottom:4px;">📎 ${mediaItems.length} ملف (${mediaItems.map(m => mediaLabels[m.type] || '📎').join(' ')})</span>`
             : '';
         return `
         <div draggable="true" data-quick-reply-id="${id}"
@@ -559,6 +562,61 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
+// ==================== إدارة قائمة ملفات الميديا المتعددة للرد السريع ====================
+// كل رد سريع ممكن يحمل أكتر من ملف ميديا (فويس/صورة/فيديو) بيتبعتوا للعميل
+// واحد واحد بنفس الترتيب اللي محطوطين بيه في القائمة دي.
+let newQuickReplyMediaItems = []; // [{url, type}, ...]
+
+function renderQuickReplyMediaList() {
+    const box = document.getElementById("newQuickReplyMediaList");
+    if (!box) return;
+    if (!newQuickReplyMediaItems.length) {
+        box.innerHTML = '<p style="color:#888;font-size:12px;margin:0;">مفيش ملفات ميديا مضافة لسه.</p>';
+        return;
+    }
+    box.innerHTML = newQuickReplyMediaItems.map((item, i) => `
+        <div style="display:flex;gap:8px;align-items:center;background:white;padding:8px;border-radius:6px;border:1px solid #ddd;">
+            <span style="font-weight:bold;color:#1d364a;font-size:12px;white-space:nowrap;">#${i + 1}</span>
+            <input type="text" value="${escapeHtml(item.url)}" placeholder="رابط مباشر للملف"
+                   oninput="newQuickReplyMediaItems[${i}].url=this.value"
+                   style="flex:2;padding:6px 8px;border:1px solid #ccc;border-radius:4px;min-width:120px;">
+            <select onchange="newQuickReplyMediaItems[${i}].type=this.value"
+                    style="flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:4px;">
+                <option value="audio" ${item.type === 'audio' ? 'selected' : ''}>🎙️ فويس</option>
+                <option value="image" ${item.type === 'image' ? 'selected' : ''}>🖼️ صورة</option>
+                <option value="video" ${item.type === 'video' ? 'selected' : ''}>🎬 فيديو</option>
+            </select>
+            <button type="button" onclick="moveQuickReplyMediaRow(${i}, -1)" title="تحريك لفوق"
+                    style="background:#eef2f5;color:#1d364a;border:1px solid #ccc;border-radius:4px;padding:6px 9px;cursor:pointer;" ${i === 0 ? 'disabled' : ''}>▲</button>
+            <button type="button" onclick="moveQuickReplyMediaRow(${i}, 1)" title="تحريك لتحت"
+                    style="background:#eef2f5;color:#1d364a;border:1px solid #ccc;border-radius:4px;padding:6px 9px;cursor:pointer;" ${i === newQuickReplyMediaItems.length - 1 ? 'disabled' : ''}>▼</button>
+            <button type="button" onclick="removeQuickReplyMediaRow(${i})" title="حذف"
+                    style="background:#d9534f;color:white;border:none;border-radius:4px;padding:6px 10px;cursor:pointer;">✖</button>
+        </div>
+    `).join('');
+}
+
+window.addQuickReplyMediaRow = function() {
+    newQuickReplyMediaItems.push({ url: '', type: 'image' });
+    renderQuickReplyMediaList();
+};
+
+window.removeQuickReplyMediaRow = function(i) {
+    newQuickReplyMediaItems.splice(i, 1);
+    renderQuickReplyMediaList();
+};
+
+window.moveQuickReplyMediaRow = function(i, direction) {
+    const target = i + direction;
+    if (target < 0 || target >= newQuickReplyMediaItems.length) return;
+    const tmp = newQuickReplyMediaItems[i];
+    newQuickReplyMediaItems[i] = newQuickReplyMediaItems[target];
+    newQuickReplyMediaItems[target] = tmp;
+    renderQuickReplyMediaList();
+};
+
+renderQuickReplyMediaList(); // عرض الحالة الفارغة أول ما الصفحة تحمّل
+
 // بيحفظ رد سريع جديد أو يحدّث واحد موجود، حسب لو فيه ID متسجل في الحقل المخفي
 // editingQuickReplyId (يتحط بس لما تدوس "تعديل" على رد موجود).
 window.saveQuickReply = function() {
@@ -566,22 +624,23 @@ window.saveQuickReply = function() {
     let triggerBox = document.getElementById("newQuickReplyTrigger");
     let replyBox = document.getElementById("newQuickReplyText");
     let matchTypeBox = document.getElementById("newQuickReplyMatchType");
-    let mediaUrlBox = document.getElementById("newQuickReplyMediaUrl");
-    let mediaTypeBox = document.getElementById("newQuickReplyMediaType");
     if (!triggerBox || !replyBox) return;
 
     let trigger = triggerBox.value.trim();
     let reply = replyBox.value; // مانعملش trim هنا عشان مايشيلش مسافات/أسطر مقصودة في الأول أو الآخر
     let matchType = matchTypeBox ? matchTypeBox.value : 'contains';
-    let mediaUrl = mediaUrlBox ? mediaUrlBox.value.trim() : '';
-    let mediaType = mediaUrlBox && mediaUrl ? (mediaTypeBox ? mediaTypeBox.value : 'image') : '';
+    // بنجمع كل ملفات الميديا اللي اتضافت (بنفس الترتيب اللي هي ظاهرة بيه في القائمة)
+    // ونستبعد أي صف اترك من غير رابط.
+    let mediaItems = newQuickReplyMediaItems
+        .map(m => ({ url: (m.url || '').trim(), type: m.type || 'image' }))
+        .filter(m => m.url);
 
-    if (!trigger || (!reply.trim() && !mediaUrl)) {
-        alert("اكتب الكلمة المفتاحية، وإما نص الرد الجاهز أو رابط ميديا (فويس/صورة/فيديو) على الأقل");
+    if (!trigger || (!reply.trim() && mediaItems.length === 0)) {
+        alert("اكتب الكلمة المفتاحية، وإما نص الرد الجاهز أو ملف ميديا واحد على الأقل");
         return;
     }
 
-    let dataToSave = { trigger, reply, matchType, mediaUrl, mediaType };
+    let dataToSave = { trigger, reply, matchType, mediaItems };
 
     let editingId = editingIdBox ? editingIdBox.value : "";
     let ref = editingId
@@ -617,10 +676,13 @@ window.editQuickReply = function(id) {
     document.getElementById("newQuickReplyText").value = q.reply || "";
     let matchTypeBox = document.getElementById("newQuickReplyMatchType");
     if (matchTypeBox) matchTypeBox.value = q.matchType || "contains";
-    let mediaUrlBox = document.getElementById("newQuickReplyMediaUrl");
-    let mediaTypeBox = document.getElementById("newQuickReplyMediaType");
-    if (mediaUrlBox) mediaUrlBox.value = q.mediaUrl || "";
-    if (mediaTypeBox) mediaTypeBox.value = q.mediaType || "image";
+
+    // تحميل قائمة ملفات الميديا الحالية للرد ده - مع دعم الردود القديمة اللي
+    // كانت متسجلة بملف واحد بس (mediaUrl/mediaType) قبل التحديث ده.
+    newQuickReplyMediaItems = Array.isArray(q.mediaItems) && q.mediaItems.length
+        ? q.mediaItems.map(m => ({ url: m.url || "", type: m.type || "image" }))
+        : (q.mediaUrl ? [{ url: q.mediaUrl, type: q.mediaType || "image" }] : []);
+    renderQuickReplyMediaList();
 
     let saveBtn = document.getElementById("quickReplySaveBtn");
     let cancelBtn = document.getElementById("quickReplyCancelBtn");
@@ -637,10 +699,9 @@ window.cancelEditQuickReply = function() {
     document.getElementById("newQuickReplyText").value = "";
     let matchTypeBox = document.getElementById("newQuickReplyMatchType");
     if (matchTypeBox) matchTypeBox.value = "contains";
-    let mediaUrlBox = document.getElementById("newQuickReplyMediaUrl");
-    let mediaTypeBox = document.getElementById("newQuickReplyMediaType");
-    if (mediaUrlBox) mediaUrlBox.value = "";
-    if (mediaTypeBox) mediaTypeBox.value = "image";
+
+    newQuickReplyMediaItems = [];
+    renderQuickReplyMediaList();
 
     let saveBtn = document.getElementById("quickReplySaveBtn");
     let cancelBtn = document.getElementById("quickReplyCancelBtn");
