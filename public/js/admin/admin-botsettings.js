@@ -13,8 +13,8 @@ db.ref('/botSettings').on('value', snap => {
     let promptBox = document.getElementById("botSystemPrompt");
     let toggle    = document.getElementById("botIsActiveToggle");
     let label     = document.getElementById("botIsActiveLabel");
-    let fullToggle = document.getElementById("botFullyDisabledToggle");
-    let fullLabel  = document.getElementById("botFullyDisabledLabel");
+    let powerToggle = document.getElementById("botServerPowerToggle");
+    let powerLabel  = document.getElementById("botServerPowerLabel");
     let pauseBox  = document.getElementById("botPauseMinutes");
     let ownerBox  = document.getElementById("botOwnerNumber");
     let whToggle  = document.getElementById("botWorkHoursEnabled");
@@ -34,10 +34,10 @@ db.ref('/botSettings').on('value', snap => {
         toggle.checked = isActive;
         if (label) label.textContent = isActive ? "مفعّل" : "متوقف";
     }
-    if (fullToggle) {
-        let fullyDisabled = settings.fullyDisabled === true;
-        fullToggle.checked = fullyDisabled;
-        if (fullLabel) fullLabel.textContent = fullyDisabled ? "متوقف بالكامل 🔴" : "شغال ⚪";
+    if (powerToggle) {
+        let serverOff = settings.serverPower === 'off';
+        powerToggle.checked = serverOff;
+        if (powerLabel) powerLabel.textContent = serverOff ? "السيرفر متوقف 🛑" : "السيرفر شغال 🟢";
     }
     if (pauseBox && document.activeElement !== pauseBox) {
         pauseBox.value = settings.pauseMinutes !== undefined ? settings.pauseMinutes : 30;
@@ -86,19 +86,23 @@ window.saveBotIsActive = function() {
     window.showBotLiveLog();
 };
 
-// إيقاف تام: مختلف تمامًا عن "تفعيل الرد الآلي" فوق - ده بيوقف البوت بالكامل
-// (مفيش معالجة، مفيش تحميل فويس/صور، مفيش استدعاء جيميناي، مفيش لوج جديد على
-// Firebase، مفيش متابعة تلقائية ولا إرسال جماعي) لحد ما ترجع تشغّله تاني يدويًا.
-window.saveBotFullyDisabled = function() {
-    let fullToggle = document.getElementById("botFullyDisabledToggle");
-    if (!fullToggle) return;
-    if (fullToggle.checked) {
-        if (!confirm("هيقف البوت بالكامل تمامًا (مش بس هيبطل يرد - هيبطل يعالج أي حاجة خالص، حتى المتابعة التلقائية والإرسال الجماعي). متأكد؟")) {
-            fullToggle.checked = false;
-            return;
-        }
+// إيقاف/تشغيل السيرفر فعليًا: ده بيبعت أمر لمراقب صغير شغال على السيرفر
+// (bot-controller.js) عشان ينفّذ فعليًا `pm2 stop jory-bot` أو `pm2 start jory-bot`
+// - يعني البوت الأساسي بكل ثقله (متصفح Chromium وكل حاجة) بيتقفل تمامًا.
+// أقصى توفير ممكن لموارد السيرفر، لكن محتاج المراقب يكون مشغّل مسبقًا على
+// السيرفر عشان يشتغل.
+window.saveBotServerPower = function() {
+    let powerToggle = document.getElementById("botServerPowerToggle");
+    if (!powerToggle) return;
+    let wantOff = powerToggle.checked;
+    let message = wantOff
+        ? "هيتقفل السيرفر بالكامل (البوت مش هيكون شغال خالص لحد ما ترجع تشغّله من هنا تاني). متأكد؟"
+        : "هيترجع البوت يشتغل تاني على السيرفر. متأكد؟";
+    if (!confirm(message)) {
+        powerToggle.checked = !wantOff;
+        return;
     }
-    db.ref('/botSettings/fullyDisabled').set(fullToggle.checked).catch(err => {
+    db.ref('/botSettings/serverPower').set(wantOff ? 'off' : 'on').catch(err => {
         alert("حصل خطأ أثناء الحفظ: " + err.message);
     });
 };

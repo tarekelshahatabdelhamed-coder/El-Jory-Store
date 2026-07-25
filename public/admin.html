@@ -687,20 +687,21 @@
             </label>
         </div>
 
-        <div style="background:#fdecea;border:2px solid #d9534f;padding:20px;border-radius:8px;margin-bottom:25px;display:flex;
+        <div style="background:#1d364a;padding:20px;border-radius:8px;margin-bottom:25px;display:flex;
                     justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px;">
             <div>
-                <strong style="font-size:15px;color:#d9534f;">🔴 إيقاف تام (فصل البوت بالكامل)</strong>
-                <p style="margin:5px 0 0;color:#666;font-size:13px;line-height:1.7;">
-                    مختلف عن "تفعيل الرد الآلي" فوق - ده بيوقف البوت 100% من أول لحظة توصله فيها أي رسالة:
-                    مفيش تحميل فويس أو صور، مفيش استدعاء لجيميناي (توفير تام للتوكنز)، مفيش كتابة لوج جديد على
-                    Firebase، ومفيش متابعة تلقائية ولا إرسال جماعي. استخدمه لو عايز توفّر تمامًا (مثلاً في إجازة
-                    طويلة أو وقف مؤقت للمتجر) وترجع تشغّله بضغطة واحدة تاني وقت ما تحب.
+                <strong style="font-size:15px;color:#fff;">🛑 إيقاف/تشغيل السيرفر فعليًا</strong>
+                <p style="margin:5px 0 0;color:#cfd8e3;font-size:13px;line-height:1.7;">
+                    مختلف عن "تفعيل الرد الآلي" فوق - ده أقصى درجة توفير ممكنة، بيقفل البوت الأساسي بكل ثقله
+                    فعليًا على السيرفر (متصفح Chromium وكل حاجة، مش بس يبطل يرد). بيتنفّذ بواسطة مراقب صغير
+                    خفيف جدًا شغال دايمًا على السيرفر بجانب البوت (jory-bot-controller). محتاج تتأكد إن
+                    المراقب ده مشغّل مرة واحدة على السيرفر الأول عشان الزرار ده يشتغل - لو مش متأكد، اسأل
+                    وقولك أظبطهولك.
                 </p>
             </div>
             <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-                <input type="checkbox" id="botFullyDisabledToggle" onchange="saveBotFullyDisabled()" style="width:22px;height:22px;">
-                <span id="botFullyDisabledLabel" style="font-weight:bold;color:#d9534f;">شغال ⚪</span>
+                <input type="checkbox" id="botServerPowerToggle" onchange="saveBotServerPower()" style="width:22px;height:22px;">
+                <span id="botServerPowerLabel" style="font-weight:bold;color:#fff;">السيرفر شغال 🟢</span>
             </label>
         </div>
 
