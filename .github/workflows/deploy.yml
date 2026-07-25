@@ -21,3 +21,4 @@ jobs:
             git pull origin main
             npm install --omit=dev
             pm2 restart jory-bot
+            pm2 restart jory-bot-controller
