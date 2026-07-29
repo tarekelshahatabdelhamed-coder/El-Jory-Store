@@ -807,7 +807,21 @@ async function runFollowUpCheck() {
         followUpCheckBusy = false;
     }
 }
-setInterval(runFollowUpCheck, 10 * 60 * 1000); // بيتفحص كل 10 دقايق
+// ⚠️ محدّث: بدل setInterval الثابت (اللي كان بيحسب الـ 10 دقايق من *بداية* الدورة
+// السابقة، فلو الدورة نفسها أخدت وقت طويل في إرسال الرسائل كان بالكاد بيفضل وقت
+// فراغ حقيقي قبل الدورة الجاية)، بقينا نستخدم setTimeout بيعيد جدولة نفسه من
+// جديد بعد ما الدورة الحالية *تخلص فعليًا* بالكامل (نجحت أو فشلت) - يعني دلوقتي
+// مضمون فيه 10 دقايق راحة حقيقية بين نهاية أي دورة وبداية اللي بعدها.
+async function scheduleNextFollowUpCheck() {
+    try {
+        await runFollowUpCheck();
+    } catch (err) {
+        console.log('⚠️ خطأ غير متوقع أثناء دورة المتابعة: ' + err.message);
+    } finally {
+        setTimeout(scheduleNextFollowUpCheck, 10 * 60 * 1000).unref?.();
+    }
+}
+setTimeout(scheduleNextFollowUpCheck, 10 * 60 * 1000).unref?.(); // أول فحص بعد 10 دقايق من تشغيل البوت
 
 // ==================== إرسال جماعي من لوحة التحكم (بحث في المحادثات) ====================
 // لوحة الأدمن بتكتب طلب إرسال في /broadcastQueue/{id} برسالة ثابتة + قائمة أرقام
