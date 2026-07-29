@@ -38,8 +38,42 @@ const sharp = require('sharp');
 // لوحة الأدمن قبل ما يوصل العدد للحد ده، وإلا هتضيع.
 const BOT_ORDERS_LOG_RESET_THRESHOLD = 50;
 
+// ==================== منع تسجيل نفس الأوردر أكتر من مرة (Dedup) ====================
+// ⚠️ ليه الميزة دي: أحيانًا الـ AI بيحط علامة تسجيل الأوردر تاني في رد لاحق لنفس
+// العميل (خصوصًا لو تاريخ المحادثة القديم بيفتكر إن بيانات الأوردر لسه موجودة)،
+// أو العميل بيكرر رسالته لأي سبب - فبنتأكد قبل التسجيل إن نفس رقم التليفون
+// + نفس العنوان ماتسجلوش أوردر خلال آخر مدة قصيرة (قابلة للتعديل من لوحة
+// التحكم في تاب "أوردرات البوت") قبل ما نضيف صف جديد.
+async function isDuplicateOrder(order) {
+    const dedupMinutes = Number(botSettingsCache.orderDedupMinutes);
+    if (!dedupMinutes || dedupMinutes <= 0) return false; // 0 يعني الميزة مقفولة
+
+    try {
+        const snap = await db.ref('/botOrdersLog').once('value');
+        const all = snap.val() || {};
+        const cutoff = Date.now() - dedupMinutes * 60 * 1000;
+        const normalizedPhone = String(order.phone || '').replace(/\D/g, '');
+        const normalizedAddress = String(order.address || '').trim().toLowerCase();
+
+        return Object.values(all).some(o => {
+            if (!o || !o.timestamp || o.timestamp < cutoff) return false;
+            const oPhone = String(o.phone || '').replace(/\D/g, '');
+            const oAddress = String(o.address || '').trim().toLowerCase();
+            return oPhone === normalizedPhone && oAddress === normalizedAddress;
+        });
+    } catch (e) {
+        console.error('⚠️ تعذر فحص تكرار الأوردر:', e.message);
+        return false; // لو الفحص فشل لأي سبب، نفضّل نسجل الأوردر بدل ما نضيّعه
+    }
+}
+
 async function appendOrderRow(order) {
     try {
+        if (await isDuplicateOrder(order)) {
+            console.log(`⏭️ تم تجاهل تسجيل أوردر مكرر لنفس العميل (${order.phone}) خلال آخر ${botSettingsCache.orderDedupMinutes} دقيقة.`);
+            return;
+        }
+
         const ordersRef = db.ref('/botOrdersLog');
         await ordersRef.push({
             timestamp: ServerValue.TIMESTAMP,
@@ -349,7 +383,18 @@ let botSettingsCache = {
     rateLimitPerMinute: 5,        // أقصى عدد رسائل من نفس العميل في الدقيقة قبل ما نتجاهل الباقي
     followUpEnabled: false,
     followUpHours: 8,             // بعد كام ساعة من سكوت العميل نبعتله متابعة (خيارات: 4/8/12/14/20)
-    followUpMessage: 'تمام حضرتك، لسه محتاج أي تفاصيل تانية؟ 😊'
+    followUpMessage: 'تمام حضرتك، لسه محتاج أي تفاصيل تانية؟ 😊',
+    // ⚠️ جديد: حد أقصى لعدد رسائل المتابعة اللي تتبعت لنفس العميل خلال نافذة زمنية معينة -
+    // عشان لو العميل رد بحاجة غير كلمات الإغلاق (زي "مش دلوقتي") وفضل بيرد وبيسكت بالتبادل،
+    // مايتضايقش من متابعات كتير قريبة من بعض. maxCount=0 يعني الميزة مقفولة (بلا حد).
+    followUpMaxCount: 3,
+    followUpMaxWindowHours: 168, // 168 ساعة = 7 أيام
+    // ⚠️ جديد: رد بيتبعت للعميل لما يقفل الموضوع بنفسه (لا شكرا، خلاص...) - وميتسجلش
+    // بعده أي متابعة جديدة، عشان مانضايقهوش تاني بعد ما هو خلّص كلامه.
+    closingMessage: 'تمام حضرتك، تحت أمرك في أي وقت 🌸',
+    // ⚠️ جديد: منع تسجيل نفس الأوردر (نفس التليفون ونفس العنوان) أكتر من مرة خلال المدة
+    // دي بالدقايق - 0 يعني الميزة مقفولة.
+    orderDedupMinutes: 60
 };
 
 db.ref('/botSettings').on('value', snap => {
@@ -372,6 +417,16 @@ db.ref('/botSettings').on('value', snap => {
         ? Number(val.followUpHours)
         : 8;
     botSettingsCache.followUpMessage = val.followUpMessage || 'تمام حضرتك، لسه محتاج أي تفاصيل تانية؟ 😊';
+    botSettingsCache.followUpMaxCount = (val.followUpMaxCount !== undefined && val.followUpMaxCount !== null)
+        ? Number(val.followUpMaxCount)
+        : 3;
+    botSettingsCache.followUpMaxWindowHours = (val.followUpMaxWindowHours !== undefined && val.followUpMaxWindowHours !== null)
+        ? Number(val.followUpMaxWindowHours)
+        : 168;
+    botSettingsCache.closingMessage = val.closingMessage || 'تمام حضرتك، تحت أمرك في أي وقت 🌸';
+    botSettingsCache.orderDedupMinutes = (val.orderDedupMinutes !== undefined && val.orderDedupMinutes !== null)
+        ? Number(val.orderDedupMinutes)
+        : 60;
 });
 
 // ==================== الردود السريعة الجاهزة (توفير كامل للتوكن) ====================
@@ -414,6 +469,23 @@ function escapeRegex(str) {
 const PUNCTUATION_REGEX = /[.,!؟?؛;:"'«»()\[\]{}\-ـ~`@#$%^&*+=|\\/<>_]/g;
 function stripPunctuationForExactMessage(str) {
     return str.replace(PUNCTUATION_REGEX, '').replace(/\s+/g, ' ').trim();
+}
+
+// ==================== كلمات إغلاق المحادثة (توقف المتابعة التلقائية) ====================
+// ⚠️ ليه الميزة دي: لو العميل رد على رسالة (سواء رد عادي أو حتى رسالة متابعة) بحاجة
+// معناها "خلاص، مش محتاج حاجة تانية دلوقتي" (زي "لا شكرا"، "خلاص"...)، مفيش أي داعي
+// نجدول له متابعة جديدة بعد كده - وإلا هيفضل ياخد رسائل متابعة متكررة من غير داعي
+// لحد ما "نزهقه". الرد بيتبعت من غير جيميناي (توفير توكن)، وعمدًا مبنعملش
+// markOutgoingForFollowUp بعده عشان محدش يجدولّه متابعة جديدة.
+const CLOSING_KEYWORDS = [
+    'لا شكرا', 'لا شكراً', 'لأ شكرا', 'لأ شكراً',
+    'تمام شكرا', 'تمام شكراً', 'خلاص شكرا', 'خلاص شكراً',
+    'مش محتاج', 'مش محتاجة', 'مش لازم', 'خلاص',
+    'ok', 'اوكي', 'أوكي', 'تمام كده', 'تمام كدا'
+];
+function isClosingMessage(body) {
+    const normalized = stripPunctuationForExactMessage(normalizeDigits(body.toLowerCase()));
+    return CLOSING_KEYWORDS.some(k => normalized === stripPunctuationForExactMessage(k.toLowerCase()));
 }
 
 // بيدور على *كل* الردود السريعة اللي كلماتها المفتاحية موجودة جوه رسالة العميل
@@ -630,6 +702,35 @@ function clearFollowUp(chatKey) {
     db.ref('/followUps/' + encodeURIComponent(chatKey)).remove().catch(() => {});
 }
 
+// ==================== عداد عدد المتابعات الفعلية المُرسلة لكل عميل ====================
+// ⚠️ منفصل تمامًا عن /followUps (اللي بتتصفر مع كل markOutgoingForFollowUp/clearFollowUp) -
+// هنا بنسجل توقيت كل رسالة متابعة "اتبعتت فعليًا" فقط، عشان نقدر نحسب صح "كام متابعة
+// اتبعتت لنفس العميل خلال آخر كذا ساعة" حتى لو دورة /followUps اتصفرت وابتدت من جديد
+// أكتر من مرة في نفس الفترة (لما العميل يرد بحاجة عادية غير كلمة إغلاق ويسكت تاني).
+async function countRecentFollowUps(chatKey, windowMs) {
+    try {
+        const snap = await db.ref('/followUpCounters/' + encodeURIComponent(chatKey)).once('value');
+        const timestamps = (snap.val() && snap.val().sentAt) || [];
+        const cutoff = Date.now() - windowMs;
+        return timestamps.filter(ts => ts >= cutoff).length;
+    } catch (e) {
+        return 0; // لو الفحص فشل، الأسلم إننا نسمح بالإرسال بدل ما نمنعه بالغلط
+    }
+}
+
+async function recordFollowUpSent(chatKey) {
+    try {
+        const ref = db.ref('/followUpCounters/' + encodeURIComponent(chatKey));
+        const snap = await ref.once('value');
+        const timestamps = (snap.val() && snap.val().sentAt) || [];
+        timestamps.push(Date.now());
+        // بنحتفظ بآخر 20 توقيت بس - كفاية جدًا لأي نافذة زمنية معقولة، وبيمنع الحجم من الزيادة
+        await ref.set({ sentAt: timestamps.slice(-20) });
+    } catch (e) {
+        console.error('⚠️ تعذر تسجيل عداد المتابعة:', e.message);
+    }
+}
+
 // ⚠️ حد أقصى لعدد رسائل المتابعة اللي تتبعت في دورة الفحص الواحدة (كل 10 دقايق).
 // لو فيه أكتر من كده مستحقين في نفس اللحظة، الباقي بيتأجل تلقائيًا للدورة اللي
 // بعدها (مش بيضيع) - ده عشان مانبعتش لعدد كبير من الأرقام المختلفة ورا بعض في
@@ -668,11 +769,27 @@ async function runFollowUpCheck() {
             if (isHandedOver(entry.chatKey)) { clearFollowUp(entry.chatKey); continue; }
             if (now - (entry.lastOutgoingAt || 0) < thresholdMs) continue;
 
+            // ⚠️ حد أقصى لعدد المتابعات الفعلية لنفس العميل خلال النافذة الزمنية المحددة من
+            // لوحة التحكم - لو وصلنا للحد، نسكت مع العميل ده لحد ما الوقت يعدي (أو يتكلم هو
+            // بنفسه، وده بيمسح دورة /followUps بس مش بيصفر العداد ده - العداد بيتصفى تلقائيًا
+            // مع مرور الوقت لأننا بنفلتر على النافذة الزمنية نفسها كل مرة).
+            const maxCount = Number(botSettingsCache.followUpMaxCount) || 0;
+            if (maxCount > 0) {
+                const windowMs = (Number(botSettingsCache.followUpMaxWindowHours) || 168) * 60 * 60 * 1000;
+                const recentCount = await countRecentFollowUps(entry.chatKey, windowMs);
+                if (recentCount >= maxCount) {
+                    console.log(`⏭️ تم تجاوز الحد الأقصى (${maxCount}) لمتابعات العميل ${entry.phone} خلال آخر ${botSettingsCache.followUpMaxWindowHours} ساعة - تم تجاهل المتابعة دي.`);
+                    await db.ref('/followUps/' + encodeURIComponent(entry.chatKey)).update({ notified: true });
+                    continue;
+                }
+            }
+
             try {
                 expectBotEcho(entry.chatKey);
                 rememberBotReply(entry.chatKey, botSettingsCache.followUpMessage);
                 await client.sendMessage(entry.chatKey, botSettingsCache.followUpMessage);
                 await db.ref('/followUps/' + encodeURIComponent(entry.chatKey)).update({ notified: true });
+                await recordFollowUpSent(entry.chatKey);
                 logBotUsage({ chatKey: entry.chatKey, phone: entry.phone, type: 'follow_up' });
                 console.log(`🔁 اتبعتت رسالة متابعة للعميل ${entry.phone}`);
                 sentThisCycle++;
@@ -1170,6 +1287,19 @@ client.on('message_create', async function (message) {
                 await message.reply(botSettingsCache.offHoursMessage);
                 await saveConversation(chatKey, body, botSettingsCache.offHoursMessage);
             }
+            return;
+        }
+
+        // ==================== فحص "إغلاق المحادثة" (لا شكرا/خلاص...) ====================
+        // ⚠️ لازم يتفحص قبل الردود السريعة والـ AI مباشرة - لو العميل بيقفل الموضوع بنفسه،
+        // نرد برسالة ودّية بس **من غير** ما نجدول متابعة جديدة (markOutgoingForFollowUp)،
+        // عشان مانضايقهوش برسائل متابعة تانية بعد ما هو خلّص كلامه فعلاً.
+        if (!imagePart && isClosingMessage(body)) {
+            const closingReply = botSettingsCache.closingMessage;
+            console.log(`👋 العميل ${realNumber} قفل الموضوع بنفسه ("${body}") - رد إغلاق من غير جيميناي وبدون جدولة متابعة جديدة.`);
+            await sendReplyNaturally(message, chatKey, closingReply);
+            await saveConversation(chatKey, body, closingReply);
+            logBotUsage({ chatKey, phone: realNumber, type: 'quick_reply', trigger: '[إغلاق محادثة]' });
             return;
         }
 

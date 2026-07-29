@@ -25,6 +25,12 @@ db.ref('/botSettings').on('value', snap => {
     let fuToggle  = document.getElementById("botFollowUpEnabled");
     let fuHours   = document.getElementById("botFollowUpHours");
     let fuMsgBox  = document.getElementById("botFollowUpMessage");
+    // ⚠️ جديد: حد أقصى لعدد رسائل المتابعة خلال نافذة زمنية + رسالة إغلاق المحادثة
+    let fuMaxCount    = document.getElementById("botFollowUpMaxCount");
+    let fuMaxWinDays  = document.getElementById("botFollowUpMaxWindowDays");
+    let closingMsgBox = document.getElementById("botClosingMessage");
+    // ⚠️ جديد: منع تكرار تسجيل نفس الأوردر
+    let orderDedupBox = document.getElementById("botOrderDedupMinutes");
 
     if (promptBox && document.activeElement !== promptBox) {
         promptBox.value = settings.systemPrompt || "";
@@ -58,6 +64,19 @@ db.ref('/botSettings').on('value', snap => {
     if (fuHours && document.activeElement !== fuHours) fuHours.value = settings.followUpHours !== undefined ? String(settings.followUpHours) : "8";
     if (fuMsgBox && document.activeElement !== fuMsgBox) {
         fuMsgBox.value = settings.followUpMessage || 'تمام حضرتك، لسه محتاج أي تفاصيل تانية؟ 😊';
+    }
+    if (fuMaxCount && document.activeElement !== fuMaxCount) {
+        fuMaxCount.value = settings.followUpMaxCount !== undefined ? settings.followUpMaxCount : 3;
+    }
+    if (fuMaxWinDays && document.activeElement !== fuMaxWinDays) {
+        const hours = settings.followUpMaxWindowHours !== undefined ? settings.followUpMaxWindowHours : 168;
+        fuMaxWinDays.value = Math.round(hours / 24);
+    }
+    if (closingMsgBox && document.activeElement !== closingMsgBox) {
+        closingMsgBox.value = settings.closingMessage || 'تمام حضرتك، تحت أمرك في أي وقت 🌸';
+    }
+    if (orderDedupBox && document.activeElement !== orderDedupBox) {
+        orderDedupBox.value = settings.orderDedupMinutes !== undefined ? settings.orderDedupMinutes : 60;
     }
 });
 
@@ -239,16 +258,42 @@ window.saveBotRateLimit = function() {
     });
 };
 
-// متابعة العملاء الساكتين تلقائيًا
+// متابعة العملاء الساكتين تلقائيًا (+ الحد الأقصى للمتابعات خلال نافذة زمنية
+// + رسالة الرد لما العميل يقفل الموضوع بنفسه زي "لا شكرا")
 window.saveBotFollowUp = function() {
     let fuToggle = document.getElementById("botFollowUpEnabled");
     let fuHours  = document.getElementById("botFollowUpHours");
     let fuMsgBox = document.getElementById("botFollowUpMessage");
+    let fuMaxCount   = document.getElementById("botFollowUpMaxCount");
+    let fuMaxWinDays = document.getElementById("botFollowUpMaxWindowDays");
+    let closingMsgBox = document.getElementById("botClosingMessage");
+
+    let maxCount = fuMaxCount ? parseInt(fuMaxCount.value, 10) : 3;
+    if (isNaN(maxCount) || maxCount < 0) maxCount = 3;
+
+    let maxWinDays = fuMaxWinDays ? parseInt(fuMaxWinDays.value, 10) : 7;
+    if (isNaN(maxWinDays) || maxWinDays < 1) maxWinDays = 7;
+
     db.ref('/botSettings').update({
         followUpEnabled: fuToggle ? fuToggle.checked : false,
         followUpHours: fuHours ? Number(fuHours.value) : 8,
-        followUpMessage: (fuMsgBox && fuMsgBox.value.trim()) ? fuMsgBox.value.trim() : 'تمام حضرتك، لسه محتاج أي تفاصيل تانية؟ 😊'
+        followUpMessage: (fuMsgBox && fuMsgBox.value.trim()) ? fuMsgBox.value.trim() : 'تمام حضرتك، لسه محتاج أي تفاصيل تانية؟ 😊',
+        followUpMaxCount: maxCount,
+        followUpMaxWindowHours: maxWinDays * 24,
+        closingMessage: (closingMsgBox && closingMsgBox.value.trim()) ? closingMsgBox.value.trim() : 'تمام حضرتك، تحت أمرك في أي وقت 🌸'
     }).catch(err => {
+        alert("حصل خطأ أثناء الحفظ: " + err.message);
+    });
+};
+
+// منع تسجيل نفس الأوردر (نفس رقم التليفون ونفس العنوان) أكتر من مرة خلال
+// المدة دي بالدقايق - 0 يعني تعطيل الميزة تمامًا.
+window.saveOrderDedupMinutes = function() {
+    let box = document.getElementById("botOrderDedupMinutes");
+    if (!box) return;
+    let val = parseInt(box.value, 10);
+    if (isNaN(val) || val < 0) val = 60;
+    db.ref('/botSettings/orderDedupMinutes').set(val).catch(err => {
         alert("حصل خطأ أثناء الحفظ: " + err.message);
     });
 };
@@ -761,6 +806,11 @@ function getFilteredBotUsageLog() {
 
 // أكتر الأسئلة اللي بترد عليها جيميناي (يعني مش متغطاة برد سريع حاليًا) -
 // بيساعدك تكتشف أسئلة بتتكرر كتير وتستاهل تتحول لرد سريع جاهز، توفيرًا للتوكن.
+// ⚠️ خريطة مؤقتة بتربط id بسيط بالنص المُطبّع (normalized) بتاع كل سؤال ظاهر
+// حاليًا في القائمة - مستخدمة عشان نقدر نحذف بالظبط كل السطور اللي طابقت
+// السؤال ده لما تدوس على زرار "حذف" جنبه.
+let topQuickRepliesMap = {};
+
 function renderTopQuickReplies(filtered) {
     const box = document.getElementById("topQuickRepliesBox");
     if (!box) return;
@@ -770,11 +820,13 @@ function renderTopQuickReplies(filtered) {
         if (e.type !== 'ai' || !e.message) return;
         const normalized = String(e.message).trim().toLowerCase().replace(/\s+/g, ' ');
         if (!normalized) return;
-        if (!counts[normalized]) counts[normalized] = { count: 0, original: e.message };
+        if (!counts[normalized]) counts[normalized] = { count: 0, original: e.message, normalized };
         counts[normalized].count++;
     });
 
     const sorted = Object.values(counts).filter(x => x.count > 1).sort((a, b) => b.count - a.count).slice(0, 8);
+
+    topQuickRepliesMap = {};
 
     if (sorted.length === 0) {
         box.innerHTML = `<strong style="color:#1d364a;">📊 أكتر الأسئلة اللي بترد عليها جيميناي (مش رد سريع)</strong>
@@ -784,14 +836,19 @@ function renderTopQuickReplies(filtered) {
 
     const maxCount = sorted[0].count;
     box.innerHTML = `<strong style="color:#1d364a;">📊 أكتر الأسئلة اللي بترد عليها جيميناي (مش رد سريع)</strong>
-        <p style="color:#666;font-size:12.5px;margin:6px 0 0;">الأسئلة دي اتكررت من عملاء مختلفين ومفيش رد سريع بيغطيها - يستاهل تضيفهم كرد سريع جديد.</p>` +
-        sorted.map(({ original, count }) => {
+        <p style="color:#666;font-size:12.5px;margin:6px 0 0;">الأسئلة دي اتكررت من عملاء مختلفين ومفيش رد سريع بيغطيها - يستاهل تضيفهم كرد سريع جديد. تقدر تمسح أي سؤال هنا نهائيًا من سجل الاستهلاك لو مش محتاجه.</p>` +
+        sorted.map(({ original, count, normalized }, i) => {
             const pct = Math.round((count / maxCount) * 100);
+            const id = 'tq_' + i;
+            topQuickRepliesMap[id] = normalized;
             return `
             <div style="margin-top:12px;">
-                <div style="display:flex;justify-content:space-between;font-size:13px;color:#333;margin-bottom:4px;">
-                    <span>${original.replace(/</g, '&lt;')}</span>
-                    <span style="font-weight:bold;color:#1d364a;">${count} مرة</span>
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;color:#333;margin-bottom:4px;">
+                    <span style="flex:1;">${original.replace(/</g, '&lt;')}</span>
+                    <span style="display:flex;align-items:center;gap:8px;flex:0 0 auto;">
+                        <span style="font-weight:bold;color:#1d364a;">${count} مرة</span>
+                        <button type="button" class="btn btn-red" style="padding:3px 10px;font-size:11px;" onclick="deleteTopQuestion('${id}')">🗑️ حذف نهائي</button>
+                    </span>
                 </div>
                 <div style="background:#eee;border-radius:6px;height:8px;overflow:hidden;">
                     <div style="background:#d9534f;height:100%;width:${pct}%;"></div>
@@ -799,6 +856,39 @@ function renderTopQuickReplies(filtered) {
             </div>`;
         }).join('');
 }
+
+// بيحذف نهائيًا كل سطور سجل الاستهلاك (botUsageLog) اللي رسالتها طابقت نفس
+// السؤال ده بالظبط (بعد التطبيع: مسافات زيادة/حالة الأحرف) - حذف حقيقي من
+// قاعدة البيانات، مش مجرد إخفاء من الشاشة، فهيختفي من كل مكان (لوحة الأدمن
+// وقاعدة البيانات) نهائيًا.
+window.deleteTopQuestion = function(id) {
+    const normalized = topQuickRepliesMap[id];
+    if (!normalized) return;
+
+    const matches = botUsageLogCache.filter(e => {
+        if (e.type !== 'ai' || !e.message) return false;
+        return String(e.message).trim().toLowerCase().replace(/\s+/g, ' ') === normalized;
+    });
+
+    if (!matches.length) {
+        alert("مفيش سطور مطابقة تتحذف (ممكن يكون اتغيّر الفلتر).");
+        return;
+    }
+
+    if (!confirm(`متأكد إنك عايز تحذف السؤال ده نهائيًا من سجل الاستهلاك؟ هيتحذف ${matches.length} سطر مرتبط بيه من قاعدة البيانات ومش هترجع تاني.`)) {
+        return;
+    }
+
+    const updates = {};
+    matches.forEach(e => { updates['/botUsageLog/' + e.id] = null; });
+
+    db.ref().update(updates).then(() => {
+        // db.ref('/botUsageLog').on('value') شغالة بالفعل هتحدّث botUsageLogCache
+        // وتعيد رسم الجدول والقائمة تلقائيًا بعد الحذف.
+    }).catch(err => {
+        alert("حصل خطأ أثناء الحذف: " + err.message);
+    });
+};
 
 function renderBotUsageSummaryCards(filtered) {
     const box = document.getElementById("botUsageSummaryCards");
