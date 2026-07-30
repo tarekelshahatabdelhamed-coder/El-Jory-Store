@@ -247,6 +247,7 @@
         <button class="menu-btn sub-btn" onclick="switchTab('acc-treasury-accounts')">🏦 أرصدة الحسابات</button>
         <button class="menu-btn sub-btn" onclick="switchTab('acc-treasury-transactions')">💳 حركات الخزنة</button>
         <button class="menu-btn sub-btn" onclick="switchTab('acc-expenses')">🧾 المصاريف</button>
+        <button class="menu-btn sub-btn" onclick="switchTab('acc-shipping'); if(typeof renderShippingCompanies==='function'){renderShippingCompanies();renderShippingCollections();}">🚚 شركات الشحن والتحصيل</button>
         <button class="menu-btn sub-btn" onclick="switchTab('acc-price-history')">📜 سجل تغييرات الأسعار</button>
         <button class="menu-btn sub-btn" onclick="switchTab('acc-stock-movements')">📦 سجل حركة المخزون واستلام البضاعة</button>
         <button class="menu-btn sub-btn" onclick="switchTab('acc-reports')">📈 التقارير المالية</button>
@@ -1983,6 +1984,50 @@
         </table>
     </div>
 
+    <!-- ══════════════ الحسابات والخزنة 💰 — شركات الشحن والتحصيل ══════════════ -->
+    <div id="acc-shipping" class="section">
+        <h3>🚚 شركات الشحن والتحصيل</h3>
+        <p style="color:gray;font-size:13.5px;margin-top:-15px;margin-bottom:20px;line-height:1.8;">
+            لو بتشحن أوردراتك عن طريق شركة شحن (بتسلّم الفاتورة للعميل وتحوّلك الفلوس بعد كام يوم وبعد خصم عمولتها)،
+            سجّل الشركة هنا مرة واحدة. بعدها لما تدوس "تم التوصيل" على أي أوردر، تقدر تختار "شحنته مع شركة شحن"
+            بدل استلام الفلوس كاش على طول، والأوردر هيفضل "تحت التحصيل" (ومحسوب في رأس المال كمديونية) لحد ما تأكد
+            استلام تحويل الشركة فعليًا من هنا.
+        </p>
+
+        <!-- فورم إضافة شركة شحن -->
+        <div style="display:flex;gap:15px;margin-bottom:25px;background:#eef2f5;padding:20px;border-radius:8px;flex-wrap:wrap;align-items:flex-end;">
+            <div class="form-group" style="flex:2;min-width:180px;margin-bottom:0;">
+                <label>اسم شركة الشحن</label>
+                <input type="text" id="newShipCoName" class="form-control" placeholder="مثال: بوسطة، أرامكس...">
+            </div>
+            <div class="form-group" style="flex:1;min-width:120px;margin-bottom:0;">
+                <label>نسبة العمولة %</label>
+                <input type="number" id="newShipCoPercent" class="form-control" min="0" step="0.1" placeholder="مثال: 5">
+            </div>
+            <div class="form-group" style="flex:1;min-width:120px;margin-bottom:0;">
+                <label>حد أدنى للعمولة (ج.م)</label>
+                <input type="number" id="newShipCoMin" class="form-control" min="0" placeholder="مثال: 10">
+            </div>
+            <div class="form-group" style="flex:1;min-width:120px;margin-bottom:0;">
+                <label>حد أقصى للعمولة (ج.م)</label>
+                <input type="number" id="newShipCoMax" class="form-control" min="0" placeholder="مثال: 50">
+            </div>
+            <div class="form-group" style="flex:1;min-width:140px;margin-bottom:0;">
+                <label>مدة التحصيل المتوقعة (يوم)</label>
+                <input type="number" id="newShipCoDays" class="form-control" min="1" value="7">
+            </div>
+            <button class="btn btn-green" onclick="addShippingCompany()" style="flex:0 0 auto;padding:12px 25px;">➕ إضافة شركة</button>
+        </div>
+
+        <table style="margin-bottom:35px;">
+            <thead><tr><th>اسم الشركة</th><th>العمولة</th><th>مدة التحصيل</th><th>معلّق حاليًا</th><th>الحالة</th><th style="min-width:170px;">إجراء</th></tr></thead>
+            <tbody id="adminShippingCompaniesBody"></tbody>
+        </table>
+
+        <h3 style="border-bottom:2px solid #f38c18;padding-bottom:10px;">📋 الأوردرات تحت التحصيل حاليًا (حسب كل شركة)</h3>
+        <div id="shipCollectCompaniesBox"></div>
+    </div>
+
     <!-- ══════════════ الحسابات والخزنة 💰 ══════════════ -->
     <div id="acc-price-history" class="section">
         <h3>📜 سجل تغييرات أسعار المنتجات (بيع وتكلفة)</h3>
@@ -2262,20 +2307,76 @@
 ════════════════════════════════════════════════ -->
 <div id="deliveryAccountModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);
      justify-content:center;align-items:center;z-index:3000;">
-  <div style="background:white;padding:25px;border-radius:10px;width:450px;max-width:92%;">
+  <div style="background:white;padding:25px;border-radius:10px;width:470px;max-width:92%;">
     <h3 style="color:#1d364a;border-bottom:2px solid #28a745;padding-bottom:10px;">💰 استلام قيمة الطلب</h3>
-    <p style="color:#555;font-size:14px;">هذا الطلب هيتحسب مالياً الآن. اختار الحساب اللي هتستلم فيه قيمة الفاتورة:</p>
+    <p style="color:#555;font-size:14px;">هذا الطلب هيتحسب مالياً الآن. إزاي استلمت (أو هتستلم) قيمة الفاتورة؟</p>
     <input type="hidden" id="deliveryModalOrderId">
-    <div class="form-group">
-        <label>الحساب المستلم</label>
-        <select id="deliveryModalAccount" class="form-control"></select>
+    <input type="hidden" id="deliveryModalMethod" value="cash">
+
+    <!-- تبويب اختيار الطريقة -->
+    <div style="display:flex;gap:0;margin-bottom:15px;">
+        <button type="button" id="deliveryModalMethodCashBtn" class="btn" style="flex:1;border-radius:8px 0 0 8px;" onclick="deliveryModalSetMethod('cash')">💵 استلمتها كاش دلوقتي</button>
+        <button type="button" id="deliveryModalMethodShippingBtn" class="btn" style="flex:1;border-radius:0 8px 8px 0;background:#eef2f5;color:#1d364a;" onclick="deliveryModalSetMethod('shipping')">🚚 شحنته مع شركة شحن</button>
     </div>
-    <div id="deliveryModalNoAccountsMsg" style="display:none;color:#d9534f;font-weight:bold;font-size:13px;margin-bottom:10px;">
-        ⚠️ لا يوجد أي حساب خزنة مضاف بعد. أضف حساب أولاً من تاب "أرصدة الحسابات" ثم أعد المحاولة.
+
+    <!-- خيار 1: استلام كاش مباشر -->
+    <div id="deliveryModalCashBox">
+        <div class="form-group">
+            <label>الحساب المستلم</label>
+            <select id="deliveryModalAccount" class="form-control"></select>
+        </div>
+        <div id="deliveryModalNoAccountsMsg" style="display:none;color:#d9534f;font-weight:bold;font-size:13px;margin-bottom:10px;">
+            ⚠️ لا يوجد أي حساب خزنة مضاف بعد. أضف حساب أولاً من تاب "أرصدة الحسابات" ثم أعد المحاولة.
+        </div>
     </div>
+
+    <!-- خيار 2: تحت التحصيل عند شركة شحن -->
+    <div id="deliveryModalShippingBox" style="display:none;">
+        <div class="form-group">
+            <label>شركة الشحن</label>
+            <select id="deliveryModalShippingCompany" class="form-control"></select>
+        </div>
+        <p style="color:#888;font-size:12.5px;line-height:1.7;margin-top:-8px;">
+            الفاتورة هتفضل "تحت التحصيل" (محسوبة في رأس المال كمديونية) لحد ما تأكد استلام تحويل الشركة فعليًا
+            من تاب "🚚 شركات الشحن والتحصيل".
+        </p>
+    </div>
+
     <div style="display:flex;gap:10px;margin-top:15px;">
         <button class="btn btn-green" onclick="confirmDeliveryAccount()" style="flex:1;padding:12px;">✅ تأكيد الاستلام والتوصيل</button>
         <button class="btn btn-red" onclick="closeDeliveryAccountModal()" style="flex:1;padding:12px;">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     Modal تسجيل تحصيل دفعة من شركة شحن
+════════════════════════════════════════════════ -->
+<div id="shipCollectModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);
+     justify-content:center;align-items:center;z-index:3000;">
+  <div style="background:white;padding:25px;border-radius:10px;width:600px;max-width:94%;max-height:90vh;overflow-y:auto;">
+    <h3 style="color:#1d364a;border-bottom:2px solid #28a745;padding-bottom:10px;">
+        💰 تسجيل تحصيل دفعة — <span id="shipCollectModalCompanyName" style="color:#f38c18;"></span>
+    </h3>
+    <p style="color:#555;font-size:13.5px;line-height:1.7;">
+        حدّد الأوردرات اللي فعلاً وصلتك فلوسها في التحويل ده. الصافي المتوقع محسوب أوتوماتيك تحت كل أوردر —
+        عدّله لو الرقم الفعلي اللي وصلك مختلف (والفرق هيتسجل تلقائيًا كمصروف "شحن وتوصيل").
+    </p>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <input type="checkbox" id="shipCollectSelectAll" style="width:18px;height:18px;cursor:pointer;" onchange="shipCollectToggleAll(this.checked)">
+        <label style="font-weight:bold;color:#1d364a;cursor:pointer;" onclick="document.getElementById('shipCollectSelectAll').click()">تحديد الكل</label>
+    </div>
+    <div id="shipCollectOrdersBox" style="margin-bottom:15px;"></div>
+    <div class="form-group">
+        <label>الحساب اللي استلمت فيه التحويل</label>
+        <select id="shipCollectAccount" class="form-control"></select>
+    </div>
+    <div style="font-weight:bold;font-size:17px;color:#1d364a;margin-bottom:15px;">
+        إجمالي الصافي المحدد: <span id="shipCollectTotalPreview" style="color:#28a745;">0.00</span> ج.م
+    </div>
+    <div style="display:flex;gap:10px;">
+        <button class="btn btn-green" onclick="submitShipCollection()" style="flex:1;padding:12px;">✅ تأكيد التحصيل</button>
+        <button class="btn btn-red" onclick="closeShipCollectModal()" style="flex:1;padding:12px;">إلغاء</button>
     </div>
   </div>
 </div>

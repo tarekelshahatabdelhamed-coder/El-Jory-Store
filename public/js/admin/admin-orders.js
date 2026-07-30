@@ -882,6 +882,14 @@ window.cancelOrderAdmin = function(orderId) {
         needsTreasuryReversal = true;
     }
 
+    // ⭐ نظام شركات الشحن: لو الطلب ده لسه "تحت التحصيل" عند شركة شحن (يعني
+    // الفلوس أصلاً لسه ما دخلتش أي حساب خزنة)، منحتاجش نعكس أي حركة خزنة —
+    // بس لازم نعلّم عليه cancelled عشان يختفي فورًا من تاب "شركات الشحن
+    // والتحصيل" ومن بند "مبالغ تحت التحصيل" في رأس المال.
+    if (order.shippingCollection && order.shippingCollection.status === 'pending') {
+        cancelUpdates['shippingCollection/status'] = 'cancelled';
+    }
+
     // ⭐ نظام الحسابات: لو الطلب ده كان اتسجل له مصروف "خصم كوبون" تلقائي وقت
     // التوصيل (discountExpenseId موجود) ولسه ما اترجعش، دلوقتي بعد الإلغاء
     // بنرجّع قيمته لنفس الحساب (عكس المصروف) عشان رصيد الخزنة يفضل صحيح.

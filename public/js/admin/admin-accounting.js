@@ -132,7 +132,7 @@ window.populateTreasuryAccountSelects = function() {
     let opts = '<option value="">-- اختر الحساب --</option>' +
         accounts.map(a => `<option value="${a.id}">${a.name} (${window.treasuryAccountTypeLabel(a.type)}) — الرصيد: ${(a.balance||0).toFixed(2)} ج.م</option>`).join('');
 
-    ['depTreasAccount','wdTreasAccount','trFromAccount','trToAccount','deliveryModalAccount','moDepositAccount'].forEach(id => {
+    ['depTreasAccount','wdTreasAccount','trFromAccount','trToAccount','deliveryModalAccount','moDepositAccount','shipCollectAccount'].forEach(id => {
         let el = document.getElementById(id);
         if (el) { let cur = el.value; el.innerHTML = opts; if (cur) el.value = cur; }
     });
@@ -344,6 +344,10 @@ window.openDeliveryAccountModal = function(orderId, oldStatus) {
     document.getElementById("deliveryModalOrderId").value = orderId;
     window._pendingDeliveryOldStatus = oldStatus;
     window.populateTreasuryAccountSelects();
+    // ⭐ نظام شركات الشحن: كل مرة نفتح المودال نرجّعه لوضعه الافتراضي "استلمت
+    // الفلوس كاش دلوقتي" - لو الأدمن عنده أوردر شحنه شركة شحن، يختار الخيار
+    // التاني بنفسه من الأزرار جوه المودال.
+    if (typeof window.deliveryModalSetMethod === 'function') window.deliveryModalSetMethod('cash');
     document.getElementById("deliveryAccountModal").style.display = "flex";
 };
 
@@ -352,7 +356,21 @@ window.closeDeliveryAccountModal = function() {
 };
 
 window.confirmDeliveryAccount = function() {
-    let orderId   = document.getElementById("deliveryModalOrderId").value;
+    let orderId = document.getElementById("deliveryModalOrderId").value;
+    let methodEl = document.getElementById("deliveryModalMethod");
+    let method = methodEl ? (methodEl.value || 'cash') : 'cash';
+
+    // ⭐ نظام شركات الشحن: لو الأدمن اختار "شحنته مع شركة شحن"، مش بندخل
+    // الفلوس في أي حساب خزنة دلوقتي - الطلب بيروح لحالة "تحت التحصيل" لحد
+    // ما فعليًا تستلم تحويل شركة الشحن من تاب "🚚 شركات الشحن والتحصيل".
+    if (method === 'shipping') {
+        let companyId = document.getElementById("deliveryModalShippingCompany").value;
+        if (!companyId) return alert("يرجى اختيار شركة الشحن!");
+        window.finalizeDeliverOrderViaShippingCompany(orderId, companyId, window._pendingDeliveryOldStatus);
+        window.closeDeliveryAccountModal();
+        return;
+    }
+
     let accountId = document.getElementById("deliveryModalAccount").value;
     if (!accountId) return alert("يرجى اختيار الحساب المستلم!");
     window.finalizeDeliverOrder(orderId, accountId, window._pendingDeliveryOldStatus);
@@ -472,6 +490,445 @@ window.finalizeDeliverOrder = function(orderId, accountId, oldStatus) {
         alert(alertMsg);
     });
 };
+
+// ================================================================
+// ⭐ نظام شركات الشحن والتحصيل (Shipping Companies & Collections)
+// ================================================================
+// المبدأ: لو الطلب "تم التوصيل" عن طريق شركة شحن (مش استلام كاش مباشر منك)،
+// الفلوس الحقيقية مش بتوصلك فورًا - بتفضل مع شركة الشحن لحد ما تحوّلها ليك
+// (عادةً بعد كام يوم، وبتاخد عمولة منها). عشان كده بنفصل بين:
+// 1) "تم التوصيل" (الطلب وصل للعميل فعليًا، بيتحسب في الأرباح والمخزون زي العادي)
+// 2) "التحصيل الفعلي" (الفلوس دخلت خزنتك فعلاً) - ده بيحصل لاحقًا من هنا.
+// أي أوردر "تحت التحصيل" بيفضل محسوب ضمن رأس المال (كمديونية مستحقة) لحد ما
+// يتحصّل، وقتها بس بيتسجل الإيداع الحقيقي في الخزنة وتتحدد العمولة الفعلية.
+
+window.shippingCompanyCommissionLabel = function(c) {
+    return `${c.commissionPercent || 0}% (حد أدنى ${c.minCommission || 0} ج.م، حد أقصى ${c.maxCommission || 0} ج.م)`;
+};
+
+// حساب العمولة المتوقعة لأوردر واحد لوحده حسب إعدادات الشركة (نسبة % مع
+// مراعاة الحد الأدنى والحد الأقصى) - كل أوردر بيتحسب على حدة لأن الحد
+// الأدنى/الأقصى بيتطبق على كل عملية تحصيل فردية، مش على إجمالي الدفعة.
+window.computeExpectedCommission = function(grossAmount, company) {
+    if (!company) return 0;
+    let pct = parseFloat(company.commissionPercent) || 0;
+    let raw = (parseFloat(grossAmount) || 0) * (pct / 100);
+    let min = parseFloat(company.minCommission) || 0;
+    let max = parseFloat(company.maxCommission) || 0;
+    if (min > 0 && raw < min) raw = min;
+    if (max > 0 && raw > max) raw = max;
+    return raw;
+};
+
+// ── إدارة شركات الشحن (CRUD) ────────────────────────────────────────────
+window.addShippingCompany = function() {
+    let name = document.getElementById("newShipCoName").value.trim();
+    let pct  = parseFloat(document.getElementById("newShipCoPercent").value) || 0;
+    let min  = parseFloat(document.getElementById("newShipCoMin").value) || 0;
+    let max  = parseFloat(document.getElementById("newShipCoMax").value) || 0;
+    let days = parseInt(document.getElementById("newShipCoDays").value) || 7;
+    if (!name) return alert("يرجى كتابة اسم شركة الشحن!");
+    if (max > 0 && min > max) return alert("الحد الأدنى مينفعش يكون أكبر من الحد الأقصى!");
+
+    let id = 'SHIPCO_' + Date.now();
+    db.ref('/shippingCompanies/' + id).set({
+        id, name, commissionPercent: pct, minCommission: min, maxCommission: max,
+        collectionDays: days, isActive: true, createdAt: Date.now()
+    }).then(() => {
+        document.getElementById("newShipCoName").value    = "";
+        document.getElementById("newShipCoPercent").value = "";
+        document.getElementById("newShipCoMin").value     = "";
+        document.getElementById("newShipCoMax").value     = "";
+        document.getElementById("newShipCoDays").value    = "7";
+        alert("✅ تم إضافة شركة الشحن بنجاح!");
+    });
+};
+
+window.toggleShippingCompanyStatus = function(id) {
+    db.ref('/shippingCompanies/' + id + '/isActive').once('value').then(snap => {
+        db.ref('/shippingCompanies/' + id + '/isActive').set(!(snap.val() !== false));
+    });
+};
+
+window.editShippingCompany = function(id) {
+    let companies = JSON.parse(localStorage.getItem("eljory_shipping_companies")) || [];
+    let c = companies.find(x => x.id === id);
+    if (!c) return;
+    let name = prompt("اسم شركة الشحن:", c.name); if (name === null || !name.trim()) return;
+    let pct  = prompt("نسبة العمولة (%):", c.commissionPercent); if (pct === null) return;
+    let min  = prompt("الحد الأدنى للعمولة (ج.م):", c.minCommission); if (min === null) return;
+    let max  = prompt("الحد الأقصى للعمولة (ج.م):", c.maxCommission); if (max === null) return;
+    let days = prompt("مدة التحصيل المتوقعة (بالأيام):", c.collectionDays); if (days === null) return;
+    db.ref('/shippingCompanies/' + id).update({
+        name: name.trim(),
+        commissionPercent: parseFloat(pct) || 0,
+        minCommission: parseFloat(min) || 0,
+        maxCommission: parseFloat(max) || 0,
+        collectionDays: parseInt(days) || 7
+    });
+};
+
+window.deleteShippingCompany = function(id) {
+    let orders = JSON.parse(localStorage.getItem("eljory_orders")) || [];
+    let pendingCount = orders.filter(o => o.shippingCollection && o.shippingCollection.companyId === id && o.shippingCollection.status === 'pending').length;
+    if (pendingCount > 0) {
+        alert(`⚠️ لا يمكن حذف الشركة دي - لسه عندها ${pendingCount} أوردر تحت التحصيل. حصّلهم الأول من تاب "شركات الشحن والتحصيل".`);
+        return;
+    }
+    if (!confirm("متأكد من حذف شركة الشحن دي نهائيًا؟")) return;
+    db.ref('/shippingCompanies/' + id).remove();
+};
+
+window.renderShippingCompanies = function() {
+    let tbody = document.getElementById("adminShippingCompaniesBody");
+    if (!tbody) return;
+    let companies = JSON.parse(localStorage.getItem("eljory_shipping_companies")) || [];
+    let orders    = JSON.parse(localStorage.getItem("eljory_orders")) || [];
+
+    if (!companies.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:gray;padding:20px;">لا توجد شركات شحن مضافة بعد. أضف أول شركة من الفورم فوق.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = companies.map(c => {
+        let isActive = c.isActive !== false;
+        let pendingOrders = orders.filter(o => o.shippingCollection && o.shippingCollection.companyId === c.id && o.shippingCollection.status === 'pending');
+        return `<tr style="${!isActive ? 'opacity:0.55;' : ''}">
+            <td><strong>${c.name}</strong></td>
+            <td>${window.shippingCompanyCommissionLabel(c)}</td>
+            <td>${c.collectionDays || 7} يوم</td>
+            <td>${pendingOrders.length}</td>
+            <td><button class="btn ${isActive ? 'btn-green' : 'btn-inactive'}" style="padding:4px 10px;" onclick="toggleShippingCompanyStatus('${c.id}')">${isActive ? 'نشطة' : 'مخفية'}</button></td>
+            <td>
+                <button class="btn" style="background:#17a2b8;padding:4px 10px;margin-bottom:5px;" onclick="editShippingCompany('${c.id}')">✏️ تعديل</button>
+                <button class="btn btn-red" style="padding:4px 10px;" onclick="deleteShippingCompany('${c.id}')">🗑️ حذف</button>
+            </td>
+        </tr>`;
+    }).join('');
+};
+
+// تعبئة قايمة اختيار شركة الشحن جوه مودال "تم التوصيل"
+window.populateShippingCompanySelect = function() {
+    let companies = (JSON.parse(localStorage.getItem("eljory_shipping_companies")) || []).filter(c => c.isActive !== false);
+    let el = document.getElementById("deliveryModalShippingCompany");
+    if (!el) return;
+    let cur = el.value;
+    el.innerHTML = '<option value="">-- اختر شركة الشحن --</option>' +
+        companies.map(c => `<option value="${c.id}">${c.name} — عمولة ${window.shippingCompanyCommissionLabel(c)}</option>`).join('');
+    if (cur) el.value = cur;
+};
+
+// ── تبديل طريقة استلام الفاتورة داخل مودال "تم التوصيل" ─────────────────
+window.deliveryModalSetMethod = function(method) {
+    let cashBox = document.getElementById("deliveryModalCashBox");
+    let shipBox = document.getElementById("deliveryModalShippingBox");
+    let cashBtn = document.getElementById("deliveryModalMethodCashBtn");
+    let shipBtn = document.getElementById("deliveryModalMethodShippingBtn");
+    let methodEl = document.getElementById("deliveryModalMethod");
+    if (cashBox) cashBox.style.display = (method === 'cash') ? 'block' : 'none';
+    if (shipBox) shipBox.style.display = (method === 'shipping') ? 'block' : 'none';
+    if (cashBtn) { cashBtn.style.background = (method === 'cash') ? '#1d364a' : '#eef2f5'; cashBtn.style.color = (method === 'cash') ? 'white' : '#1d364a'; }
+    if (shipBtn) { shipBtn.style.background = (method === 'shipping') ? '#1d364a' : '#eef2f5'; shipBtn.style.color = (method === 'shipping') ? 'white' : '#1d364a'; }
+    if (methodEl) methodEl.value = method;
+    if (method === 'shipping') window.populateShippingCompanySelect();
+};
+
+// تنفيذ فعلي لتحويل الطلب لـ"تم التوصيل" عن طريق شركة شحن: بيحسب الوضع
+// المالي (ربح/تكلفة) زي أي طلب عادي، لكن **من غير** ما يودع أي فلوس فعلية
+// في أي حساب خزنة - الطلب بيتسجل بدل كده كـ"تحت التحصيل" لحد ما تأكد
+// استلام تحويل شركة الشحن من تاب "🚚 شركات الشحن والتحصيل".
+window.finalizeDeliverOrderViaShippingCompany = function(orderId, companyId, oldStatus) {
+    let orders = JSON.parse(localStorage.getItem("eljory_orders")) || [];
+    let order  = orders.find(o => o.id === orderId);
+    if (!order) return;
+    let companies = JSON.parse(localStorage.getItem("eljory_shipping_companies")) || [];
+    let company = companies.find(c => c.id === companyId);
+    if (!company) return alert("شركة الشحن دي مش موجودة!");
+
+    let adminEmail = (firebase.auth().currentUser && firebase.auth().currentUser.email) || 'غير معروف';
+    let historyEntry = { status: 'Delivered', by: adminEmail, byType: 'admin', date: new Date().toLocaleString('ar-EG') };
+    let newHistory = (order.statusHistory || []).concat([historyEntry]);
+
+    let orderUpdates = { status: 'Delivered', statusHistory: newHistory };
+    if (!order.deliveredAt) orderUpdates.deliveredAt = Date.now();
+
+    let products = JSON.parse(localStorage.getItem("eljory_products")) || [];
+    let finance  = window.computeOrderFinance(order, products);
+    finance.depositAccountId = null;              // لسه مفيش حساب استلم الفلوس فعليًا
+    finance.pendingShippingCollection = true;      // علشان أي تقرير يعرف يستثنيها لو محتاج
+    orderUpdates.financeSnapshot = finance;
+
+    let grossAmount = (parseFloat(order.total) || 0) + (parseFloat(order.discount) || 0);
+    let expectedCommission = window.computeExpectedCommission(grossAmount, company);
+    let days = parseInt(company.collectionDays) || 7;
+
+    orderUpdates.shippingCollection = {
+        companyId, companyName: company.name,
+        grossAmount, expectedCommission,
+        expectedNet: grossAmount - expectedCommission,
+        status: 'pending',
+        createdAt: Date.now(),
+        collectionDeadline: Date.now() + days * 24 * 60 * 60 * 1000
+    };
+
+    db.ref('/orders/' + orderId).update(orderUpdates).then(() => {
+        let alertMsg = `تم التوصيل ✅\nالفاتورة دلوقتي "تحت التحصيل" عند ${company.name} (${grossAmount.toFixed(2)} ج.م) - هتتسجل في الخزنة فعليًا لما تأكد استلام التحويل من تاب "🚚 شركات الشحن والتحصيل".`;
+
+        if (oldStatus !== "Delivered") {
+            let loyaltySettings = JSON.parse(localStorage.getItem("eljory_loyalty_settings")) || { system: "global", spent: 10, earn: 1 };
+            let pointsEarned    = 0;
+            let orderTotal      = parseFloat(order.total) || 0;
+            let orderPhoneShort = window.getShortPhone(order.customer.phone);
+            let usersDB         = JSON.parse(localStorage.getItem("eljory_users_db")) || [];
+            let u               = usersDB.find(u => window.getShortPhone(u.phone) === orderPhoneShort);
+            if (u) {
+                if (loyaltySettings.system === "global") {
+                    let spent = parseFloat(loyaltySettings.spent) || 10;
+                    let earn  = parseFloat(loyaltySettings.earn)  || 1;
+                    pointsEarned = Math.floor(orderTotal / spent) * earn;
+                } else if (loyaltySettings.system === "product") {
+                    let productsDB = JSON.parse(localStorage.getItem("eljory_products")) || [];
+                    if (order.items) order.items.forEach(item => {
+                        let p = productsDB.find(prod => String(prod.id) === String(item.id));
+                        if (p && p.points) pointsEarned += (parseFloat(p.points) * (parseInt(item.qty) || 1));
+                    });
+                }
+                if (pointsEarned > 0) {
+                    db.ref('/users/' + orderPhoneShort + '/points').transaction(curr => (curr || 0) + pointsEarned);
+                    let historyRef = db.ref('/users/' + orderPhoneShort + '/pointsHistory');
+                    historyRef.once('value').then(snap => {
+                        let hist = snap.val() || [];
+                        hist.push({ type: "earn", amount: pointsEarned, reason: `كسب نقاط من طلب رقم #${order.id} (بقيمة ${orderTotal} ج.م)`, date: new Date().toLocaleDateString('en-GB') });
+                        historyRef.set(hist);
+                    });
+                    db.ref('/orders/' + orderId).update({ earnedPoints: pointsEarned });
+                    alertMsg += `\nتمت إضافة (${pointsEarned}) نقطة لمحفظة العميل.`;
+                }
+            }
+        }
+        alert(alertMsg);
+    });
+};
+
+// ── تاب "🚚 شركات الشحن والتحصيل": عرض الأوردرات المعلّقة + تسجيل التحصيل ──
+let shipCollectSelectedOrders = new Set();
+let shipCollectCurrentCompanyId = null;
+
+window.renderShippingCollections = function() {
+    let box = document.getElementById("shipCollectCompaniesBox");
+    if (!box) return;
+    let companies = JSON.parse(localStorage.getItem("eljory_shipping_companies")) || [];
+    let orders    = JSON.parse(localStorage.getItem("eljory_orders")) || [];
+
+    if (!companies.length) {
+        box.innerHTML = '<p style="color:gray;">لسه مفيش شركات شحن مضافة. أضف شركة أولاً من فوق.</p>';
+        return;
+    }
+
+    let html = companies.map(c => {
+        let pending = orders.filter(o => o.shippingCollection && o.shippingCollection.companyId === c.id && o.shippingCollection.status === 'pending');
+        if (!pending.length) return '';
+        let totalGross = pending.reduce((s, o) => s + (o.shippingCollection.grossAmount || 0), 0);
+        let totalNet   = pending.reduce((s, o) => s + (o.shippingCollection.expectedNet || 0), 0);
+        let overdue    = pending.filter(o => (o.shippingCollection.collectionDeadline || 0) < Date.now());
+
+        return `<div style="background:white;border:1px solid #ddd;border-radius:10px;padding:18px;margin-bottom:18px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+                <div>
+                    <strong style="color:#1d364a;font-size:16px;">🚚 ${c.name}</strong>
+                    <span style="color:#666;font-size:13px;margin-right:10px;">${pending.length} أوردر تحت التحصيل</span>
+                    ${overdue.length ? `<span style="background:#d9534f;color:white;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:bold;margin-right:10px;">⚠️ ${overdue.length} متأخر عن الميعاد المتوقع</span>` : ''}
+                </div>
+                <button class="btn btn-green" onclick="openShipCollectModal('${c.id}')">💰 تسجيل تحصيل دفعة</button>
+            </div>
+            <div style="display:flex;gap:20px;font-size:13.5px;color:#444;margin-bottom:10px;">
+                <span>الإجمالي المستحق: <strong style="color:#1d364a;">${totalGross.toFixed(2)} ج.م</strong></span>
+                <span>الصافي المتوقع (بعد العمولة): <strong style="color:#28a745;">${totalNet.toFixed(2)} ج.م</strong></span>
+            </div>
+            <table style="width:100%;font-size:13px;">
+                <thead><tr><th>رقم الطلب</th><th>تاريخ التوصيل</th><th>الإجمالي</th><th>العمولة المتوقعة</th><th>الصافي المتوقع</th><th>الحالة</th></tr></thead>
+                <tbody>
+                ${pending.map(o => {
+                    let isOverdue = (o.shippingCollection.collectionDeadline || 0) < Date.now();
+                    return `<tr style="${isOverdue ? 'background:#fdecea;' : ''}">
+                        <td>${o.id}</td>
+                        <td>${o.deliveredAt ? new Date(o.deliveredAt).toLocaleDateString('ar-EG') : '—'}</td>
+                        <td>${(o.shippingCollection.grossAmount || 0).toFixed(2)}</td>
+                        <td>${(o.shippingCollection.expectedCommission || 0).toFixed(2)}</td>
+                        <td>${(o.shippingCollection.expectedNet || 0).toFixed(2)}</td>
+                        <td>${isOverdue ? '⚠️ متأخر' : '⏳ في الانتظار'}</td>
+                    </tr>`;
+                }).join('')}
+                </tbody>
+            </table>
+        </div>`;
+    }).join('');
+
+    box.innerHTML = html || '<p style="color:gray;">مفيش أي أوردرات تحت التحصيل حاليًا 🎉</p>';
+};
+
+window.openShipCollectModal = function(companyId) {
+    shipCollectCurrentCompanyId = companyId;
+    shipCollectSelectedOrders = new Set();
+    let companies = JSON.parse(localStorage.getItem("eljory_shipping_companies")) || [];
+    let company = companies.find(c => c.id === companyId);
+    if (!company) return;
+
+    document.getElementById("shipCollectModalCompanyName").innerText = company.name;
+    window.populateTreasuryAccountSelects();
+    renderShipCollectOrdersList();
+    document.getElementById("shipCollectModal").style.display = "flex";
+};
+
+window.closeShipCollectModal = function() {
+    document.getElementById("shipCollectModal").style.display = "none";
+};
+
+function renderShipCollectOrdersList() {
+    let orders = JSON.parse(localStorage.getItem("eljory_orders")) || [];
+    let pending = orders.filter(o => o.shippingCollection && o.shippingCollection.companyId === shipCollectCurrentCompanyId && o.shippingCollection.status === 'pending');
+    let box = document.getElementById("shipCollectOrdersBox");
+    if (!box) return;
+
+    box.innerHTML = pending.map(o => {
+        // ⭐ كل أوردر بيتحسب لوحده - الصافي المتوقع (المحسوب أوتوماتيك من نسبة
+        // العمولة مع مراعاة الحد الأدنى/الأقصى) بيتحط كقيمة افتراضية في خانة
+        // قابلة للتعديل، عشان تظبطها بنفسك لو العمولة الفعلية جاءت مختلفة.
+        let defaultNet = (o.shippingCollection.expectedNet || 0).toFixed(2);
+        return `<div style="display:flex;align-items:center;gap:10px;background:#f9f9f9;padding:10px;border-radius:6px;margin-bottom:8px;flex-wrap:wrap;">
+            <input type="checkbox" class="shipCollectOrderChk" data-order-id="${o.id}" style="width:18px;height:18px;" onchange="shipCollectToggleOrder('${o.id}', this.checked)">
+            <span style="flex:1;min-width:160px;">طلب #${o.id} — إجمالي: <strong>${(o.shippingCollection.grossAmount || 0).toFixed(2)}</strong> ج.م</span>
+            <label style="font-size:12px;color:#666;white-space:nowrap;">الصافي الفعلي المستلم:</label>
+            <input type="number" class="form-control shipCollectNetInput" data-order-id="${o.id}"
+                   value="${defaultNet}" style="width:120px;" oninput="shipCollectUpdateTotals()">
+        </div>`;
+    }).join('') || '<p style="color:gray;">مفيش أوردرات معلّقة لهذه الشركة حاليًا.</p>';
+
+    let selAll = document.getElementById("shipCollectSelectAll");
+    if (selAll) selAll.checked = false;
+    shipCollectUpdateTotals();
+}
+
+window.shipCollectToggleAll = function(checked) {
+    document.querySelectorAll('.shipCollectOrderChk').forEach(chk => {
+        chk.checked = checked;
+        shipCollectToggleOrder(chk.getAttribute('data-order-id'), checked);
+    });
+};
+
+window.shipCollectToggleOrder = function(orderId, checked) {
+    if (checked) shipCollectSelectedOrders.add(orderId);
+    else shipCollectSelectedOrders.delete(orderId);
+    shipCollectUpdateTotals();
+};
+
+window.shipCollectUpdateTotals = function() {
+    let totalNet = 0;
+    document.querySelectorAll('.shipCollectOrderChk:checked').forEach(chk => {
+        let orderId = chk.getAttribute('data-order-id');
+        let netInput = document.querySelector(`.shipCollectNetInput[data-order-id="${orderId}"]`);
+        totalNet += parseFloat(netInput ? netInput.value : 0) || 0;
+    });
+    let el = document.getElementById("shipCollectTotalPreview");
+    if (el) el.innerText = totalNet.toFixed(2);
+};
+
+// ⭐ تسجيل التحصيل الفعلي: بيعالج كل أوردر محدد **لوحده** (مش إجمالي مجمّع) —
+// بيودع القيمة الإجمالية لكل فاتورة في الحساب، وبعدين يخصم الفرق بين
+// الإجمالي والصافي اللي كتبته كـ"عمولة شركة شحن" (مصروف تلقائي بفئة "شحن
+// وتوصيل")، فرصيد الحساب في الآخر بيتظبط بالظبط على الصافي الحقيقي اللي دخل.
+window.submitShipCollection = function() {
+    let accountId = document.getElementById("shipCollectAccount").value;
+    if (!accountId) return alert("يرجى اختيار الحساب المستلم!");
+    if (!shipCollectSelectedOrders.size) return alert("يرجى تحديد أوردر واحد على الأقل!");
+
+    let orders    = JSON.parse(localStorage.getItem("eljory_orders")) || [];
+    let companies = JSON.parse(localStorage.getItem("eljory_shipping_companies")) || [];
+    let company   = companies.find(c => c.id === shipCollectCurrentCompanyId);
+    let companyLabel = company ? company.name : 'شركة شحن';
+
+    let chain = Promise.resolve();
+    let collectedCount = 0;
+
+    Array.from(shipCollectSelectedOrders).forEach(orderId => {
+        let order = orders.find(o => o.id === orderId);
+        if (!order || !order.shippingCollection || order.shippingCollection.status !== 'pending') return;
+
+        let netInput = document.querySelector(`.shipCollectNetInput[data-order-id="${orderId}"]`);
+        let actualNet = parseFloat(netInput ? netInput.value : 0) || 0;
+        let gross = order.shippingCollection.grossAmount || 0;
+        let actualCommission = gross - actualNet; // موجب = عمولة طبيعية خصمتها الشركة، سالب = وصل أكتر من المتوقع
+
+        chain = chain.then(() => {
+            return window.logTreasuryTransaction({
+                accountId, type: 'sale_revenue', amount: gross,
+                reason: `إيراد بيع (تحصيل ${companyLabel}) - طلب رقم ${orderId}`,
+                relatedOrderId: orderId
+            });
+        }).then(() => {
+            // ⭐ خصم الكوبون (لو موجود) بيتسجل هنا بنفس منطق التوصيل الكاش
+            // العادي بالظبط، دلوقتي بس لأن دي أول مرة فلوس فعلية بتدخل حساب.
+            return window.recordDiscountExpense(order, orderId, accountId);
+        }).then(() => {
+            if (Math.abs(actualCommission) < 0.01) return null;
+            if (actualCommission > 0) {
+                // عمولة طبيعية - تتسجل كمصروف "شحن وتوصيل" وتتخصم من نفس الحساب
+                let expId = 'EXP_SHIPCOMM_' + orderId;
+                let adminEmail = (firebase.auth().currentUser && firebase.auth().currentUser.email) || 'غير معروف';
+                let commExpense = {
+                    id: expId,
+                    title: `عمولة ${companyLabel} - طلب رقم ${orderId}`,
+                    category: 'shipping',
+                    date: new Date().toISOString().slice(0, 10),
+                    total: actualCommission,
+                    allocations: [{ accountId, amount: actualCommission }],
+                    by: adminEmail, relatedOrderId: orderId,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                };
+                return db.ref('/expenses/' + expId).set(commExpense).then(() => {
+                    return window.logTreasuryTransaction({
+                        accountId, type: 'expense', amount: actualCommission,
+                        reason: `عمولة تحصيل - طلب رقم ${orderId}`,
+                        relatedOrderId: orderId, relatedExpenseId: expId
+                    });
+                });
+            } else {
+                // فرق سالب (نادر) يعني وصل فلوس أكتر من المتوقع - يتسجل كإيداع إضافي
+                return window.logTreasuryTransaction({
+                    accountId, type: 'deposit', amount: Math.abs(actualCommission),
+                    reason: `فرق تحصيل إضافي عن المتوقع - طلب رقم ${orderId}`,
+                    relatedOrderId: orderId
+                });
+            }
+        }).then(() => {
+            return db.ref('/orders/' + orderId + '/shippingCollection').update({
+                status: 'collected', collectedAt: Date.now(), accountId,
+                actualNet, actualCommission
+            });
+        }).then(() => {
+            return db.ref('/orders/' + orderId + '/financeSnapshot').update({
+                depositAccountId: accountId, pendingShippingCollection: false
+            });
+        }).then(() => { collectedCount++; });
+    });
+
+    chain.then(() => {
+        alert(`✅ تم تسجيل تحصيل ${collectedCount} أوردر بنجاح، وتسجيل العمولة الفعلية تلقائيًا كمصروف "شحن وتوصيل".`);
+        window.closeShipCollectModal();
+    }).catch(err => {
+        alert("❌ حصل خطأ أثناء تسجيل التحصيل: " + err.message);
+    });
+};
+
+// ⭐ مزامنة حية مباشرة لشركات الشحن (مش جزء من محرك المزامنة العام بتاع
+// باقي الشاشات، فبنعمل الاستماع هنا مباشرة عشان الجدول والقايمة يفضلوا
+// محدّثين أوتوماتيك مع أي إضافة/تعديل/حذف لشركة).
+db.ref('/shippingCompanies').on('value', snap => {
+    let val = snap.val() || {};
+    let list = Object.values(val).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    localStorage.setItem('eljory_shipping_companies', JSON.stringify(list));
+    if (typeof window.renderShippingCompanies === 'function') window.renderShippingCompanies();
+    if (typeof window.renderShippingCollections === 'function') window.renderShippingCollections();
+});
 
 // ── المصاريف (مع دعم السحب من أكتر من حساب في نفس المصروف) ──────────────
 window.expAllocRowCount = 0;
@@ -659,13 +1116,26 @@ window.renderTreasuryOverview = function() {
         });
     });
 
+    // ⭐ مبالغ تحت التحصيل عند شركات الشحن: فواتير "تم التوصيل" فعليًا للعميل
+    // (يعني خرجت من رصيد "البضاعة المحجوزة" فوق) لكن الفلوس لسه ما دخلتش أي
+    // حساب خزنة - لسه مع شركة الشحن. بنحسبها بالإجمالي (قبل خصم أي عمولة
+    // متوقعة) لأنها ديون مستحقة بالكامل للمتجر لحد ما تتحصل فعليًا من تاب
+    // "🚚 شركات الشحن والتحصيل".
+    let pendingShippingValue = 0;
+    orders.forEach(o => {
+        if (o.shippingCollection && o.shippingCollection.status === 'pending') {
+            pendingShippingValue += (o.shippingCollection.grossAmount || 0);
+        }
+    });
+
     inventoryValue += 0; // (قيمة المخزون الفعلي تفضل لوحدها، من غير المحجوز)
-    let capital = totalTreasury + inventoryValue + reservedStockValue;
+    let capital = totalTreasury + inventoryValue + reservedStockValue + pendingShippingValue;
 
     let cards = [
         { label: 'إجمالي رصيد الخزنة (كل الحسابات)', value: totalTreasury, color: '#1d364a' },
         { label: `قيمة المخزون بسعر التكلفة (${inventoryProductsCount} منتج له تكلفة)`, value: inventoryValue, color: '#17a2b8' },
         { label: 'قيمة البضاعة المحجوزة في طلبات لسه ما اتسلمتش', value: reservedStockValue, color: '#f38c18' },
+        { label: '💰 مبالغ تحت التحصيل عند شركات الشحن', value: pendingShippingValue, color: '#d9534f' },
         { label: 'رأس المال الإجمالي', value: capital, color: '#28a745' }
     ];
     grid.innerHTML = cards.map(c => `
