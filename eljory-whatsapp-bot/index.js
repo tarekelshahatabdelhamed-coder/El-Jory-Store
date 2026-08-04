@@ -26,6 +26,11 @@ const { execSync } = require('child_process');
 const { nodewhisper } = require('nodejs-whisper');
 const Tesseract = require('tesseract.js');
 const sharp = require('sharp');
+// ⚠️ جديد: مكتبة السيرفر البسيط اللي بيستقبل بيها webhook بوت الماسنجر (Express)
+const express = require('express');
+// ⚠️ جديد: منطق بوت الماسنجر بالكامل (Webhook + استقبال + إرسال) - شوف تفاصيله
+// وطريقة إعداده الأول في تعليقات ملف messenger-bot.js نفسه.
+const { createMessengerBot } = require('./messenger-bot');
 
 // ==================== سجل الأوردرات اللي بيجمعها البوت ====================
 // كل ما البوت يجمع بيانات عميل عايز يأكد أوردر (اسم + رقم + عنوان مفصّل)،
@@ -1585,6 +1590,33 @@ async function processCustomerMessage(message, chatKey, body, imagePart, realNum
 }
 
 client.initialize();
+
+// ==================== ربط بوت الماسنجر (نفس البيانات وإعدادات لوحة التحكم) ====================
+// ⚠️ ده سيرفر Express منفصل (بورت مستقل)، بيشارك نفس botSettingsCache و
+// quickRepliesCache وكل دوال Gemini/الأوردرات/سجل الاستهلاك الموجودة فوق -
+// يعني بتتحكم فيه من نفس لوحة الأدمن بالظبط، من غير أي تاب أو إعداد إضافي.
+// شوف تفاصيل الإعداد الأول (Meta App, Page Access Token...) في تعليقات
+// أول ملف messenger-bot.js.
+const messengerApp = express();
+messengerApp.use(express.json({
+    verify: (req, res, buf) => { req.rawBody = buf; } // لازم للتحقق من توقيع فيسبوك (اختياري)
+}));
+
+const messengerBot = createMessengerBot({
+    db, ServerValue, botSettingsCache, quickRepliesCache,
+    findQuickReplies, isClosingMessage, appendOrderRow, logBotUsage,
+    saveConversation, getRecentHistoryItems, truncateForHistory,
+    genAI, GEMINI_MODEL_NAME, MANDATORY_RULES, HANDOVER_MARKER,
+    ORDER_DATA_START, ORDER_DATA_END,
+    markOutgoingForFollowUp, clearFollowUp, pauseCustomer,
+    isCustomerPaused, isHandedOver, pauseCustomerIndefinitely, notifyOwner
+});
+messengerBot.attachToExpressApp(messengerApp);
+
+const MESSENGER_PORT = process.env.MESSENGER_PORT || 3000;
+messengerApp.listen(MESSENGER_PORT, () => {
+    console.log(`✅ سيرفر الماسنجر شغال على بورت ${MESSENGER_PORT}`);
+});
 
 // ==================== معالجة إغلاق البوت بأمر خارجي (مثلاً pm2 stop) ====================
 // لما حد يوقف البوت من برة (زي مراقب "إيقاف السيرفر" اللي بينفّذ pm2 stop)،
