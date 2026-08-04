@@ -644,6 +644,86 @@ function consumeBotEchoIfPending(chatKey, messageBody) {
     return lastBotReplyText.get(chatKey) === (messageBody || '');
 }
 
+// ==================== تجميع الرسائل المجزأة (Message Buffering) ====================
+// ⚠️ ليه الميزة دي: بعض العملاء بيكتبوا فكرتهم على أكتر من رسالة متتالية (زي شات
+// عادي بين بني آدمين: "عايز اسكرينه" ثم "43 بوصة" ثم "سامسونج"). من غير الميزة دي،
+// البوت كان هيرد على كل جزء لوحده (3 استدعاءات جيميناي منفصلة = توكن مضاعف وردود
+// مبعثرة وممكن غلط لأنه بيرد على جزء من الفكرة مش كلها).
+//
+// الفكرة: لما توصل رسالة من عميل، مبنبعتهاش لجيميناي فورًا - بدل كده بنحطها في
+// قائمة انتظار مؤقتة (في الذاكرة RAM بس، مش Firebase - عشان منضيفش قراءة/كتابة
+// زيادة كل رسالة، وده كان هيلغي فايدة توفير التوكن أصلاً) ونبدأ تايمر قصير. لو
+// وصلت رسالة تانية من نفس العميل قبل ما التايمر يخلص، بنلغي التايمر القديم ونبدأ
+// واحد جديد ونضيف الرسالة للقائمة. لما التايمر يخلص من غير ما توصل رسالة جديدة،
+// بنجمع كل الرسائل المتراكمة في نص واحد (مفصولة بسطر جديد) ونعالجها كوحدة واحدة.
+//
+// chatKey -> { texts: [...], imageParts: [...], lastMessage, realNumber, timer, maxTimer }
+const pendingMessageBuffers = new Map();
+
+// المدة اللي بيستناها البوت من غير رسالة جديدة قبل ما يعتبر العميل خلّص كلامه ويرد
+const MESSAGE_BUFFER_DELAY_MS = 25 * 1000; // 25 ثانية - بيتجدد مع كل رسالة جزء جديدة توصل
+
+// حد أقصى مطلق للانتظار حتى لو العميل فضل يكتب باستمرار كل شوية ثواني - عشان
+// ميفضلش ينتظر لانهائي وناخد بالنا لو العميل بيكتب رسايل طويلة على فترات متقاربة
+const MESSAGE_BUFFER_MAX_WAIT_MS = 60 * 1000; // 60 ثانية
+
+// بتضيف رسالة جزء جديدة لقائمة انتظار العميل ده، وبتجدد التايمر القصير (وتبدأ
+// التايمر الأقصى لو ده أول جزء). لما التايمر القصير يخلص من غير رسائل جديدة،
+// بيتنده flushMessageBuffer تلقائيًا عشان يعالج كل الأجزاء مجمّعة.
+function bufferCustomerMessage(chatKey, message, body, imagePart, realNumber) {
+    let buf = pendingMessageBuffers.get(chatKey);
+    if (!buf) {
+        buf = { texts: [], imageParts: [], lastMessage: message, realNumber, timer: null, maxTimer: null };
+        pendingMessageBuffers.set(chatKey, buf);
+        buf.maxTimer = setTimeout(() => flushMessageBuffer(chatKey), MESSAGE_BUFFER_MAX_WAIT_MS);
+        buf.maxTimer.unref?.();
+    }
+
+    buf.texts.push(body);
+    if (imagePart) buf.imageParts.push(imagePart);
+    buf.lastMessage = message; // بنرد باستخدام آخر رسالة وصلت (عشان message.reply يشتغل صح)
+    buf.realNumber = realNumber;
+
+    clearTimeout(buf.timer);
+    buf.timer = setTimeout(() => flushMessageBuffer(chatKey), MESSAGE_BUFFER_DELAY_MS);
+    buf.timer.unref?.();
+
+    console.log(`⏳ تجميع رسالة من ${realNumber} في قائمة الانتظار (${buf.texts.length} جزء لحد دلوقتي) - هيتم الرد بعد ${MESSAGE_BUFFER_DELAY_MS / 1000} ثواني من آخر رسالة (أو حد أقصى ${MESSAGE_BUFFER_MAX_WAIT_MS / 1000} ثانية).`);
+}
+
+// بتتنده لما التايمر يخلص (أو الحد الأقصى) - بتجمع كل الأجزاء وتبعتها كوحدة واحدة
+// لباقي المعالجة (فحص إغلاق المحادثة، الردود السريعة، جيميناي...) عن طريق processCustomerMessage.
+async function flushMessageBuffer(chatKey) {
+    const buf = pendingMessageBuffers.get(chatKey);
+    if (!buf) return;
+    pendingMessageBuffers.delete(chatKey);
+    clearTimeout(buf.timer);
+    clearTimeout(buf.maxTimer);
+
+    // ⚠️ طبقة حماية إضافية: نتأكد إن العميل مش paused قبل ما نكلم جيميناي أو نرد -
+    // لو الأدمن رد يدويًا خلال فترة التجميع (والـ clearPendingBuffer لأي سبب ماتنداش
+    // أو حصل تعارض توقيت بسيط)، الفحص ده بيمنع أي رد آلي يتبعت فوق رد الأدمن.
+    if (isCustomerPaused(chatKey)) {
+        console.log('⏸️ تم إلغاء معالجة الرسائل المجمّعة - العميل بقى موقوف (على الأغلب رد الأدمن يدويًا أثناء الانتظار).');
+        return;
+    }
+
+    const combinedBody = buf.texts.join('\n');
+    const imagePart = buf.imageParts.find(Boolean) || null; // أول صورة موجودة ضمن الأجزاء لو فيه
+    await processCustomerMessage(buf.lastMessage, chatKey, combinedBody, imagePart, buf.realNumber);
+}
+
+// بتتنده لما الأدمن يرد يدويًا على عميل - بتلغي أي buffer/تايمر معلّق ليه عشان
+// الرسائل المتراكمة تتشال تمامًا ومفيش رد آلي هيتبعت فوق رد الأدمن.
+function clearPendingBuffer(chatKey) {
+    const buf = pendingMessageBuffers.get(chatKey);
+    if (!buf) return;
+    clearTimeout(buf.timer);
+    clearTimeout(buf.maxTimer);
+    pendingMessageBuffers.delete(chatKey);
+    console.log('🧹 تم إلغاء رسائل مجمّعة معلّقة لعميل بسبب رد يدوي من الأدمن.');
+}
+
 // منع معالجة نفس الرسالة أكتر من مرة (بيحصل أحيانًا مع واتساب Multi-Device)
 const processedMessageIds = new Set();
 const PROCESSED_IDS_TTL_MS = 10 * 60 * 1000; // 10 دقايق كفاية
@@ -1180,6 +1260,9 @@ client.on('message_create', async function (message) {
             if (chatKeyOfThisReply) {
                 pauseCustomer(chatKeyOfThisReply);
                 markOutgoingForFollowUp(chatKeyOfThisReply, chatKeyOfThisReply.replace('@c.us', ''));
+                // ⚠️ مهم: نلغي فورًا أي رسائل مجمّعة (buffer) لسه مستنية ترد عليها، وإلا
+                // التايمر هيخلص بعد شوية ويحاول يبعت رد من جيميناي فوق ردك اليدوي انت.
+                clearPendingBuffer(chatKeyOfThisReply);
             }
             return;
         }
@@ -1287,6 +1370,21 @@ client.on('message_create', async function (message) {
             return;
         }
 
+        // بدل ما نعالج الرسالة فورًا، بنضيفها لقائمة انتظار مؤقتة (buffer) خاصة بالعميل
+        // ده ونجدد تايمر قصير - لو محدش كتب حاجة تانية خلال المهلة، هيتم تجميع كل
+        // الأجزاء ومعالجتها كوحدة واحدة عن طريق processCustomerMessage (شوف تعريفها تحت).
+        bufferCustomerMessage(chatKey, message, body, imagePart, realNumber);
+    } catch (error) {
+        console.error('خطأ أثناء معالجة الرسالة:', error.message);
+    }
+});
+
+// ==================== معالجة الرسالة (أو الرسائل المجمّعة) الفعلية ====================
+// بتتنده من flushMessageBuffer بعد ما يخلص تايمر التجميع - بتاخد النص المجمّع
+// (ممكن يكون رسالة واحدة أو أكتر من جزء مدموجين بسطر جديد) وتكمل باقي المنطق
+// زي ما كان بالظبط: فحص إغلاق المحادثة، الردود السريعة الجاهزة، وأخيرًا جيميناي.
+async function processCustomerMessage(message, chatKey, body, imagePart, realNumber) {
+    try {
         // حد أقصى للرسائل في الدقيقة - حماية من استهلاك توكنز بالبلاش
         if (isRateLimited(chatKey)) {
             console.log(`🚫 تم تجاوز الحد الأقصى للرسائل من ${realNumber} - تم تجاهل الرسالة دي.`);
@@ -1484,7 +1582,7 @@ client.on('message_create', async function (message) {
     } catch (error) {
         console.error('خطأ أثناء معالجة الرسالة:', error.message);
     }
-});
+}
 
 client.initialize();
 
