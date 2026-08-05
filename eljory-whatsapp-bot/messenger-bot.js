@@ -147,9 +147,8 @@ function createMessengerBot(deps) {
 
     async function sendReplyNaturally(recipientPsid, replyText) {
         await sendTypingIndicator(recipientPsid, true);
-        const baseDelay = 1500 + Math.random() * 2500;
-        const lengthBonus = Math.min(replyText.length * 15, 4000);
-        await new Promise(r => setTimeout(r, baseDelay + lengthBonus));
+        // ملحوظة: تأخير محاكاة الكتابة اتشال من هنا لنفس سبب الواتساب - فترة
+        // تجميع الرسايل (25 ثانية) قبل كده كافية، ومفيش داعي لتأخير إضافي.
         await sendMessengerText(recipientPsid, replyText);
     }
 

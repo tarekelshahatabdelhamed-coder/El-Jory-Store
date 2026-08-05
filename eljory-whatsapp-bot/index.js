@@ -186,12 +186,9 @@ async function sendReplyNaturally(message, chatKey, replyText) {
         console.error('⚠️ تعذر تفعيل مؤشر "بيكتب...":', e.message);
     }
 
-    // تأخير عشوائي بين 2 و5 ثواني، بيتزود شوية لو الرد طويل - زي إنسان
-    // بيكتب فعلاً مش بيبعت رد آلي فوري. حد أقصى إضافي 4 ثواني عشان
-    // الردود الطويلة جدًا ماتاخدش وقت مبالغ فيه.
-    const baseDelay = 2000 + Math.random() * 3000;
-    const lengthBonus = Math.min(replyText.length * 15, 4000);
-    await new Promise(r => setTimeout(r, baseDelay + lengthBonus));
+    // ملحوظة: تأخير محاكاة الكتابة (2-9 ثواني) اتشال من هنا، لأن فترة تجميع
+    // الرسايل (25 ثانية) قبل كده أصلاً كافية جدًا وبتدي إحساس طبيعي، فمفيش
+    // داعي نضيف تأخير إضافي فوقها ويطول وقت انتظار العميل من غير فايدة حقيقية.
 
     expectBotEcho(chatKey);
     rememberBotReply(chatKey, replyText);
