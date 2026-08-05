@@ -564,7 +564,7 @@ function findQuickReplies(customerMessageBody) {
 // ده بيظهر في تاب "📊 سجل استهلاك التوكنز" تحت بوت الواتساب في لوحة التحكم.
 const BOT_USAGE_LOG_MAX_ENTRIES = 5000; // حد أقصى للسجلات المحفوظة عشان قاعدة البيانات متكبرش من غير حد
 
-async function logBotUsage({ chatKey, phone, type, modelName = '', promptTokens = 0, completionTokens = 0, thoughtsTokens = 0, totalTokens = 0, trigger = '', message = '' }) {
+async function logBotUsage({ chatKey, phone, type, source = 'whatsapp', modelName = '', promptTokens = 0, completionTokens = 0, thoughtsTokens = 0, totalTokens = 0, trigger = '', message = '' }) {
     try {
         const logRef = db.ref('/botUsageLog');
         const newEntryRef = logRef.push();
@@ -573,6 +573,7 @@ async function logBotUsage({ chatKey, phone, type, modelName = '', promptTokens 
             phone: phone || '',
             chatKey: chatKey || '',
             type, // 'quick_reply' أو 'ai'
+            source, // 'whatsapp' أو 'messenger' - مصدر الرسالة عشان نقدر نفرق بينهم في لوحة الأدمن
             modelName, // اسم موديل جيميناي المستخدم في الحركة دي (فاضي لو رد سريع)
             trigger, // الكلمة/الكلمات المفتاحية اللي اتفعّلت (فاضي لو رد ذكاء اصطناعي)
             message, // نص رسالة العميل (بيتسجل بس لو النوع 'ai' - عشان نلاقي الأسئلة المتكررة اللي محتاجة رد سريع جديد)

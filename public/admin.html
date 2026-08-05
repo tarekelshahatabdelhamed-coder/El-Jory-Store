@@ -1000,6 +1000,14 @@
                 </select>
             </div>
             <div style="flex:1;min-width:160px;">
+                <label style="font-weight:bold;margin-bottom:5px;display:block;">المصدر</label>
+                <select id="filterUsageSource" class="form-control" onchange="renderBotUsageLog()">
+                    <option value="all">الكل (واتساب + ماسنجر)</option>
+                    <option value="whatsapp">💬 واتساب فقط</option>
+                    <option value="messenger">📘 ماسنجر فقط</option>
+                </select>
+            </div>
+            <div style="flex:1;min-width:160px;">
                 <label style="font-weight:bold;margin-bottom:5px;display:block;">من تاريخ</label>
                 <input type="date" id="filterUsageFrom" class="form-control" onchange="renderBotUsageLog()">
             </div>
@@ -1024,7 +1032,7 @@
         <table>
             <thead>
                 <tr>
-                    <th>التاريخ والوقت</th><th>رقم العميل</th><th>نوع الحركة</th><th>الموديل</th>
+                    <th>التاريخ والوقت</th><th>رقم العميل</th><th>المصدر</th><th>نوع الحركة</th><th>الموديل</th>
                     <th>توكنز الطلب</th><th>توكنز الرد</th><th>🧠 توكنز تفكير مخفية</th><th>الإجمالي</th>
                 </tr>
             </thead>

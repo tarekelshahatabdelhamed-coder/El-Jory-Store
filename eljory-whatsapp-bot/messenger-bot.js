@@ -201,7 +201,7 @@ function createMessengerBot(deps) {
                 console.log(`👋 عميل ماسنجر ${psid} قفل الموضوع بنفسه ("${body}") - رد إغلاق من غير جيميناي.`);
                 await sendReplyNaturally(psid, closingReply);
                 await saveConversation(chatKey, body, closingReply);
-                logBotUsage({ chatKey, phone: psid, type: 'quick_reply', trigger: '[إغلاق محادثة - ماسنجر]' });
+                logBotUsage({ chatKey, phone: psid, type: 'quick_reply', source: 'messenger', trigger: '[إغلاق محادثة - ماسنجر]' });
                 return;
             }
 
@@ -212,7 +212,7 @@ function createMessengerBot(deps) {
                     console.log(`⚡ رد سريع بميديا (ماسنجر، ${mediaReply.mediaItems.length} ملف): ${mediaReply.mediaItems.map(m => m.url).join(' | ')}`);
                     await sendMediaSequenceNaturally(psid, mediaReply.mediaItems, mediaReply.reply || '');
                     await saveConversation(chatKey, body, mediaReply.reply || `[${mediaReply.mediaItems.length} ملف ميديا مرسلة]`);
-                    logBotUsage({ chatKey, phone: psid, type: 'quick_reply', trigger: mediaReply.trigger });
+                    logBotUsage({ chatKey, phone: psid, type: 'quick_reply', source: 'messenger', trigger: mediaReply.trigger });
                     markOutgoingForFollowUp(chatKey, psid);
                     return;
                 }
@@ -222,7 +222,7 @@ function createMessengerBot(deps) {
                 console.log(`⚡ رد سريع جاهز (ماسنجر، ${quickReplies.length} تطابق): ` + combinedReply);
                 await sendReplyNaturally(psid, combinedReply);
                 await saveConversation(chatKey, body, combinedReply);
-                logBotUsage({ chatKey, phone: psid, type: 'quick_reply', trigger: matchedTriggers });
+                logBotUsage({ chatKey, phone: psid, type: 'quick_reply', source: 'messenger', trigger: matchedTriggers });
                 markOutgoingForFollowUp(chatKey, psid);
                 return;
             }
@@ -253,7 +253,7 @@ function createMessengerBot(deps) {
             let aiReply = result.response.text().trim();
             const usage = result.response.usageMetadata || {};
             logBotUsage({
-                chatKey, phone: psid, type: 'ai', modelName: GEMINI_MODEL_NAME, message: body,
+                chatKey, phone: psid, type: 'ai', source: 'messenger', modelName: GEMINI_MODEL_NAME, message: body,
                 promptTokens: usage.promptTokenCount || 0,
                 completionTokens: usage.candidatesTokenCount || 0,
                 thoughtsTokens: usage.thoughtsTokenCount || 0,

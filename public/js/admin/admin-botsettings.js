@@ -789,6 +789,7 @@ function formatUsageDateTime(ts) {
 function getFilteredBotUsageLog() {
     const phoneFilter = (document.getElementById("filterUsagePhone")?.value || '').trim();
     const typeFilter = document.getElementById("filterUsageType")?.value || 'all';
+    const sourceFilter = document.getElementById("filterUsageSource")?.value || 'all';
     const fromVal = document.getElementById("filterUsageFrom")?.value || '';
     const toVal = document.getElementById("filterUsageTo")?.value || '';
 
@@ -798,6 +799,8 @@ function getFilteredBotUsageLog() {
     return botUsageLogCache.filter(entry => {
         if (phoneFilter && !String(entry.phone || '').includes(phoneFilter)) return false;
         if (typeFilter !== 'all' && entry.type !== typeFilter) return false;
+        // السجلات القديمة (قبل إضافة حقل source) معندهاش source خالص، فبنعتبرها واتساب افتراضيًا
+        if (sourceFilter !== 'all' && (entry.source || 'whatsapp') !== sourceFilter) return false;
         if (fromTs && (entry.timestamp || 0) < fromTs) return false;
         if (toTs && (entry.timestamp || 0) > toTs) return false;
         return true;
@@ -898,9 +901,14 @@ function renderBotUsageSummaryCards(filtered) {
     const aiHits = filtered.filter(e => e.type === 'ai').length;
     const quickHits = filtered.filter(e => e.type === 'quick_reply').length;
     const totalTokens = filtered.reduce((sum, e) => sum + (Number(e.totalTokens) || 0), 0);
+    // السجلات القديمة (قبل إضافة حقل source) معندهاش source خالص، فبنعتبرها واتساب افتراضيًا
+    const whatsappHits = filtered.filter(e => (e.source || 'whatsapp') === 'whatsapp').length;
+    const messengerHits = filtered.filter(e => e.source === 'messenger').length;
 
     const cards = [
         { label: 'إجمالي الحركات', value: totalHits, color: '#1d364a' },
+        { label: '💬 حركات واتساب', value: whatsappHits, color: '#25d366' },
+        { label: '📘 حركات ماسنجر', value: messengerHits, color: '#1877f2' },
         { label: 'ردود جيميناي (AI)', value: aiHits, color: '#f38c18' },
         { label: 'ردود سريعة (0 توكن)', value: quickHits, color: '#28a745' },
         { label: 'إجمالي التوكنز المستهلكة', value: totalTokens.toLocaleString('en-US'), color: '#d9534f' }
@@ -969,7 +977,7 @@ window.renderBotUsageLog = function() {
     }
 
     if (!pageItems.length) {
-        body.innerHTML = `<tr><td colspan="8" style="color:gray;">لا توجد حركات مسجلة.</td></tr>`;
+        body.innerHTML = `<tr><td colspan="9" style="color:gray;">لا توجد حركات مسجلة.</td></tr>`;
         renderBotUsageLogPagination(0, pageSize);
         return;
     }
@@ -982,10 +990,14 @@ window.renderBotUsageLog = function() {
         const thoughtsCell = thoughtsVal > 0
             ? `<strong style="color:#d9534f;">${thoughtsVal.toLocaleString('en-US')} ⚠️</strong>`
             : `<span style="color:#28a745;">0</span>`;
+        const sourceLabel = e.source === 'messenger'
+            ? '<span class="badge" style="background:#1877f2;">📘 ماسنجر</span>'
+            : '<span class="badge" style="background:#25d366;">💬 واتساب</span>';
         return `
             <tr>
                 <td>${formatUsageDateTime(e.timestamp)}</td>
                 <td>${escapeHtml(e.phone || '—')}</td>
+                <td>${sourceLabel}</td>
                 <td>${typeLabel}</td>
                 <td style="font-size:12px;color:#555;">${escapeHtml(e.modelName || '—')}</td>
                 <td>${Number(e.promptTokens || 0).toLocaleString('en-US')}</td>
@@ -1005,13 +1017,15 @@ window.exportBotUsageLogCSV = function() {
         alert("مفيش حركات مطابقة للفلتر الحالي عشان تصدرها.");
         return;
     }
-    const header = 'التاريخ والوقت,رقم العميل,نوع الحركة,توكنز الطلب,توكنز الرد,توكنز تفكير مخفية,الإجمالي\n';
+    const header = 'التاريخ والوقت,رقم العميل,المصدر,نوع الحركة,توكنز الطلب,توكنز الرد,توكنز تفكير مخفية,الإجمالي\n';
     const rows = filtered.map(e => {
         const typeLabel = e.type === 'ai' ? 'رد ذكاء اصطناعي' : 'رد سريع';
+        const sourceLabel = e.source === 'messenger' ? 'ماسنجر' : 'واتساب';
         const csvEscapeLocal = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
         return [
             csvEscapeLocal(formatUsageDateTime(e.timestamp)),
             csvEscapeLocal(e.phone || ''),
+            csvEscapeLocal(sourceLabel),
             csvEscapeLocal(typeLabel),
             e.promptTokens || 0,
             e.completionTokens || 0,
