@@ -1261,6 +1261,10 @@ client.on('message_create', async function (message) {
 
             // غير كده، يبقى ده رد يدوي مني من الموبايل على عميل -> نوقف البوت مؤقتًا مع العميل ده
             if (chatKeyOfThisReply) {
+                // 🔍 لوج تشخيصي مؤقت: بيوضح بالظبط أنهي رقم اتوقف ولية (نص الرسالة اللي
+                // اعتبرناها "رد يدوي")، عشان لو حصل تضارب توقيت زي اللي حصل قبل كده،
+                // نقدر نمسك السبب بالدليل بدل ما نخمّن.
+                console.log(`🔍 [تشخيص] اعتبرنا الرسالة دي "رد يدوي" وهنوقف البوت مع ${chatKeyOfThisReply}. نص الرسالة: "${message.body}" | آخر رد بوت متسجل لنفس الرقم: "${lastBotReplyText.get(chatKeyOfThisReply) || '(مفيش)'}"`);
                 pauseCustomer(chatKeyOfThisReply);
                 markOutgoingForFollowUp(chatKeyOfThisReply, chatKeyOfThisReply.replace('@c.us', ''));
                 // ⚠️ مهم: نلغي فورًا أي رسائل مجمّعة (buffer) لسه مستنية ترد عليها، وإلا

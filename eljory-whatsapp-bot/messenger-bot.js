@@ -311,6 +311,8 @@ function createMessengerBot(deps) {
         clearTimeout(buf.timer);
         buf.timer = setTimeout(() => flushMessengerBuffer(chatKey), MESSAGE_BUFFER_DELAY_MS);
         buf.timer.unref?.();
+
+        console.log(`⏳ تجميع رسالة من ${psid} في قائمة الانتظار (ماسنجر، ${buf.texts.length} جزء لحد دلوقتي) - هيتم الرد بعد ${MESSAGE_BUFFER_DELAY_MS / 1000} ثواني من آخر رسالة (أو حد أقصى ${MESSAGE_BUFFER_MAX_WAIT_MS / 1000} ثانية).`);
     }
 
     async function flushMessengerBuffer(chatKey) {
