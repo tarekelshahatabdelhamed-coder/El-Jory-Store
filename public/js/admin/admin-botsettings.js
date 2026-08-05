@@ -1069,20 +1069,26 @@ window.renderBotOrdersLog = function() {
     if (countEl) countEl.textContent = botOrdersLogCache.length;
 
     if (!botOrdersLogCache.length) {
-        body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#888;padding:20px;">مفيش أوردرات مسجّلة حاليًا</td></tr>`;
+        body.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#888;padding:20px;">مفيش أوردرات مسجّلة حاليًا</td></tr>`;
         return;
     }
 
-    body.innerHTML = botOrdersLogCache.map(o => `
+    body.innerHTML = botOrdersLogCache.map(o => {
+        const sourceLabel = o.source === 'messenger'
+            ? '<span class="badge" style="background:#1877f2;">📘 ماسنجر</span>'
+            : '<span class="badge" style="background:#25d366;">💬 واتساب</span>';
+        return `
         <tr>
             <td>${formatOrderDateTime(o.timestamp)}</td>
+            <td>${sourceLabel}</td>
             <td>${o.name || '—'}</td>
             <td dir="ltr" style="text-align:right;">${o.phone || '—'}</td>
             <td>${o.address || '—'}</td>
             <td>${o.shipping || '—'}</td>
             <td>${o.price || '—'}</td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
 };
 
 window.downloadBotOrdersCSV = function() {
@@ -1090,10 +1096,11 @@ window.downloadBotOrdersCSV = function() {
         alert("مفيش أوردرات مسجّلة حاليًا عشان تنزّلها.");
         return;
     }
-    const header = 'التاريخ والوقت,الاسم,رقم التليفون,العنوان,قيمة الشحن,سعر القطعة\n';
+    const header = 'التاريخ والوقت,المصدر,الاسم,رقم التليفون,العنوان,قيمة الشحن,سعر القطعة\n';
     const csvEscapeLocal = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const rows = botOrdersLogCache.map(o => [
         csvEscapeLocal(formatOrderDateTime(o.timestamp)),
+        csvEscapeLocal(o.source === 'messenger' ? 'ماسنجر' : 'واتساب'),
         csvEscapeLocal(o.name || ''),
         csvEscapeLocal(o.phone || ''),
         csvEscapeLocal(o.address || ''),

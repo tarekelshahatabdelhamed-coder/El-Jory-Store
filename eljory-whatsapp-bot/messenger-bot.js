@@ -268,7 +268,7 @@ function createMessengerBot(deps) {
                     try {
                         const orderData = JSON.parse(jsonText);
                         if (orderData.name && orderData.phone && orderData.address) {
-                            appendOrderRow(orderData);
+                            appendOrderRow(orderData, 'messenger');
                         }
                     } catch (e) {
                         console.error('تعذّر قراءة بيانات أوردر ماسنجر (JSON غير صحيح):', e.message);

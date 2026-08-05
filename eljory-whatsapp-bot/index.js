@@ -72,7 +72,7 @@ async function isDuplicateOrder(order) {
     }
 }
 
-async function appendOrderRow(order) {
+async function appendOrderRow(order, source = 'whatsapp') {
     try {
         if (await isDuplicateOrder(order)) {
             console.log(`⏭️ تم تجاهل تسجيل أوردر مكرر لنفس العميل (${order.phone}) خلال آخر ${botSettingsCache.orderDedupMinutes} دقيقة.`);
@@ -86,7 +86,8 @@ async function appendOrderRow(order) {
             phone: order.phone || '',
             address: order.address || '',
             shipping: order.shipping || '',
-            price: order.price || ''
+            price: order.price || '',
+            source // 'whatsapp' أو 'messenger' - مصدر الأوردر عشان نقدر نفرق بينهم في لوحة الأدمن
         });
         console.log(`📦 تم تسجيل أوردر جديد: ${order.name} - ${order.phone}`);
 
